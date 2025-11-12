@@ -46,6 +46,9 @@ dependencies:
   path_provider: ^2.0.11 # Manejo de rutas de archivos
   open_filex: ^4.3.0 # Abrir el archivo guardado
 
+  
+  geolocator: ^14.0.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

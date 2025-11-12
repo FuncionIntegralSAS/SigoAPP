@@ -4,7 +4,7 @@ import 'package:flutter_application_1/tabs.dart';
 import 'screens/scanner_screen.dart'; // Importa la página del escáner
 import 'screens/generator_screen.dart'; // Importa la página del generador
 import 'screens/inventory_screen.dart'; // Importa la página del inventario
-import 'placeholder_tabs.dart';
+import 'screens/account_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -42,8 +42,8 @@ class _HomeScreenState extends State<HomeScreen> {
   static const List<Widget> _widgetOptions = <Widget>[
     ScannerScreen(),     // Índice 0: Lector
     GeneratorScreen(),  // Índice 1: Generador
-    TabInventario(), // Índice 2: Inventario
-    PlaceholderPerfil(),     // Índice 3: Perfil
+    InventoryScreen(), // Índice 2: Inventario
+    AccountScreen(),     // Índice 3: Perfil
   ];
 
   // Función que se llama cuando se toca un ícono en la barra

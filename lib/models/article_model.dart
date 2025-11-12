@@ -5,6 +5,9 @@ class ArticleModel {
   final String name;
   final String responsible; // Responsable
   final String costCenter; // Centro de Costos / Bodega ID
+  //PROPIEDADES DE GEOLOCALIZACIÓN
+  final double? latitude;
+  final double? longitude;
 
   ArticleModel({
     required this.code,
@@ -12,8 +15,11 @@ class ArticleModel {
     required this.name,
     required this.responsible,
     required this.costCenter,
+    this.latitude,
+    this.longitude,
   });
 
+  
   // Método que genera la cadena que se codificará en el QR
   // Usamos el código y la placa como datos de identificación
   String get qrData {
@@ -24,5 +30,21 @@ class ArticleModel {
   @override
   String toString() {
     return 'ArticleModel(Code: $code, Plate: $licensePlate, Name: $name)';
+  }
+
+  // Método helper para crear una nueva instancia con una ubicación actualizada
+  ArticleModel copyWith({
+    double? latitude,
+    double? longitude,
+  }) {
+    return ArticleModel(
+      code: code,
+      costCenter: costCenter,
+      licensePlate: licensePlate,
+      name: name,
+      responsible: responsible,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+    );
   }
 }
