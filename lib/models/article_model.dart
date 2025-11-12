@@ -47,4 +47,16 @@ class ArticleModel {
       longitude: longitude ?? this.longitude,
     );
   }
+
+  // Si el código y el centro de costos coinciden, son el mismo activo.
+@override
+bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ArticleModel &&
+        other.code == code &&
+        other.costCenter == costCenter;
+}
+
+@override
+int get hashCode => code.hashCode ^ costCenter.hashCode;
 }
