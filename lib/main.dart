@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/tabs.dart';
+import 'package:sigo_app/tabs.dart';
 
 import 'screens/scanner_screen.dart'; // Importa la página del escáner
 import 'screens/generator_screen.dart'; // Importa la página del generador

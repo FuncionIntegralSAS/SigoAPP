@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:'
+import 'package:sigo_app/models/article_model.dart';
 
 void main() {
   // Configuración de un artículo base para usar en todos los tests
@@ -51,9 +51,9 @@ void main() {
       // Una nueva instancia (diferente referencia de memoria) con los mismos datos clave
       final articleB = ArticleModel(
         code: 'PC001',
-        licensePlate: 'OTRA PLACA', // Diferente
-        name: 'OTRO NOMBRE', // Diferente
-        responsible: 'OTRO RESPONSABLE', // Diferente
+        licensePlate: 'OTRA PLACA', 
+        name: 'OTRO NOMBRE', 
+        responsible: 'OTRO RESPONSABLE',
         costCenter: 'BOG001',
       );
       
