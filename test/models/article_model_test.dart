@@ -4,11 +4,11 @@ import 'package:sigo_app/models/article_model.dart';
 void main() {
   // Configuración de un artículo base para usar en todos los tests
   final baseArticle = ArticleModel(
-    code: 'PC001',
+    id: 'PC001',
     licensePlate: 'ABC-123',
     name: 'Portátil Prueba',
     responsible: 'Responsable Test',
-    costCenter: 'BOG001',
+    warehouse: 'BOG001',
   );
 
   group('ArticleModel Tests', () {
@@ -41,7 +41,7 @@ void main() {
 
       expect(updatedArticle.latitude, newLat);
       expect(updatedArticle.longitude, newLon);
-      expect(updatedArticle.code, baseArticle.code);
+      expect(updatedArticle.id, baseArticle.id);
       expect(updatedArticle.licensePlate, baseArticle.licensePlate);
     });
 
@@ -50,11 +50,11 @@ void main() {
       final articleA = baseArticle;
       // Una nueva instancia (diferente referencia de memoria) con los mismos datos clave
       final articleB = ArticleModel(
-        code: 'PC001',
+        id: 'PC001',
         licensePlate: 'OTRA PLACA', 
         name: 'OTRO NOMBRE', 
         responsible: 'OTRO RESPONSABLE',
-        costCenter: 'BOG001',
+        warehouse: 'BOG001',
       );
       
       // Test de igualdad: deben ser iguales porque 'code' y 'costCenter' coinciden.

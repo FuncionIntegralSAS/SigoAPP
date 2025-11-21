@@ -1,81 +1,83 @@
 import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
 
+// Servicio que simula la interacción con una base de datos o API.
+// Mantiene el estado de los artículos y bodegas en memoria (mock data).
 class MockInventoryService {
-  // --- Datos Mock de Bodegas ---
-  static final List<WarehouseModel> _warehouses = [
-    WarehouseModel(id: 'BOG001', name: 'Bodega Central Bogotá'),
-    WarehouseModel(id: 'MED002', name: 'Almacén Medellín Norte'),
+  // Lista estática de Bodegas/Centros de Costos
+  final List<WarehouseModel> _warehouses = const [
+    // Se usa 'const' porque el constructor de WarehouseModel fue actualizado
+    const WarehouseModel(id: 'CC001', name: 'Almacén Central'),
+    const WarehouseModel(id: 'CC002', name: 'Taller de Mantenimiento'),
+    const WarehouseModel(id: 'CC003', name: 'Oficinas Administrativas'),
   ];
 
-  // --- Datos Mock de Artículos/Activos ---
-  // Los datos aquí NO tendrán coordenadas inicialmente, solo las tendrán después de pasar por GeneratorScreen.
-  static final List<ArticleModel> _articles = [
-    // 3 Artículos para la Bodega de Bogotá (BOG001)
+  // Lista estática de Artículos. Debe ser mutable (`List`) para permitir la actualización de ubicación.
+  // CORRECCIÓN: Se añade 'final' ya que la referencia de la lista no cambia.
+  final List<ArticleModel> _articles = [
     ArticleModel(
-      code: 'PC001', // USADO 'code'
-      licensePlate: 'ABC-123',
-      name: 'Portátil Lenovo T490',
-      responsible: 'Juan Pérez',
-      costCenter: 'BOG001', // USADO 'costCenter'
-    ),
+        id: 'A1001',
+        name: 'Montacargas 5T',
+        licensePlate: 'MTG-5001',
+        warehouse: 'CC001'),
     ArticleModel(
-      code: 'MON010', // USADO 'code'
-      licensePlate: 'DEF-456',
-      name: 'Monitor Curvo 27"',
-      responsible: 'Ana López',
-      costCenter: 'BOG001', // USADO 'costCenter'
-    ),
+        id: 'A1002',
+        name: 'Rack de Paletas P-20',
+        licensePlate: 'RK-20-01',
+        warehouse: 'CC001'),
     ArticleModel(
-      code: 'IMP050', // USADO 'code'
-      licensePlate: 'GHI-789',
-      name: 'Impresora 3D Industrial',
-      responsible: 'Ing. Carlos Ruiz',
-      costCenter: 'BOG001', // USADO 'costCenter'
-    ),
-
-    // 2 Artículos para la Bodega de Medellín (MED002)
+        id: 'A2001',
+        name: 'Banco de Pruebas Electrónicas',
+        licensePlate: 'BP-EL-05',
+        warehouse: 'CC002'),
     ArticleModel(
-      code: 'SERV005', // USADO 'code'
-      licensePlate: 'JKL-012',
-      name: 'Servidor Rack Dell R440',
-      responsible: 'María Soto',
-      costCenter: 'MED002', // USADO 'costCenter'
-    ),
-    ArticleModel(
-      code: 'TEL001', // USADO 'code'
-      licensePlate: 'MNO-345',
-      name: 'Teléfono Satelital',
-      responsible: 'Pedro Gómez',
-      costCenter: 'MED002', // USADO 'costCenter'
-    ),
+        id: 'A3001',
+        name: 'Servidor Principal',
+        licensePlate: 'SRV-P-01',
+        warehouse: 'CC003'),
   ];
 
-  // --- Métodos de Acceso a Datos ---
+  // Map interno para búsquedas rápidas (por ID)
+  final Map<String, ArticleModel> _articleMap = {};
 
-  // Obtiene todas las bodegas
+  MockInventoryService() {
+    // Inicializar el Map para búsquedas rápidas al inicio
+    _articles.forEach((a) {
+      _articleMap[a.id] = a;
+    });
+  }
+
+  // ------------------------------------
+  // MÉTODOS DE ACCESO A DATOS
+  // ------------------------------------
+
+  // 1. Retorna todos los artículos sin filtrar (necesario para InventoryScreen)
+  List<ArticleModel> getArticles() {
+    return _articles;
+  }
+
+  // 2. Retorna todas las bodegas
   List<WarehouseModel> getWarehouses() {
     return _warehouses;
   }
 
-  // Obtiene los artículos asociados a una bodega específica
-  List<ArticleModel> getArticlesByWarehouseId(String warehouseId) {
-    // Usamos el nuevo nombre del campo: costCenter
+  // 3. Retorna los artículos filtrados por Centro de Costos
+  List<ArticleModel> getArticlesByCostCenter(String warehouse) {
     return _articles
-        .where((article) => article.costCenter == warehouseId)
+        .where((article) => article.warehouse == warehouse)
         .toList();
   }
 
-  // NUEVO MÉTODO: Actualiza un artículo en la lista mock
-  // En un ambiente real, este método haría una llamada PUT o PATCH a una API.
+  // 4. Actualiza un artículo existente (usado para registrar Lat/Lon del QR)
+  // Utiliza el ID para encontrar y reemplazar el objeto en la lista.
   void updateArticle(ArticleModel updatedArticle) {
-    // Buscamos el índice del artículo a actualizar usando su código y centro de costos.
-    final index = _articles.indexWhere(
-      (article) => article.code == updatedArticle.code && article.costCenter == updatedArticle.costCenter,
-    );
+    // 4a. Actualizar el Map
+    _articleMap[updatedArticle.id] = updatedArticle;
 
+    // 4b. Actualizar la lista _articles
+    final index = _articles.indexWhere((a) => a.id == updatedArticle.id);
     if (index != -1) {
-      // Si se encuentra, lo reemplazamos con la nueva instancia (que incluye lat/lon)
+      // Reemplaza el objeto antiguo con el nuevo objeto (que contiene la ubicación)
       _articles[index] = updatedArticle;
     }
   }

@@ -1,51 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-// Importamos los modelos y el servicio mock
-import '../models/warehouse_model.dart';
-import '../models/article_model.dart';
-import '../services/mock_inventory_service.dart';
 import 'package:geolocator/geolocator.dart';
+import '../models/article_model.dart';
+import '../models/warehouse_model.dart';
+import '../services/mock_inventory_service.dart';
 
+// El StatefulWidget para la pantalla de Generación de QR
 class GeneratorScreen extends StatefulWidget {
- const GeneratorScreen({super.key});
+  const GeneratorScreen({super.key});
 
- @override
- State<GeneratorScreen> createState() => _GeneratorScreenState();
+  @override
+  State<GeneratorScreen> createState() => _GeneratorScreenState();
 }
 
 class _GeneratorScreenState extends State<GeneratorScreen> {
+  // Instancia única del servicio
+  final MockInventoryService _service = MockInventoryService(); 
 
+  // --- Estado de la Pantalla ---
+  List<WarehouseModel> _warehouses = [];
+  WarehouseModel? _selectedWarehouse; // Bodega seleccionada (Filtro 1)
+  
+  List<ArticleModel> _articles = [];
+  ArticleModel? _selectedArticle; // Artículo seleccionado (Filtro 2)
+
+  String _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
   bool _isGenerating = false;
+  String _message = 'Seleccione el activo y presione "Generar QR".';
+  
+  final Color primaryColor = Colors.orange.shade700;
 
- // Instancia del servicio mock
- final MockInventoryService _service = MockInventoryService();
- 
- // Estado de la pantalla
- WarehouseModel? _selectedWarehouse;
- ArticleModel? _selectedArticle;
- 
- // Lista de bodegas y artículos
- late List<WarehouseModel> _warehouses;
- List<ArticleModel> _articlesInSelectedWarehouse = [];
- 
- // Usamos este estado para mostrar los mensajes de guía
- String _message = 'Seleccione una bodega y un activo.';
-  
- // ESTADO: Contiene los datos del QR solo después de presionar el botón.
-  String? _dataToEncodeForQR; 
-  
-  // ESTADO: Para mostrar la ubicación en la UI
-  String _currentLocationDisplay = 'Ubicación no registrada';
+  @override
+  void initState() {
+    super.initState();  
+    _loadInitialData();
+  }
 
-  
- @override
- void initState() {
-  super.initState();
-  // Cargamos las bodegas al iniciar la pantalla
-  _warehouses = _service.getWarehouses();
- }
-  
-  
+  // Carga inicial de Bodegas
+  void _loadInitialData() {
+    _warehouses = _service.getWarehouses();
+    if (_warehouses.isNotEmpty) {
+      // Inicializar con la primera bodega y cargar sus artículos
+      _selectedWarehouse = _warehouses.first;
+      _loadArticles(_selectedWarehouse!.id);
+    }
+  }
+
+  // Carga de artículos basada en la Bodega seleccionada
+  void _loadArticles(String costCenterId) {
+    setState(() {
+      // USANDO EL MÉTODO CORREGIDO del servicio
+      _articles = _service.getArticlesByCostCenter(costCenterId); 
+      _selectedArticle = null; // Reiniciar selección del artículo
+      _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
+    });
+  }
+
   // FUNCIÓN: obtención de la geolocalización.
   Future<Map<String, double>> _getLocation() async {
     
@@ -84,49 +94,8 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     });
     return {'latitude': position.latitude, 'longitude': position.longitude};
   }
-
-  // Función que se ejecuta al seleccionar una nueva bodega
- void _onWarehouseSelected(WarehouseModel? warehouse) {
-  setState(() {
-   _selectedWarehouse = warehouse;
-   _selectedArticle = null; // Reiniciamos la selección del artículo
-      // Reiniciamos el QR al cambiar de bodega
-      _dataToEncodeForQR = null; 
-      _currentLocationDisplay = 'Ubicación no registrada'; 
-   
-   if (warehouse != null) {
-    // Filtramos los artículos de la bodega seleccionada
-    _articlesInSelectedWarehouse = _service.getArticlesByWarehouseId(warehouse.id);
-    _message = 'Seleccione un activo de ${warehouse.name}';
-   } else {
-    _articlesInSelectedWarehouse = [];
-    _message = 'Seleccione una bodega y un activo.';
-   }
-  });
- }
-
- // Función que se ejecuta al seleccionar un artículo
- void _onArticleSelected(ArticleModel? article) {
-  setState(() {
-   _selectedArticle = article;
-      // Reiniciamos el QR al cambiar de artículo
-      _dataToEncodeForQR = null; 
-      // Reiniciamos el display de ubicación, pero preservamos si el artículo ya tenía una (en un escenario real)
-      _currentLocationDisplay = (article?.latitude != null) 
-          ? 'Lat: ${article!.latitude!.toStringAsFixed(4)}, Lon: ${article.longitude!.toStringAsFixed(4)} (Previa)'
-          : 'Ubicación no registrada'; 
-   
-   if (article != null) {
-    _message = 'Activo seleccionado: ${article.name}';
-   } else {
-    _message = _selectedWarehouse != null 
-     ? 'Seleccione un activo de ${_selectedWarehouse!.name}' 
-     : 'Seleccione una bodega y un activo.';
-   }
-  });
- }
- 
- // Función que se ejecuta SOLO al presionar el botón de generación.
+  
+  // Función que se ejecuta SOLO al presionar el botón de generación.
   void _generateQr() async {
     if (_selectedArticle == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -147,13 +116,13 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         longitude: lon,
       );
       
-      _currentLocationDisplay = 'Lat: ${lat.toStringAsFixed(6)}, Lon: ${lon.toStringAsFixed(6)}';
-      
       // 3. Reemplazamos la instancia en el estado y en la lista mock
       _service.updateArticle(updatedArticle);
       
       setState(() {
-        _selectedArticle = updatedArticle;
+        // Aseguramos que el selectedArticle se actualice
+        _selectedArticle = updatedArticle; 
+        
         // 4. Asignamos el dato del QR (que ahora incluye la ubicación)
         _dataToEncodeForQR = _selectedArticle!.qrData; 
         _message = '✅ Ubicación obtenida y registrada en el activo.';
@@ -175,146 +144,161 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   }
 
 
- @override
- Widget build(BuildContext context) {
-  // Definición de estilos
-  final bool isArticleSelected = _selectedArticle != null;
-  final Color primaryColor = Colors.teal;
-
-  return Scaffold(
-   appBar: AppBar(
-    title: const Text('Generador de Código QR por Activo'),
-    backgroundColor: primaryColor,
-   ),
-   body: SingleChildScrollView(
-    padding: const EdgeInsets.all(20.0),
-    child: Column(
-     crossAxisAlignment: CrossAxisAlignment.stretch,
-     children: [
-      // 1. Selector de Bodega
-      Text('1. Seleccionar Bodega:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
-      const SizedBox(height: 10),
-      _buildWarehouseDropdown(primaryColor),
-
-      const SizedBox(height: 20),
-
-      // 2. Selector de Activo
-      Text('2. Seleccionar Activo:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
-      const SizedBox(height: 10),
-      _buildArticleDropdown(primaryColor),
-
-      const SizedBox(height: 30),
-
-      // 3. Botón para Generar QR
-      _buildGenerateButton(isArticleSelected, primaryColor),
-      
-      const SizedBox(height: 30),
-
-            // Display de Ubicación
-            Text('3. Ubicación Registrada:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
-            const SizedBox(height: 5),
-            Row(
-              children: [
-                Icon(Icons.location_on, color: primaryColor, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _currentLocationDisplay,
-                    style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 20),
-      
-      // 4. Visor del Código QR (Usa _dataToEncodeForQR)
-      Center(
-       child: QrImageView(
-        data: _dataToEncodeForQR ?? 'Escanee o genere un código para empezar',
-        version: QrVersions.auto,
-        size: 200.0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        // Muestra un mensaje guía si no hay datos generados
-        errorStateBuilder: (c, err) => Center(
-         child: Text(
-          _dataToEncodeForQR == null ? _message : 'Error al generar QR: $err',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 14),
-         ),
-        ),
-       ),
+  // --- Estructura Visual (build) ---
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Generador de Código QR de Activo'),
+        backgroundColor: primaryColor,
+        automaticallyImplyLeading: false, 
       ),
-      
-      const SizedBox(height: 20),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Selector de Bodega
+            _buildWarehouseSelector(),
+            const SizedBox(height: 20),
 
-      // 5. Muestra los datos codificados
-      Text('Datos Codificados (incluye Lat/Lon):', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: primaryColor)),
-      const SizedBox(height: 5),
-      Text(_dataToEncodeForQR ?? 'Esperando generación...', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
-     ],
-    ),
-   ),
-  );
- }
+            // 2. Selector de Artículo
+            _buildArticleSelector(),
+            const SizedBox(height: 30),
 
- // Constructor del Dropdown de Bodegas
- Widget _buildWarehouseDropdown(Color primaryColor) {
-  return DropdownButtonFormField<WarehouseModel>(
-   decoration: InputDecoration(
-    border: const OutlineInputBorder(),
-    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: primaryColor, width: 1.5)),
-    labelText: 'Bodega / Centro de Costos',
-   ),
-   value: _selectedWarehouse,
-   items: _warehouses.map((WarehouseModel warehouse) {
-    return DropdownMenuItem<WarehouseModel>(
-     value: warehouse,
-     child: Text(warehouse.name),
+            // 3. Botón de Generación
+            _buildGenerateButton(),
+            const SizedBox(height: 20),
+
+            // 4. Mensaje de Estado
+            Text(_message, 
+              textAlign: TextAlign.center, 
+              style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey.shade600)),
+            const SizedBox(height: 30),
+
+            // 5. Contenedor del QR
+            _buildQrDisplay(),
+          ],
+        ),
+      ),
     );
-   }).toList(),
-   onChanged: _onWarehouseSelected,
-   hint: const Text('Seleccione una Bodega'),
-  );
- }
- 
- // Constructor del Dropdown de Artículos (dependiente de la bodega)
- Widget _buildArticleDropdown(Color primaryColor) {
-  return DropdownButtonFormField<ArticleModel>(
-   decoration: InputDecoration(
-    border: const OutlineInputBorder(),
-    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: primaryColor, width: 1.5)),
-    labelText: 'Activo / Artículo',
-   ),
-   value: _selectedArticle,
-   // Deshabilitado si no hay bodega seleccionada o no hay artículos
-   onChanged: _articlesInSelectedWarehouse.isNotEmpty ? _onArticleSelected : null,
-   items: _articlesInSelectedWarehouse.map((ArticleModel article) {
-    return DropdownMenuItem<ArticleModel>(
-     value: article,
-     child: Text('${article.name} (${article.licensePlate})'),
+  }
+
+  // Widget de selección de Bodega
+  Widget _buildWarehouseSelector() {
+    return DropdownButtonFormField<WarehouseModel>(
+      decoration: InputDecoration(
+        labelText: '1. Seleccione Centro de Costos/Bodega',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        prefixIcon: Icon(Icons.location_city, color: primaryColor),
+      ),
+      value: _selectedWarehouse,
+      items: _warehouses.map((warehouse) {
+        return DropdownMenuItem<WarehouseModel>(
+          value: warehouse, 
+          child: Text('${warehouse.name} (${warehouse.id})'),
+        );
+      }).toList(),
+      onChanged: (WarehouseModel? newValue) {
+        if (newValue != null) {
+          setState(() {
+            _selectedWarehouse = newValue;
+            _loadArticles(newValue.id); // Recargar artículos
+          });
+        }
+      },
     );
-   }).toList(),
-   hint: Text(_selectedWarehouse == null ? 'Seleccione primero una Bodega' : 'Seleccione un Activo'),
-  );
- }
- 
- // Constructor del Botón de Generación
- Widget _buildGenerateButton(bool isArticleSelected, Color primaryColor) {
-  return ElevatedButton.icon(
-   onPressed: isArticleSelected ? _generateQr : null,
-   icon: const Icon(Icons.qr_code, color: Colors.white),
-   label: Text(
-    isArticleSelected ? 'Generar Código QR y Ubicación' : 'Seleccione un Activo',
-    style: const TextStyle(fontSize: 18, color: Colors.white),
-   ),
-   style: ElevatedButton.styleFrom(
-    padding: const EdgeInsets.symmetric(vertical: 15),
-    backgroundColor: primaryColor,
-    // Si está deshabilitado, el color de fondo se atenúa automáticamente
-   ),
-  );
- }
+  }
+
+  // Widget de selección de Artículo
+  Widget _buildArticleSelector() {
+    return DropdownButtonFormField<ArticleModel>(
+      decoration: InputDecoration(
+        labelText: '2. Seleccione Activo para QR',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        prefixIcon: Icon(Icons.vpn_key, color: primaryColor),
+      ),
+      value: _selectedArticle,
+      items: _articles.map((article) {
+        // Usamos la igualdad sobrecargada (==) para que Dart pueda determinar la selección
+        return DropdownMenuItem<ArticleModel>(
+          value: article, 
+          child: Text('${article.name} (${article.licensePlate})'),
+        );
+      }).toList(),
+      onChanged: _articles.isEmpty ? null : (ArticleModel? newValue) {
+        setState(() {
+          _selectedArticle = newValue;
+          // Si se selecciona un artículo, mostramos sus datos QR actuales
+          _dataToEncodeForQR = newValue?.qrData ?? 'Seleccione un Activo para Generar QR';
+        });
+      },
+    );
+  }
+
+  // Widget del botón de Generación
+  Widget _buildGenerateButton() {
+    return ElevatedButton.icon(
+      onPressed: _isGenerating || _selectedArticle == null ? null : _generateQr,
+      icon: _isGenerating 
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+          : const Icon(Icons.qr_code_2, color: Colors.white),
+      label: Text(_isGenerating ? 'Generando QR...' : '3. Generar QR con Ubicación', style: const TextStyle(color: Colors.white)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: primaryColor,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        elevation: 5,
+      ),
+    );
+  }
+
+  // Widget que muestra el código QR
+  Widget _buildQrDisplay() {
+    // Si la data es muy corta, indicamos que es un placeholder
+    bool isPlaceholder = _dataToEncodeForQR.startsWith('Seleccione');
+
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Muestra el código QR usando el paquete qr_flutter
+            QrImageView(
+              data: _dataToEncodeForQR,
+              version: QrVersions.auto,
+              size: 250.0,
+              backgroundColor: Colors.white,
+              // Color de los módulos (los cuadraditos)
+              eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black), 
+              dataModuleStyle: QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              isPlaceholder ? 'Contenido del QR: (Esperando Activo)' : 'Contenido del QR:',
+              style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
+            ),
+            // Muestra los datos codificados
+            SelectableText(
+              _dataToEncodeForQR,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: isPlaceholder ? 14 : 12, color: isPlaceholder ? Colors.grey : Colors.black87),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

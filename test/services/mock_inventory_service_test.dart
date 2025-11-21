@@ -16,15 +16,15 @@ void main() {
     // Test 1: Verificar la carga de datos y el filtrado por Bodega ID
     test('getArticlesByWarehouseId debe retornar el número correcto de artículos', () {
       // BOG001 tiene 3 artículos en los datos mock.
-      final bogotaArticles = service.getArticlesByWarehouseId('BOG001');
+      final bogotaArticles = service.getArticlesByCostCenter('BOG001');
       expect(bogotaArticles.length, 3);
 
       // MED002 tiene 2 artículos en los datos mock.
-      final medellinArticles = service.getArticlesByWarehouseId('MED002');
+      final medellinArticles = service.getArticlesByCostCenter('MED002');
       expect(medellinArticles.length, 2);
 
       // Un ID inexistente debe retornar 0.
-      final nonExistentArticles = service.getArticlesByWarehouseId('XYZ');
+      final nonExistentArticles = service.getArticlesByCostCenter('XYZ');
       expect(nonExistentArticles.length, 0);
     });
 
@@ -34,8 +34,8 @@ void main() {
       const warehouseId = 'BOG001';
       
       // 1. Obtener el artículo original
-      final originalArticle = service.getArticlesByWarehouseId(warehouseId)
-          .firstWhere((a) => a.code == articleCodeToUpdate);
+      final originalArticle = service.getArticlesByCostCenter(warehouseId)
+          .firstWhere((a) => a.id == articleCodeToUpdate);
       
       // 2. Crear un artículo actualizado (con ubicación)
       final newLat = 4.70;
@@ -48,8 +48,8 @@ void main() {
       service.updateArticle(updatedArticle);
 
       // 4. Obtener la lista nuevamente y verificar la actualización
-      final updatedList = service.getArticlesByWarehouseId(warehouseId);
-      final fetchedArticle = updatedList.firstWhere((a) => a.code == articleCodeToUpdate);
+      final updatedList = service.getArticlesByCostCenter(warehouseId);
+      final fetchedArticle = updatedList.firstWhere((a) => a.id == articleCodeToUpdate);
 
       // Aserciones:
       // El total de artículos no debe cambiar
