@@ -22,10 +22,7 @@ class ArticleModel {
   // Método que genera la cadena que se codificará en el QR
   // Usamos el código, la placa y AHORA la ubicación como datos de trazabilidad
   String get qrData {
-    // Incluir la ubicación en el QR para trazabilidad.
-    final lat = latitude?.toStringAsFixed(4) ?? 'N/A';
-    final lon = longitude?.toStringAsFixed(4) ?? 'N/A';
-    return 'Código:$id|Placa:$licensePlate|CC:$warehouse|Lat:$lat|Lon:$lon';
+    return 'Código:$id|Placa:$licensePlate|CC:$warehouse';
   }
 
   // Opcional: Para poder imprimir el objeto en la consola
@@ -55,10 +52,7 @@ class ArticleModel {
     );
   }
   
-  // FIX: Anulamos el operador == y hashCode. 
-  // Ahora, dos ArticleModel se consideran iguales si su 'code' y 'warehouse' coinciden.
-  // Esto resuelve el error del DropdownButtonFormField cuando el objeto se actualiza
-  // con copyWith() en _getLocation().
+  // Dos ArticleModel se consideran iguales si su 'id' y 'warehouse' coinciden.
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;

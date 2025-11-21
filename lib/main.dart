@@ -6,7 +6,7 @@ import 'screens/generator_screen.dart';
 import 'screens/inventory_screen.dart'; 
 import 'screens/account_screen.dart'; 
 
-// Importaciones del Mock Auth y Pantalla de Login
+// Importaciones del Mock Auth y Pantalla de Login (Agregados)
 import 'services/mock_auth_service.dart';
 import 'screens/auth_screen.dart';
 
@@ -26,13 +26,12 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       // CAMBIO CLAVE: Usamos AuthWrapper para decidir si mostrar Login o Home.
-      // Esto mantiene tu HomeScreen como la definición de la navegación por pestañas.
       home: const AuthWrapper(), 
     );
   }
 }
 
-// NUEVO: Widget que maneja el estado de autenticación y decide qué pantalla mostrar.
+// Widget que maneja el estado de autenticación y decide qué pantalla mostrar.
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -55,7 +54,6 @@ class AuthWrapper extends StatelessWidget {
 }
 
 // HomeScreen se mantiene como tu versión original, gestionando la navegación por pestañas.
-// Convertimos HomeScreen a StatefulWidget
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -85,11 +83,68 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Obtenemos el ancho total de la pantalla
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Calculamos el ancho máximo que queremos para el Drawer (30% del ancho total)
+    final drawerWidth = screenWidth * 0.70; // Por defecto, Flutter usa 80%. Para reducirlo, usamos la propiedad width.
+    // El ancho predeterminado es aproximadamente el 80% en teléfonos.
+    // Para que ocupe menos, necesitamos que el Child del Drawer ocupe menos.
+    // Si queremos que el DRAWER ocupe un 30%, necesitamos que el ancho del Child (ListView) sea
+    // controlado de forma inversa (ejemplo: si el drawer debe ser pequeño, usamos la propiedad width).
+    // Usaremos Container para limitar el ancho del contenido del Drawer a solo el 30% del ancho.
+
     return Scaffold(
-      // RESTAURADO: Tu AppBar original
       appBar: AppBar(
         title: const Text('App Gestion Administrativa'),
         backgroundColor: Colors.blueAccent,
+      ),
+      
+      //Definición del Menú Lateral (Drawer) con restricción de ancho
+      drawer: Drawer(
+        // Usamos un Container dentro del Drawer para forzar el ancho
+        // Aquí ajustamos el ancho del Container al 30% de la pantalla
+        child: SizedBox(
+          width: screenWidth * 0.50, // Establecemos el ancho del Drawer al 30%
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              // Encabezado del Drawer
+              const DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent,
+                ),
+                child: Text(
+                  'Menú de Opciones',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                  ),
+                ),
+              ),
+              
+              // Opción 1: Configuraciones
+              ListTile(
+                leading: const Icon(Icons.settings),
+                title: const Text('Configuraciones'),
+                onTap: () {
+                  // TODO: Implementar navegación a la pantalla de Configuración
+                  Navigator.pop(context); // Cierra el drawer
+                },
+              ),
+              
+              // Opción 2: Cerrar Sesión
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  // Acción de cerrar sesión (simulada)
+                  MockAuthService.instance.signOut();
+                  Navigator.pop(context); // Cierra el drawer
+                },
+              ),
+            ],
+          ),
+        ),
       ),
       
       // 1. El cuerpo (body) cambia según el índice seleccionado
@@ -125,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Propiedades de estilo
         selectedItemColor: Colors.blueAccent, // Color del ícono seleccionado
         unselectedItemColor: Colors.grey,   // Color del ícono no seleccionado
-        type: BottomNavigationBarType.fixed, // Asegura que todas las etiquetas sean visibles
+        type: BottomNavigationBarType.fixed,  // Asegura que todas las etiquetas sean visibles
       ),
     );
   }

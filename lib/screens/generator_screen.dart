@@ -105,7 +105,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     }
 
     try {
-      // 1. OBTENER LA UBICACIÓN (Simulada o Real)
+      // 1. OBTENER LA UBICACIÓN
       final locationData = await _getLocation();
       final lat = locationData['latitude']!;
       final lon = locationData['longitude']!;
@@ -242,8 +242,8 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       onPressed: _isGenerating || _selectedArticle == null ? null : _generateQr,
       icon: _isGenerating 
           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-          : const Icon(Icons.qr_code_2, color: Colors.white),
-      label: Text(_isGenerating ? 'Generando QR...' : '3. Generar QR con Ubicación', style: const TextStyle(color: Colors.white)),
+          : const SizedBox.shrink(), 
+      label: Text(_isGenerating ? 'Generando QR...' : '3. Generar QR', style: const TextStyle(color: Colors.white)),
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
         padding: const EdgeInsets.symmetric(vertical: 14),
