@@ -3,7 +3,7 @@ class WarehouseModel {
   final String id; // ID que se usará para filtrar los artículos
   final String name;
 
-  WarehouseModel({
+  const WarehouseModel({
     required this.id,
     required this.name,
   });
