@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
 import '../services/mock_inventory_service.dart';
+import '../services/mock_auth_service.dart';
 
-// Definición de un modelo especial para la opción "Todas las Bodegas"
 const WarehouseModel _allWarehousesFilter = WarehouseModel(
   id: 'ALL',
-  name: 'Todas las Bodegas (Inventario Total)'
+  name: 'Todas las Bodegas (Inventario Total)',
 );
 
 class InventoryScreen extends StatefulWidget {
@@ -20,12 +21,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final MockInventoryService _service = MockInventoryService();
   final Color primaryColor = Colors.orange.shade700;
 
-  // --- Estado para Artículos ---
   List<ArticleModel> _allArticles = [];
-  
-  // --- Estado para Bodegas (Filtro) ---
   List<WarehouseModel> _warehouses = [];
-  WarehouseModel? _selectedWarehouse; // Bodega seleccionada para filtrar
+  List<String> _responsibles = [];
+  WarehouseModel? _selectedWarehouse;
 
   @override
   void initState() {
@@ -33,110 +32,220 @@ class _InventoryScreenState extends State<InventoryScreen> {
     _loadData();
   }
 
-  // Carga inicial de todos los artículos y bodegas
   void _loadData() {
-    _allArticles = _service.getArticles();
-    
-    // Obtenemos la lista de bodegas, y añadimos la opción "Todas" al inicio
-    List<WarehouseModel> loadedWarehouses = _service.getWarehouses();
-    _warehouses = [_allWarehousesFilter, ...loadedWarehouses];
-    
-    // Inicializamos con la opción "Todas las Bodegas"
-    _selectedWarehouse = _allWarehousesFilter;
-    
-    // No necesitamos setState aquí porque initState ya lo llama implícitamente
+    setState(() {
+      _allArticles = List.from(_service.getArticles());
+      if (_warehouses.isEmpty) {
+        _warehouses = [_allWarehousesFilter, ..._service.getWarehouses()];
+        _selectedWarehouse = _allWarehousesFilter;
+      }
+      // Lista de usuarios registrados activos para el selector
+      _responsibles = [
+        'Juan Pérez',
+        'Maria López',
+        'Carlos Ruiz',
+        'Andrés Felipe Restrepo'
+      ];
+    });
   }
 
-  // Propiedad calculada para obtener la lista de artículos filtrada
   List<ArticleModel> get _filteredArticles {
     if (_selectedWarehouse == null || _selectedWarehouse!.id == _allWarehousesFilter.id) {
-      return _allArticles; // Mostrar todos si no hay filtro o se selecciona 'Todas'
+      return _allArticles;
     }
-    // Filtrar por el ID del centro de costos (Bodega)
-    return _allArticles
-        .where((article) => article.warehouse == _selectedWarehouse!.id)
-        .toList();
+    return _allArticles.where((a) => a.warehouse == _selectedWarehouse!.id).toList();
   }
 
-  // Widget para construir la tarjeta de un solo artículo
-  Widget _buildArticleTile(ArticleModel article) {
-    final warehouseName = _warehouses.firstWhere(
-      (w) => w.id == article.warehouse,
-      orElse: () => const WarehouseModel(id: '?', name: 'Desconocida')
-    ).name;
+  /// **Formulario de registro dentro de un cuadro de diálogo (BottomSheet)**
+  void _showAddArticleForm() {
+    final nameController = TextEditingController();
+    final plateController = TextEditingController();
+    
+    String? selectedResponsible;
+    WarehouseModel? selectedWh;
+    double? currentLat;
+    double? currentLon;
+    bool isLocating = false;
+    bool isSaving = false;
 
-    final String responsibleText = article.responsible != null && article.responsible!.isNotEmpty
-      ? 'Responsable: ${article.responsible!}'
-      : 'Responsable: No asignado'; 
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          
+          Future<void> captureLocation() async {
+            setModalState(() => isLocating = true);
+            try {
+              LocationPermission permission = await Geolocator.checkPermission();
+              if (permission == LocationPermission.denied) {
+                permission = await Geolocator.requestPermission();
+              }
+              final position = await Geolocator.getCurrentPosition(
+                locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
+              );
+              setModalState(() {
+                currentLat = position.latitude;
+                currentLon = position.longitude;
+                isLocating = false;
+              });
+            } catch (e) {
+              setModalState(() => isLocating = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error GPS: $e'))
+              );
+            }
+          }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: ListTile(
-        leading: Icon(Icons.qr_code_2, color: primaryColor, size: 40),
-        title: Text(
-          article.name, 
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Placa: ${article.licensePlate}'),
-            Text(responsibleText), 
-            Text('Centro de Costos: $warehouseName (${article.warehouse})'), 
-            if (article.latitude != null) 
-              Text('Ubicación: Lat ${article.latitude!.toStringAsFixed(4)}, Lon ${article.longitude!.toStringAsFixed(4)}'),
-            if (article.latitude == null) 
-              const Text('Ubicación: Sin registro GPS', style: TextStyle(fontStyle: FontStyle.italic)),
-          ],
-        ),
-        isThreeLine: true,
-        onTap: () {
-          _showArticleDetailsDialog(article); 
-        },
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+              left: 20, right: 20, top: 20
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Registrar Nuevo Activo', 
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor)),
+                  const SizedBox(height: 20),
+                  
+                  TextField(
+                    controller: nameController, 
+                    decoration: const InputDecoration(labelText: 'Nombre del Activo', prefixIcon: Icon(Icons.inventory))
+                  ),
+                  const SizedBox(height: 10),
+                  
+                  TextField(
+                    controller: plateController, 
+                    decoration: const InputDecoration(labelText: 'Placa / Identificador', prefixIcon: Icon(Icons.badge))
+                  ),
+                  const SizedBox(height: 10),
+                  
+                  DropdownButtonFormField<WarehouseModel>(
+                    decoration: const InputDecoration(labelText: 'Bodega de Destino', prefixIcon: Icon(Icons.location_on)),
+                    items: _service.getWarehouses().map((w) => DropdownMenuItem(value: w, child: Text(w.name))).toList(),
+                    onChanged: (v) => setModalState(() => selectedWh = v),
+                  ),
+                  const SizedBox(height: 10),
+
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(labelText: 'Responsable', prefixIcon: Icon(Icons.person)),
+                    items: _responsibles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    onChanged: (v) => setModalState(() => selectedResponsible = v),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Sección de Geolocalización
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blue.shade100)
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Geolocalización Actual', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            isLocating 
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                              : IconButton(
+                                  onPressed: captureLocation, 
+                                  icon: const Icon(Icons.my_location, color: Colors.blue, size: 20)
+                                ),
+                          ],
+                        ),
+                        if (currentLat != null)
+                          Text('Lat: $currentLat, Lon: $currentLon', style: const TextStyle(fontSize: 11, color: Colors.blueGrey)),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 30),
+                  
+                  ElevatedButton(
+                    onPressed: isSaving ? null : () async {
+                      if (nameController.text.isEmpty || plateController.text.isEmpty || selectedWh == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor llene los campos obligatorios.')));
+                        return;
+                      }
+                      setModalState(() => isSaving = true);
+                      try {
+                        await _service.registerNewArticle(
+                          name: nameController.text,
+                          plate: plateController.text,
+                          warehouseId: selectedWh!.id,
+                          responsible: selectedResponsible,
+                        );
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          _loadData();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('✅ Activo registrado con éxito'), backgroundColor: Colors.green)
+                          );
+                        }
+                      } catch (e) {
+                        setModalState(() => isSaving = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red)
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor, 
+                      padding: const EdgeInsets.symmetric(vertical: 15)
+                    ),
+                    child: isSaving 
+                      ? const CircularProgressIndicator(color: Colors.white) 
+                      : const Text('GUARDAR ACTIVO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          );
+        }
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = MockAuthService.instance.currentUser.value;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Inventario de Activos'),
         backgroundColor: primaryColor,
-        automaticallyImplyLeading: false, 
+        foregroundColor: Colors.white,
+        actions: [
+          Center(child: Text('Hola, ${currentUser?.name ?? '...'}  ', style: const TextStyle(color: Colors.white, fontSize: 12))),
+          IconButton(icon: const Icon(Icons.logout), onPressed: () => MockAuthService.instance.signOut()),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddArticleForm,
+        backgroundColor: primaryColor,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // --- Selector de Bodega ---
             _buildWarehouseSelector(),
-            const SizedBox(height: 20),
-            
-            // --- Encabezado de la lista ---
-            Text(
-              'Activos mostrados: ${_filteredArticles.length}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
-            const Divider(height: 20),
-            
-            // --- Lista de Artículos (Filtrada) ---
+            const SizedBox(height: 10),
+            Text('Activos en lista: ${_filteredArticles.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const Divider(),
             Expanded(
               child: ListView.builder(
                 itemCount: _filteredArticles.length,
-                itemBuilder: (context, index) {
-                  final article = _filteredArticles[index];
-                  // El usuario pidió que _buildArticleTile se muestre después de la lista de bodegas,
-                  // y lo hemos implementado en este ListView.builder
-                  return _buildArticleTile(article);
-                },
+                itemBuilder: (context, index) => _buildArticleTile(_filteredArticles[index]),
               ),
             ),
           ],
@@ -145,132 +254,27 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  // Widget para el DropdownButtonFormField de la Bodega
   Widget _buildWarehouseSelector() {
     return DropdownButtonFormField<WarehouseModel>(
-      decoration: InputDecoration(
-        labelText: 'Filtrar por Bodega',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        prefixIcon: Icon(Icons.location_on, color: primaryColor),
-      ),
       value: _selectedWarehouse,
-      items: _warehouses.map((warehouse) {
-        return DropdownMenuItem<WarehouseModel>(
-          value: warehouse, 
-          child: Text(warehouse.name),
-        );
-      }).toList(),
-      onChanged: (WarehouseModel? newValue) {
-        if (newValue != null) {
-          setState(() {
-            _selectedWarehouse = newValue;
-          });
-        }
-      },
+      decoration: InputDecoration(
+        labelText: 'Filtrar por Bodega', 
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))
+      ),
+      items: _warehouses.map((w) => DropdownMenuItem(value: w, child: Text(w.name))).toList(),
+      onChanged: (v) => setState(() => _selectedWarehouse = v),
     );
   }
 
-  // Función para mostrar los detalles completos del activo en un diálogo
-  void _showArticleDetailsDialog(ArticleModel article) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: Text(article.name, style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Detalle del activo usando el helper (corregidos a 'id' y 'costCenterId')
-                _buildDetailRow('Placa', article.licensePlate, Icons.confirmation_number),
-                _buildDetailRow('ID del Activo', article.id, Icons.vpn_key), 
-                _buildDetailRow('Responsable', article.responsible, Icons.person_pin),
-                _buildDetailRow('Centro de Costos (ID)', article.warehouse, Icons.business),
-                
-                const Divider(height: 20, color: Colors.grey),
-
-                // Información de Ubicación (Manteniendo datos críticos de GPS)
-                Text(
-                  'Ubicación GPS Actual:',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 14),
-                ),
-                const SizedBox(height: 5),
-                if (article.latitude != null) ...[
-                  Text('Latitud: ${article.latitude!.toStringAsFixed(6)}'),
-                  Text('Longitud: ${article.longitude!.toStringAsFixed(6)}'),
-                ] else
-                  const Text('Sin ubicación registrada.', style: TextStyle(fontStyle: FontStyle.italic)),
-                
-                const Divider(height: 20, color: Colors.grey),
-                
-                // Datos QR Codificados
-                Text(
-                  'Datos QR Codificados:',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 14),
-                ),
-                // Usamos un tamaño de fuente pequeño para la cadena JSON
-                Text(article.qrData, style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 11, color: Colors.black54)),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cerrar', style: TextStyle(color: primaryColor)),
-            ),
-            TextButton.icon(
-              icon: Icon(Icons.gps_fixed, color: primaryColor),
-              label: Text('Actualizar Ubicación', style: TextStyle(color: primaryColor)),
-              onPressed: () {
-                Navigator.of(context).pop(); 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Simulando escaneo para actualizar GPS...')),
-                );
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Helper widget para construir una fila de detalle con ícono y título/valor
-  Widget _buildDetailRow(String title, String? value, IconData icon) {
-    // Si el valor es nulo o vacío, usamos 'No asignado' y cambiamos el estilo
-    final displayValue = value != null && value.isNotEmpty ? value : 'No asignado';
-    final isNotAssigned = value == null || value.isEmpty;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Ícono del detalle
-          Icon(icon, size: 20, color: isNotAssigned ? Colors.grey.shade400 : primaryColor),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Título del campo
-                Text(
-                  '$title:',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87),
-                ),
-                // Valor del campo
-                Text(
-                  displayValue,
-                  style: TextStyle(
-                    fontStyle: isNotAssigned ? FontStyle.italic : FontStyle.normal,
-                    color: isNotAssigned ? Colors.grey.shade600 : Colors.black,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+  Widget _buildArticleTile(ArticleModel article) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      child: ListTile(
+        leading: Icon(Icons.qr_code, color: primaryColor),
+        title: Text(article.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text('Placa: ${article.licensePlate}\nResp: ${article.responsible ?? "No asignado"}'),
+        trailing: const Icon(Icons.chevron_right),
       ),
     );
   }

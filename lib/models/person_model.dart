@@ -16,6 +16,24 @@ class PersonModel {
     this.createdByUserId,
   });
 
+  // Factory constructor para deserializar el mapa JSON de la API (Network Layer)
+  factory PersonModel.fromJson(Map<String, dynamic> json) {
+    // Manejo de fechas que pueden ser nulas o string ISO
+    DateTime? date;
+    if (json['creationDate'] is String) {
+      date = DateTime.tryParse(json['creationDate'] as String);
+    }
+    
+    return PersonModel(
+      nationalId: json['nationalId'] as String,
+      fullName: json['fullName'] as String,
+      accountExists: (json['accountExists'] ?? false) as bool,
+      isActive: (json['isActive'] ?? true) as bool,
+      creationDate: date,
+      createdByUserId: json['createdByUserId'] as String?,
+    );
+  }
+
   // Crea una nueva instancia de PersonModel con la cuenta activada
   PersonModel activateAccount({
     required String createdByUserId,

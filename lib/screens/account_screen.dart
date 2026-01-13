@@ -19,8 +19,8 @@ class _AccountScreenState extends State<AccountScreen> {
 
   final Color primaryColor = Colors.blue.shade700;
 
-  // 1. Lógica de búsqueda por cédula
-  void _searchPerson() {
+  // 1. Lógica de búsqueda por cédula (AHORA ES ASÍNCRONA)
+  void _searchPerson() async {
     final nationalId = _idController.text.trim();
     if (nationalId.isEmpty) {
       setState(() {
@@ -36,9 +36,10 @@ class _AccountScreenState extends State<AccountScreen> {
       _message = 'Buscando persona con ID $nationalId...';
     });
 
-    // Simular latencia de red para que se vea la búsqueda
-    Future.delayed(const Duration(milliseconds: 800), () {
-      final person = _service.searchPersonByNationalId(nationalId);
+    try {
+      // Llama a la capa de negocio, que a su vez llama a la capa de red (con delay simulado)
+      final person = await _service.searchPersonByNationalId(nationalId);
+      
       setState(() {
         _isSearching = false;
         _searchResult = person;
@@ -51,19 +52,29 @@ class _AccountScreenState extends State<AccountScreen> {
           _message = 'Persona encontrada. La cuenta NO ha sido generada.';
         }
       });
-    });
+    } catch (e) {
+      // Manejo de errores de red (simulado)
+      setState(() {
+        _isSearching = false;
+        _message = 'Error en la búsqueda: $e';
+      });
+      // Muestra un SnackBar con el error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error de red: $e')),
+      );
+    }
   }
 
-  // 3. Lógica para generar la cuenta
-  void _createAccount(PersonModel person) {
+  // 3. Lógica para generar la cuenta (AHORA ES ASÍNCRONA)
+  void _createAccount(PersonModel person) async {
     setState(() {
       _isSearching = true;
       _message = 'Generando cuenta para ${person.fullName}...';
     });
 
-    // Simular la creación de la cuenta
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      final newAccount = _service.createAccount(person);
+    try {
+      // Llama a la capa de negocio para crear la cuenta a través de la red (con delay simulado)
+      final newAccount = await _service.createAccount(person);
       
       // 5. Mostrar mensaje de confirmación
       ScaffoldMessenger.of(context).showSnackBar(
@@ -78,7 +89,16 @@ class _AccountScreenState extends State<AccountScreen> {
         _searchResult = newAccount;
         _message = 'Cuenta creada. Usuario registrado por: ${newAccount.createdByUserId}';
       });
-    });
+    } catch (e) {
+      // Manejo de errores de red (simulado)
+       setState(() {
+        _isSearching = false;
+        _message = 'Error en la creación de la cuenta: $e';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error de red al crear cuenta: $e')),
+      );
+    }
   }
 
   @override
@@ -152,6 +172,12 @@ class _AccountScreenState extends State<AccountScreen> {
   }
   
   Widget _buildPersonResultCard(PersonModel person) {
+    // Helper para formatear fechas si existen
+    String formatDateTime(DateTime? dt) {
+      if (dt == null) return 'N/A';
+      return dt.toLocal().toString().split('.')[0];
+    }
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -171,9 +197,9 @@ class _AccountScreenState extends State<AccountScreen> {
             if (person.accountExists) ...[
               const SizedBox(height: 15),
               Text('Metadata de Creación', style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor)),
-              _buildDetailRow('Fecha de Creación', person.creationDate!.toLocal().toString().split('.')[0], Icons.date_range),
+              _buildDetailRow('Fecha de Creación', formatDateTime(person.creationDate), Icons.date_range),
               // 6. Registrar usuario, fecha y hora de creación
-              _buildDetailRow('Creado por Usuario', person.createdByUserId!, Icons.person_pin),
+              _buildDetailRow('Creado por Usuario', person.createdByUserId ?? 'Desconocido', Icons.person_pin),
             ],
             
             const SizedBox(height: 20),
@@ -226,7 +252,8 @@ class _AccountScreenState extends State<AccountScreen> {
             child: const Text('La cuenta no ha sido generada. ¿Desea crearla ahora?'),
           ),
           ElevatedButton.icon(
-            onPressed: () => _createAccount(person),
+            // Corregido: Llamada a la función asíncrona
+            onPressed: () => _createAccount(person), 
             icon: const Icon(Icons.add_circle, color: Colors.white),
             label: const Text('Generar Cuenta Automáticamente', style: TextStyle(color: Colors.white)),
             style: ElevatedButton.styleFrom(

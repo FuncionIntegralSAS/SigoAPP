@@ -50,7 +50,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   void _loadArticles(String costCenterId) {
     setState(() {
       // USANDO EL MÉTODO CORREGIDO del servicio
-      _articles = _service.getArticlesByCostCenter(costCenterId); 
+      _articles = _service.getArticlesByWarehouseId(costCenterId); 
       _selectedArticle = null; // Reiniciar selección del artículo
       _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
     });

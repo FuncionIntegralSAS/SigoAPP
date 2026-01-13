@@ -1,66 +1,66 @@
-// Modelo de datos para un Artículo o Activo
+import 'dart:convert';
+
+// Modelo de datos para representar un Activo o Artículo.
 class ArticleModel {
   final String id;
-  final String licensePlate; // Placa
   final String name;
-  final String? responsible; // Responsable
-  final String warehouse; // Centro de Costos / Bodega ID
-  // PROPIEDADES DE GEOLOCALIZACIÓN
+  final String licensePlate; 
+  final String warehouse; // Cambiado de costCenterId a warehouse para consistencia
+  final String? responsible; 
   final double? latitude;
   final double? longitude;
 
   ArticleModel({
     required this.id,
-    required this.licensePlate,
     required this.name,
+    required this.licensePlate,
     required this.warehouse,
     this.responsible,
     this.latitude,
     this.longitude,
   });
 
-  // Método que genera la cadena que se codificará en el QR
-  // Usamos el código, la placa y AHORA la ubicación como datos de trazabilidad
-  String get qrData {
-    return 'Código:$id|Placa:$licensePlate|CC:$warehouse';
-  }
-
-  // Opcional: Para poder imprimir el objeto en la consola
-  @override
-  String toString() {
-    return 'ArticleModel(Code: $id, Plate: $licensePlate, Name: $name)';
-  }
-
-  // MÉTODO copyWith ACTUALIZADO para recibir CUALQUIER campo
+  // Método para crear una copia del objeto
   ArticleModel copyWith({
-    String? code,
-    String? licensePlate,
+    String? id,
     String? name,
-    String? responsible,
+    String? licensePlate,
     String? warehouse,
+    String? responsible,
     double? latitude,
     double? longitude,
   }) {
     return ArticleModel(
-      id: code ?? id,
-      warehouse: warehouse ?? this.warehouse,
-      licensePlate: licensePlate ?? this.licensePlate,
+      id: id ?? this.id,
       name: name ?? this.name,
+      licensePlate: licensePlate ?? this.licensePlate,
+      warehouse: warehouse ?? this.warehouse,
       responsible: responsible ?? this.responsible,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
     );
   }
-  
-  // Dos ArticleModel se consideran iguales si su 'id' y 'warehouse' coinciden.
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is ArticleModel &&
-        other.id == id &&
-        other.warehouse == warehouse;
+
+  // Genera la cadena JSON para el QR usando el campo 'warehouse'
+  String get qrData {
+    final Map<String, dynamic> data = {
+      'id': id,
+      'name': name,
+      'placa': licensePlate,
+      'wh': warehouse,
+      if (responsible != null) 'resp': responsible,
+      if (latitude != null) 'lat': latitude,
+      if (longitude != null) 'lon': longitude,
+    };
+    return json.encode(data);
   }
 
   @override
-  int get hashCode => id.hashCode ^ warehouse.hashCode;
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ArticleModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }
