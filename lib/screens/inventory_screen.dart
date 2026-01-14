@@ -56,6 +56,182 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return _allArticles.where((a) => a.warehouse == _selectedWarehouse!.id).toList();
   }
 
+  /// **Formulario de edición para un activo existente**
+  void _showEditArticleForm(ArticleModel article) {
+    final nameController = TextEditingController(text: article.name);
+    final plateController = TextEditingController(text: article.licensePlate);
+    
+    String? selectedResponsible = article.responsible;
+    // Buscamos el objeto WarehouseModel correspondiente al ID guardado
+    WarehouseModel? selectedWh = _service.getWarehouses().firstWhere(
+      (w) => w.id == article.warehouse,
+      orElse: () => _service.getWarehouses().first,
+    );
+    
+    double? currentLat = article.latitude;
+    double? currentLon = article.longitude;
+    bool isLocating = false;
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          
+          Future<void> captureLocation() async {
+            setModalState(() => isLocating = true);
+            try {
+              LocationPermission permission = await Geolocator.checkPermission();
+              if (permission == LocationPermission.denied) {
+                permission = await Geolocator.requestPermission();
+              }
+              final position = await Geolocator.getCurrentPosition(
+                locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
+              );
+              setModalState(() {
+                currentLat = position.latitude;
+                currentLon = position.longitude;
+                isLocating = false;
+              });
+            } catch (e) {
+              setModalState(() => isLocating = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error GPS: $e'))
+              );
+            }
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+              left: 20, right: 20, top: 20
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Editar Activo', 
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor)),
+                  const SizedBox(height: 20),
+                  
+                  TextField(
+                    controller: nameController, 
+                    decoration: const InputDecoration(labelText: 'Nombre del Activo', prefixIcon: Icon(Icons.inventory))
+                  ),
+                  const SizedBox(height: 10),
+                  
+                  TextField(
+                    controller: plateController, 
+                    decoration: const InputDecoration(labelText: 'Placa / Identificador', prefixIcon: Icon(Icons.badge))
+                  ),
+                  const SizedBox(height: 10),
+                  
+                  DropdownButtonFormField<WarehouseModel>(
+                    value: selectedWh,
+                    decoration: const InputDecoration(labelText: 'Bodega de Destino', prefixIcon: Icon(Icons.location_on)),
+                    items: _service.getWarehouses().map((w) => DropdownMenuItem(value: w, child: Text(w.name))).toList(),
+                    onChanged: (v) => setModalState(() => selectedWh = v),
+                  ),
+                  const SizedBox(height: 10),
+
+                  DropdownButtonFormField<String>(
+                    value: selectedResponsible,
+                    decoration: const InputDecoration(labelText: 'Responsable', prefixIcon: Icon(Icons.person)),
+                    items: _responsibles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    onChanged: (v) => setModalState(() => selectedResponsible = v),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Sección de Geolocalización
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blue.shade100)
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Geolocalización Registrada', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            isLocating 
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                              : IconButton(
+                                  onPressed: captureLocation, 
+                                  icon: const Icon(Icons.my_location, color: Colors.blue, size: 20)
+                                ),
+                          ],
+                        ),
+                        if (currentLat != null)
+                          Text('Lat: $currentLat, Lon: $currentLon', style: const TextStyle(fontSize: 11, color: Colors.blueGrey)),
+                        if (currentLat == null)
+                          const Text('Sin coordenadas registradas', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 30),
+                  
+                  ElevatedButton(
+                    onPressed: isSaving ? null : () async {
+                      if (nameController.text.isEmpty || plateController.text.isEmpty || selectedWh == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor llene los campos obligatorios.')));
+                        return;
+                      }
+                      setModalState(() => isSaving = true);
+                      try {
+                        // Creamos la versión actualizada del objeto
+                        final updatedArticle = article.copyWith(
+                          name: nameController.text,
+                          licensePlate: plateController.text,
+                          warehouse: selectedWh!.id,
+                          responsible: selectedResponsible,
+                          latitude: currentLat,
+                          longitude: currentLon,
+                        );
+
+                        // Llamamos al servicio para actualizar
+                        _service.updateArticle(updatedArticle);
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          _loadData(); // Recargamos la lista local
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('✅ Activo actualizado con éxito'), backgroundColor: Colors.blue)
+                          );
+                        }
+                      } catch (e) {
+                        setModalState(() => isSaving = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red)
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade700, 
+                      padding: const EdgeInsets.symmetric(vertical: 15)
+                    ),
+                    child: isSaving 
+                      ? const CircularProgressIndicator(color: Colors.white) 
+                      : const Text('ACTUALIZAR DATOS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          );
+        }
+      ),
+    );
+  }
+
   /// **Formulario de registro dentro de un cuadro de diálogo (BottomSheet)**
   void _showAddArticleForm() {
     final nameController = TextEditingController();
@@ -271,10 +447,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 5),
       child: ListTile(
+        onTap: () => _showEditArticleForm(article),
         leading: Icon(Icons.qr_code, color: primaryColor),
         title: Text(article.name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text('Placa: ${article.licensePlate}\nResp: ${article.responsible ?? "No asignado"}'),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: const Icon(Icons.edit, size: 20),
       ),
     );
   }
