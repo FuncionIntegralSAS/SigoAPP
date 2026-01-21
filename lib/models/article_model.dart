@@ -1,16 +1,24 @@
-import 'dart:convert';
+import 'package:equatable/equatable.dart';
 
-// Modelo de datos para representar un Activo o Artículo.
-class ArticleModel {
+/// Modelo de datos para representar un Activo/Artículo del inventario.
+/// Implementa [Equatable] para facilitar las comparaciones y pruebas unitarias.
+class ArticleModel extends Equatable {
   final String id;
   final String name;
-  final String licensePlate; 
-  final String warehouse; // Cambiado de costCenterId a warehouse para consistencia
-  final String? responsible; 
+  final String licensePlate;
+  final String warehouse; // ID de la bodega/centro de costos
+  final String? responsible;
+  
+  // Ubicación GPS (opcional, se llena al generar el QR)
   final double? latitude;
   final double? longitude;
 
-  ArticleModel({
+  // ATRIBUTOS PARA REGISTRO ADICIONAL
+  final String? status;    // Estado del activo (Operativo, Dañado, etc.)
+  final String? comments;  // Comentarios o notas adicionales
+  final String? photoPath; // Ruta local de la fotografía en el dispositivo
+
+  const ArticleModel({
     required this.id,
     required this.name,
     required this.licensePlate,
@@ -18,9 +26,21 @@ class ArticleModel {
     this.responsible,
     this.latitude,
     this.longitude,
+    this.status,
+    this.comments,
+    this.photoPath,
   });
 
-  // Método para crear una copia del objeto
+  /// Retorna los datos que se codificarán en el QR.
+  /// NOTA: Por seguridad y optimización, los campos de comentarios, estado
+  /// y ruta de foto NO se incluyen en el código QR.
+  String get qrData {
+    final lat = latitude?.toStringAsFixed(6) ?? 'No disp.';
+    final lon = longitude?.toStringAsFixed(6) ?? 'No disp.';
+    return 'ID:$id|NAME:$name|PLATE:$licensePlate|WH:$warehouse|RESP:${responsible ?? "N/A"}|LAT:$lat|LON:$lon';
+  }
+
+  /// Método para crear una copia del modelo con campos actualizados.
   ArticleModel copyWith({
     String? id,
     String? name,
@@ -29,6 +49,9 @@ class ArticleModel {
     String? responsible,
     double? latitude,
     double? longitude,
+    String? status,
+    String? comments,
+    String? photoPath,
   }) {
     return ArticleModel(
       id: id ?? this.id,
@@ -38,29 +61,23 @@ class ArticleModel {
       responsible: responsible ?? this.responsible,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      status: status ?? this.status,
+      comments: comments ?? this.comments,
+      photoPath: photoPath ?? this.photoPath,
     );
   }
 
-  // Genera la cadena JSON para el QR usando el campo 'warehouse'
-  String get qrData {
-    final Map<String, dynamic> data = {
-      'id': id,
-      'name': name,
-      'placa': licensePlate,
-      'wh': warehouse,
-      if (responsible != null) 'resp': responsible,
-      if (latitude != null) 'lat': latitude,
-      if (longitude != null) 'lon': longitude,
-    };
-    return json.encode(data);
-  }
-
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is ArticleModel && other.id == id;
-  }
-
-  @override
-  int get hashCode => id.hashCode;
+  List<Object?> get props => [
+    id, 
+    name, 
+    licensePlate, 
+    warehouse, 
+    responsible, 
+    latitude, 
+    longitude,
+    status,
+    comments,
+    photoPath,
+  ];
 }

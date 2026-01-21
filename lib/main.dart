@@ -5,6 +5,7 @@ import 'screens/scanner_screen.dart';
 import 'screens/generator_screen.dart'; 
 import 'screens/inventory_screen.dart'; 
 import 'screens/account_screen.dart'; 
+import 'screens/transfer_approval_screen.dart';
 
 // Importaciones del Mock Auth y Pantalla de Login (Agregados)
 import 'services/mock_auth_service.dart';
@@ -132,6 +133,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               
+              // Opción: Aprobación de Traspasos
+              ListTile(
+                leading: const Icon(Icons.approval),
+                title: const Text('Aprobación de Traspasos'),
+                onTap: () {
+                  Navigator.pop(context); // Cierra el drawer
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TransferApprovalScreen(),
+                    ),
+                  );
+                },
+              ),
+
               // Opción 2: Cerrar Sesión
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),

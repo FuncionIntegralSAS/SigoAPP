@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
+import '../models/transfer_request.dart';
 import '../services/mock_inventory_service.dart';
 import '../services/mock_auth_service.dart';
+import '../widgets/transfer_form_widget.dart'; // Importamos el widget del formulario
 
 const WarehouseModel _allWarehousesFilter = WarehouseModel(
   id: 'ALL',
@@ -24,6 +26,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
   List<ArticleModel> _allArticles = [];
   List<WarehouseModel> _warehouses = [];
   List<String> _responsibles = [];
+  
+  final List<String> _statusOptions = [
+    'Operativo',
+    'En Mantenimiento',
+    'Dañado',
+    'Baja',
+  ];
+
   WarehouseModel? _selectedWarehouse;
 
   @override
@@ -33,13 +43,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   void _loadData() {
+    if (!mounted) return;
     setState(() {
       _allArticles = List.from(_service.getArticles());
       if (_warehouses.isEmpty) {
         _warehouses = [_allWarehousesFilter, ..._service.getWarehouses()];
         _selectedWarehouse = _allWarehousesFilter;
       }
-      // Lista de usuarios registrados activos para el selector
+                                      
       _responsibles = [
         'Juan Pérez',
         'Maria López',
@@ -56,13 +67,61 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return _allArticles.where((a) => a.warehouse == _selectedWarehouse!.id).toList();
   }
 
-  /// **Formulario de edición para un activo existente**
+  /// MÉTODO PARA MOSTRAR EL FORMULARIO DE TRASPASO
+  void _showTransferForm(ArticleModel article) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white, // Permite ver el diseño redondeado del widget
+      builder: (context) => TransferFormWidget(
+        article: article,
+        users: _responsibles,
+        /*onTransferRequested: (updatedArticle) {
+          // Cerramos el modal
+          Navigator.pop(context);
+          
+          // Actualizamos en el servicio
+          _service.updateArticle(updatedArticle);
+          
+          // Refrescamos la UI local
+          _loadData();
+
+          // Mostramos confirmación
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Traspaso exitoso: ${updatedArticle.name} ahora está en ${updatedArticle.warehouse}'),
+              backgroundColor: Colors.green.shade800,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },*/
+        onTransferRequested: (TransferRequest request) {
+          Navigator.pop(context);
+
+          _service.createTransferRequest(request);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('📨 Solicitud de traspaso enviada para aprobación'),
+              backgroundColor: Colors.blue,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+
+      ),
+    );
+  }
+  
   void _showEditArticleForm(ArticleModel article) {
     final nameController = TextEditingController(text: article.name);
     final plateController = TextEditingController(text: article.licensePlate);
+    final commentsController = TextEditingController(text: article.comments ?? '');
     
     String? selectedResponsible = article.responsible;
-    // Buscamos el objeto WarehouseModel correspondiente al ID guardado
+    String? selectedStatus = article.status ?? 'Operativo';
+    String? photoPath = article.photoPath;
+
     WarehouseModel? selectedWh = _service.getWarehouses().firstWhere(
       (w) => w.id == article.warehouse,
       orElse: () => _service.getWarehouses().first,
@@ -92,15 +151,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
               final position = await Geolocator.getCurrentPosition(
                 locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
               );
+
+              if (!context.mounted) return;
+
               setModalState(() {
                 currentLat = position.latitude;
                 currentLon = position.longitude;
                 isLocating = false;
               });
             } catch (e) {
+              if (!context.mounted) return;
               setModalState(() => isLocating = false);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Error GPS: $e'))
+              );
+            }
+          }
+
+          Future<void> takePhoto() async {
+            setModalState(() {
+              photoPath = 'path/to/local/storage/photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+            });
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Foto capturada (Simulación: Cámara)')),
               );
             }
           }
@@ -139,15 +213,57 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  DropdownButtonFormField<String>(
-                    value: selectedResponsible,
-                    decoration: const InputDecoration(labelText: 'Responsable', prefixIcon: Icon(Icons.person)),
-                    items: _responsibles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                    onChanged: (v) => setModalState(() => selectedResponsible = v),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedStatus,
+                          decoration: const InputDecoration(labelText: 'Estado', prefixIcon: Icon(Icons.info_outline)),
+                          items: _statusOptions.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                          onChanged: (v) => setModalState(() => selectedStatus = v),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedResponsible,
+                          decoration: const InputDecoration(labelText: 'Responsable', prefixIcon: Icon(Icons.person)),
+                          items: _responsibles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                          onChanged: (v) => setModalState(() => selectedResponsible = v),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15),
 
-                  // Sección de Geolocalización
+                  TextField(
+                    controller: commentsController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Comentarios adicionales', 
+                      prefixIcon: Icon(Icons.comment),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: takePhoto,
+                          icon: const Icon(Icons.camera_alt),
+                          label: Text(photoPath == null ? 'TOMAR FOTO' : 'CAMBIAR FOTO'),
+                        ),
+                      ),
+                      if (photoPath != null) ...[
+                        const SizedBox(width: 10),
+                        const Icon(Icons.check_circle, color: Colors.green),
+                      ]
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -180,14 +296,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   const SizedBox(height: 30),
                   
                   ElevatedButton(
-                    onPressed: isSaving ? null : () async {
+                    onPressed: isSaving ? null : () {
                       if (nameController.text.isEmpty || plateController.text.isEmpty || selectedWh == null) {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor llene los campos obligatorios.')));
                         return;
                       }
                       setModalState(() => isSaving = true);
                       try {
-                        // Creamos la versión actualizada del objeto
                         final updatedArticle = article.copyWith(
                           name: nameController.text,
                           licensePlate: plateController.text,
@@ -195,23 +310,27 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           responsible: selectedResponsible,
                           latitude: currentLat,
                           longitude: currentLon,
+                          status: selectedStatus,
+                          comments: commentsController.text,
+                          photoPath: photoPath,
                         );
 
-                        // Llamamos al servicio para actualizar
                         _service.updateArticle(updatedArticle);
 
                         if (context.mounted) {
                           Navigator.pop(context);
-                          _loadData(); // Recargamos la lista local
+                          _loadData();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('✅ Activo actualizado con éxito'), backgroundColor: Colors.blue)
                           );
                         }
                       } catch (e) {
-                        setModalState(() => isSaving = false);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red)
-                        );
+                        if (context.mounted) {
+                          setModalState(() => isSaving = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red)
+                          );
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -219,7 +338,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 15)
                     ),
                     child: isSaving 
-                      ? const CircularProgressIndicator(color: Colors.white) 
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
                       : const Text('ACTUALIZAR DATOS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 20),
@@ -232,12 +351,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  /// **Formulario de registro dentro de un cuadro de diálogo (BottomSheet)**
   void _showAddArticleForm() {
     final nameController = TextEditingController();
     final plateController = TextEditingController();
+    final commentsController = TextEditingController();
     
     String? selectedResponsible;
+    String? selectedStatus = 'Operativo';
+    String? photoPath;
     WarehouseModel? selectedWh;
     double? currentLat;
     double? currentLon;
@@ -263,15 +384,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
               final position = await Geolocator.getCurrentPosition(
                 locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
               );
+              
+              if (!context.mounted) return;
+
               setModalState(() {
                 currentLat = position.latitude;
                 currentLon = position.longitude;
                 isLocating = false;
               });
             } catch (e) {
+              if (!context.mounted) return;
               setModalState(() => isLocating = false);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Error GPS: $e'))
+              );
+            }
+          }
+
+          Future<void> takePhoto() async {
+            setModalState(() {
+              photoPath = 'path/to/local/storage/new_photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+            });
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Foto capturada (Cámara exclusiva)')),
               );
             }
           }
@@ -309,14 +445,49 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Responsable', prefixIcon: Icon(Icons.person)),
-                    items: _responsibles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                    onChanged: (v) => setModalState(() => selectedResponsible = v),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedStatus,
+                          decoration: const InputDecoration(labelText: 'Estado', prefixIcon: Icon(Icons.info_outline)),
+                          items: _statusOptions.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                          onChanged: (v) => setModalState(() => selectedStatus = v),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(labelText: 'Responsable', prefixIcon: Icon(Icons.person)),
+                          items: _responsibles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                          onChanged: (v) => setModalState(() => selectedResponsible = v),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15),
 
-                  // Sección de Geolocalización
+                  TextField(
+                    controller: commentsController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Comentarios adicionales', 
+                      prefixIcon: Icon(Icons.comment),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+
+                  OutlinedButton.icon(
+                    onPressed: takePhoto,
+                    icon: const Icon(Icons.camera_alt),
+                    label: Text(photoPath == null ? 'TOMAR FOTO' : 'FOTO CAPTURADA'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: photoPath != null ? Colors.green : primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -359,6 +530,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           plate: plateController.text,
                           warehouseId: selectedWh!.id,
                           responsible: selectedResponsible,
+                          status: selectedStatus,
+                          comments: commentsController.text,
+                          photoPath: photoPath,
                         );
                         if (context.mounted) {
                           Navigator.pop(context);
@@ -368,10 +542,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           );
                         }
                       } catch (e) {
-                        setModalState(() => isSaving = false);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red)
-                        );
+                        if (context.mounted) {
+                          setModalState(() => isSaving = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red)
+                          );
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -379,7 +555,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 15)
                     ),
                     child: isSaving 
-                      ? const CircularProgressIndicator(color: Colors.white) 
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
                       : const Text('GUARDAR ACTIVO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 20),
@@ -419,10 +595,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
             Text('Activos en lista: ${_filteredArticles.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
             const Divider(),
             Expanded(
-              child: ListView.builder(
-                itemCount: _filteredArticles.length,
-                itemBuilder: (context, index) => _buildArticleTile(_filteredArticles[index]),
-              ),
+              child: _filteredArticles.isEmpty 
+                ? const Center(child: Text('No hay activos para esta bodega'))
+                : ListView.builder(
+                    itemCount: _filteredArticles.length,
+                    itemBuilder: (context, index) => _buildArticleTile(_filteredArticles[index]),
+                  ),
             ),
           ],
         ),
@@ -443,15 +621,59 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildArticleTile(ArticleModel article) {
+    Color statusColor;
+    switch (article.status) {
+      case 'Operativo': statusColor = Colors.green; break;
+      case 'En Mantenimiento': statusColor = Colors.orange; break;
+      case 'Dañado': statusColor = Colors.red; break;
+      case 'Baja': statusColor = Colors.grey; break;
+      default: statusColor = Colors.blue;
+    }
+
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 5),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         onTap: () => _showEditArticleForm(article),
-        leading: Icon(Icons.qr_code, color: primaryColor),
+        leading: Container(
+          width: 6,
+          decoration: BoxDecoration(
+            color: statusColor,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.symmetric(vertical: 8),
+        ),
         title: Text(article.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('Placa: ${article.licensePlate}\nResp: ${article.responsible ?? "No asignado"}'),
-        trailing: const Icon(Icons.edit, size: 20),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Placa: ${article.licensePlate} • Resp: ${article.responsible ?? 'N/A'}'),
+            if (article.comments != null && article.comments!.isNotEmpty)
+              Text(
+                article.comments!, 
+                maxLines: 1, 
+                overflow: TextOverflow.ellipsis, 
+                style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic)
+              ),
+            Text(
+              'Estado: ${article.status ?? "Operativo"}', 
+              style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)
+            ),
+          ],
+        ),
+        /// MODIFICADO: TRAILING AHORA INCLUYE EL BOTÓN DE TRASPASO
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.swap_horiz, color: Colors.orange),
+              tooltip: 'Traspasar Activo',
+              onPressed: () => _showTransferForm(article),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }

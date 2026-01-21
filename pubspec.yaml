@@ -41,6 +41,9 @@ dependencies:
   # Generador de códigos QR (qr_flutter)
   qr_flutter: ^4.1.0 # Asegúrate de usar la versión actual
 
+  # Dependencia para simplificar la comparación de objetos
+  equatable: ^2.0.5
+
   # Librerías necesarias para el PDF:
   pdf: ^3.7.1 # Generación del documento PDF
   path_provider: ^2.0.11 # Manejo de rutas de archivos

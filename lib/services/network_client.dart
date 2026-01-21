@@ -1,4 +1,6 @@
 import '../models/person_model.dart';
+import 'dart:async';
+import 'dart:math';
 
 /// **CLIENTE DE RED (Simulado)**
 /// Maneja la comunicación con la "API" para Personas y Activos.
@@ -26,54 +28,82 @@ class NetworkClient {
     ),
   ];
 
-  /// Simula una llamada GET para buscar una persona por ID.
+  final List<Map<String, dynamic>> _mockDatabase = [
+    {
+      'id': '1',
+      'fullName': 'Juan Perez',
+      'nationalId': '1018420001',
+      'accountExists': false,
+      'isActive': true,
+      'creationDate': null,
+      'createdByUserId': null,
+    },
+    {
+      'id': '2',
+      'fullName': 'Maria Lopez',
+      'nationalId': '20203030',
+      'accountExists': true,
+      'isActive': true,
+      'creationDate': '2023-10-01T10:30:00',
+      'createdByUserId': 'admin_01',
+    },
+    {
+      'id': '3',
+      'fullName': 'Carlos Bloqueado',
+      'nationalId': '99999',
+      'accountExists': false,
+      'isActive': false,
+      'creationDate': null,
+      'createdByUserId': null,
+    },
+  ];
+
+  /// Simula GET /person/{nationalId}
   Future<Map<String, dynamic>?> getPerson(String nationalId) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    await _simulateNetworkDelay();
+    _simulateRandomError();
+
     try {
-      final person = _mockPeople.firstWhere(
-        (p) => p.nationalId == nationalId,
+      return _mockDatabase.firstWhere(
+        (p) => p['nationalId'] == nationalId,
       );
-      return {
-        'nationalId': person.nationalId,
-        'fullName': person.fullName,
-        'accountExists': person.accountExists,
-        'isActive': person.isActive,
-        'creationDate': person.creationDate?.toIso8601String(),
-        'createdByUserId': person.createdByUserId,
-      };
     } catch (e) {
       return null;
     }
   }
 
-  /// Simula una llamada POST para crear o actualizar la cuenta de una persona.
+  /// Simula POST /create-account
   Future<Map<String, dynamic>> postCreateAccount({
     required String nationalId,
     required String creatorId,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 1000));
-
-    int index = _mockPeople.indexWhere((p) => p.nationalId == nationalId);
-    if (index == -1) {
-      throw Exception('Error 404: La persona no existe.');
+    await _simulateNetworkDelay();
+    
+    // Buscar en la "DB" y actualizar
+    int index = _mockDatabase.indexWhere((p) => p['nationalId'] == nationalId);
+    
+    if (index != -1) {
+      _mockDatabase[index]['accountExists'] = true;
+      _mockDatabase[index]['creationDate'] = DateTime.now().toIso8601String();
+      _mockDatabase[index]['createdByUserId'] = creatorId;
+      
+      return _mockDatabase[index];
+    } else {
+      throw Exception("No se pudo encontrar la persona para crear la cuenta.");
     }
+  }
 
-    final person = _mockPeople[index];
-    final newAccount = person.activateAccount(
-      createdByUserId: creatorId,
-      creationDate: DateTime.now(),
-    );
+  // --- Helpers de Simulación ---
 
-    _mockPeople[index] = newAccount;
+  Future<void> _simulateNetworkDelay() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+  }
 
-    return {
-      'nationalId': newAccount.nationalId,
-      'fullName': newAccount.fullName,
-      'accountExists': newAccount.accountExists,
-      'isActive': newAccount.isActive,
-      'creationDate': newAccount.creationDate!.toIso8601String(),
-      'createdByUserId': newAccount.createdByUserId,
-    };
+  void _simulateRandomError() {
+    // 5% de probabilidad de fallo de conexión
+    if (Random().nextInt(100) < 5) {
+      throw Exception("Error de conexión al servidor (Timeout)");
+    }
   }
 
   /// **NUEVO MÉTODO: Simulación de POST para crear un Activo en Inventario**
