@@ -30,8 +30,9 @@ class TransferRequest {
   });
 
   TransferRequest copyWith({
-    TransferStatus? status,
-    String? rejectionReason,
+  TransferStatus? status,
+  String? rejectionReason,
+  DateTime? appliedDate,
   }) {
     return TransferRequest(
       id: id,
@@ -45,8 +46,10 @@ class TransferRequest {
       requestDate: requestDate,
       status: status ?? this.status,
       rejectionReason: rejectionReason ?? this.rejectionReason,
+      appliedDate: appliedDate ?? this.appliedDate,
     );
   }
+
 
 
   // Helper para convertir a Map (útil para bases de datos/servicios)

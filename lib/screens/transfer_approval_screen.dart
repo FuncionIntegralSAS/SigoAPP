@@ -1,214 +1,165 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/transfer_approval_provider.dart';
+import '../widgets/transfer_filter_panel.dart';
 import '../models/transfer_request.dart';
-import '../services/mock_inventory_service.dart';
 
-class TransferApprovalScreen extends StatefulWidget {
+class TransferApprovalScreen extends StatelessWidget {
   const TransferApprovalScreen({super.key});
 
   @override
-  State<TransferApprovalScreen> createState() =>
-      _TransferApprovalScreenState();
-}
-
-class _TransferApprovalScreenState extends State<TransferApprovalScreen> {
-  final MockInventoryService _inventoryService =
-    MockInventoryService();
-
-  @override
   Widget build(BuildContext context) {
-    final pendingTransfers = _inventoryService.transferRequests
-        .where((r) => r.status == TransferStatus.pending)
-        .toList();
+    final provider = context.watch<TransferApprovalProvider>();
+    final transfers = provider.filteredTransfers;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Aprobación de Traspasos'),
       ),
-      body: pendingTransfers.isEmpty
-          ? const Center(
-              child: Text(
-                'No hay solicitudes de traspaso pendientes.',
-                style: TextStyle(fontSize: 16),
-              ),
-            )
-          : ListView.builder(
-              itemCount: pendingTransfers.length,
-              itemBuilder: (context, index) {
-                final request = pendingTransfers[index];
-
-                return Card(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          request.articleName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        Text(
-                          'Responsable actual: ${request.currentResponsible}',
-                        ),
-                        Text(
-                          'Responsable propuesto: ${request.proposedResponsible}',
-                        ),
-                        const SizedBox(height: 6),
-
-                        Text(
-                          'Bodega actual: ${request.currentWarehouse}',
-                        ),
-                        Text(
-                          'Bodega propuesta: ${request.proposedWarehouse}',
-                        ),
-                        const SizedBox(height: 6),
-
-                        Text(
-                          'Motivo: ${request.requestReason}',
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              onPressed: () {
-                                _confirmReject(context, request);
-                              },
-                              child: const Text(
-                                'Rechazar',
-                                style: TextStyle(color: Colors.red),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                              ),
-                              onPressed: () {
-                                _approveTransfer(context, request);
-                              },
-                              child: const Text('Aprobar'),
-                            ),
-                          ],
-                        ),
-                      ],
+      body: Column(
+        children: [
+          TransferFilterPanel(
+            filter: provider.filter,
+            availableWarehouses: provider.availableWarehouses,
+            onFilterChanged: provider.updateFilter,
+          ),
+          Expanded(
+            child: transfers.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No hay solicitudes que coincidan con los filtros.',
                     ),
+                  )
+                : ListView.builder(
+                    itemCount: transfers.length,
+                    itemBuilder: (context, index) {
+                      final request = transfers[index];
+                      return _TransferCard(request: request);
+                    },
                   ),
-                );
-              },
-            ),
+          ),
+        ],
+      ),
     );
   }
+}
 
-  void _approveTransfer(
-    BuildContext context,
-    TransferRequest request,
-  ) {
-    try {
-      _inventoryService.applyApprovedTransfer(request);
+class _TransferCard extends StatelessWidget {
+  final TransferRequest request;
 
-      setState(() {});
+  const _TransferCard({required this.request});
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Traspaso aprobado correctamente'),
-          backgroundColor: Colors.green,
+  @override
+  Widget build(BuildContext context) {
+    final provider =
+        context.read<TransferApprovalProvider>();
+
+    return Card(
+      margin: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 8,
+      ),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              request.articleName,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text('Responsable actual: ${request.currentResponsible}'),
+            Text('Responsable propuesto: ${request.proposedResponsible}'),
+            const SizedBox(height: 6),
+            Text('Bodega actual: ${request.currentWarehouse}'),
+            Text('Bodega propuesta: ${request.proposedWarehouse}'),
+            const SizedBox(height: 6),
+            Text('Motivo: ${request.requestReason}'),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () =>
+                      _confirmReject(context, provider, request),
+                  child: const Text(
+                    'Rechazar',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                  ),
+                  onPressed: () {
+                    provider.approveTransfer(request.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content:
+                            Text('Traspaso aprobado correctamente'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  },
+                  child: const Text('Aprobar'),
+                ),
+              ],
+            ),
+          ],
         ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+      ),
+    );
   }
 
   void _confirmReject(
-  BuildContext context,
-  TransferRequest request,
+    BuildContext context,
+    TransferApprovalProvider provider,
+    TransferRequest request,
   ) {
-    final TextEditingController reasonController =
-        TextEditingController();
+    final controller = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Rechazar traspaso'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Ingrese el motivo del rechazo:',
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: reasonController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'Motivo del rechazo',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
+      builder: (_) => AlertDialog(
+        title: const Text('Rechazar traspaso'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: 'Motivo del rechazo',
+            border: OutlineInputBorder(),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (controller.text.trim().isEmpty) return;
+
+              provider.rejectTransfer(
+                request.id,
+                controller.text.trim(),
+              );
+
+              Navigator.pop(context);
+            },
+            child: const Text(
+              'Rechazar',
+              style: TextStyle(color: Colors.red),
             ),
-            TextButton(
-              onPressed: () {
-                final reason = reasonController.text.trim();
-
-                if (reason.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Debe ingresar un motivo de rechazo',
-                      ),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-
-                _inventoryService.rejectTransfer(
-                  request,
-                  reason,
-                );
-
-                Navigator.pop(context);
-                setState(() {});
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Solicitud rechazada correctamente'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              },
-              child: const Text(
-                'Rechazar',
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
-
-
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
-import '../models/transfer_request.dart';
 import '../services/mock_inventory_service.dart';
 import '../services/mock_auth_service.dart';
 import '../widgets/transfer_form_widget.dart'; // Importamos el widget del formulario
@@ -76,39 +75,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
       builder: (context) => TransferFormWidget(
         article: article,
         users: _responsibles,
-        /*onTransferRequested: (updatedArticle) {
-          // Cerramos el modal
-          Navigator.pop(context);
-          
-          // Actualizamos en el servicio
-          _service.updateArticle(updatedArticle);
-          
-          // Refrescamos la UI local
-          _loadData();
-
-          // Mostramos confirmación
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Traspaso exitoso: ${updatedArticle.name} ahora está en ${updatedArticle.warehouse}'),
-              backgroundColor: Colors.green.shade800,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },*/
-        onTransferRequested: (TransferRequest request) {
-          Navigator.pop(context);
-
-          _service.createTransferRequest(request);
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('📨 Solicitud de traspaso enviada para aprobación'),
-              backgroundColor: Colors.blue,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
-
       ),
     );
   }
