@@ -1,6 +1,6 @@
 // Modelo de datos para una Persona y su estado de cuenta asociado
 class PersonModel {
-  final String nationalId; // Cédula o ID Nacional
+  final int nationalId; // Cédula o ID Nacional
   final String fullName;
   final bool accountExists;
   final bool isActive;
@@ -25,7 +25,7 @@ class PersonModel {
     }
     
     return PersonModel(
-      nationalId: json['nationalId'] as String,
+      nationalId: json['nationalId'] as int,
       fullName: json['fullName'] as String,
       accountExists: (json['accountExists'] ?? false) as bool,
       isActive: (json['isActive'] ?? true) as bool,

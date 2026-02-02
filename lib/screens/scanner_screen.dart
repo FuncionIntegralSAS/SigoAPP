@@ -1,41 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../models/article_model.dart';
+import '../utils/article_qr_parser.dart';
 
 class ScannerScreen extends StatefulWidget {
-  const ScannerScreen({super.key});
+  final String? expectedResponsible;
+
+  const ScannerScreen({
+    super.key,
+    this.expectedResponsible,
+  });
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
 }
 
 class _ScannerScreenState extends State<ScannerScreen> {
-  // Controlador para el MobileScanner
-  final MobileScannerController cameraController = MobileScannerController();
+  final MobileScannerController cameraController =
+      MobileScannerController();
+
+  bool _processing = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lector de Códigos QR/Barras'),
+        title: const Text('Escanear Activo'),
         backgroundColor: Colors.deepPurple,
       ),
-      // Usamos un Stack para apilar el escáner y la vista de superposición (overlay)
-      body: Stack( 
+      body: Stack(
         children: [
-          // 1. El MobileScanner cubre toda la pantalla
           MobileScanner(
             controller: cameraController,
             onDetect: (capture) {
-              final List<Barcode> barcodes = capture.barcodes;
-              if (barcodes.isNotEmpty) {
-                final String code = barcodes.first.rawValue ?? 'Código no válido';
-                cameraController.stop(); 
-                _showResultDialog(context, code);
+              if (_processing) return;
+
+              final barcode = capture.barcodes.first;
+              final raw = barcode.rawValue;
+
+              if (raw != null) {
+                _processing = true;
+                cameraController.stop();
+
+                final article = ArticleQrParser.fromQr(raw);
+                final isValid = _validateResponsible(article);
+
+                _showResultDialog(context, article, isValid);
               }
             },
           ),
-          
-          // 2. La capa de superposición (el marco rojo) se dibuja encima
+
           Center(
             child: Container(
               width: 250,
@@ -51,24 +65,58 @@ class _ScannerScreenState extends State<ScannerScreen> {
     );
   }
 
-  void _showResultDialog(BuildContext context, String code) {
+  bool _validateResponsible(ArticleModel article) {
+    if (widget.expectedResponsible == null) return true;
+
+    return article.responsible == widget.expectedResponsible;
+  }
+
+  void _showResultDialog(
+    BuildContext context,
+    ArticleModel article,
+    bool isValid,
+  ) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Código Escaneado'),
-        content: SelectableText(code), // SelectableText permite copiar el texto
+      builder: (_) => AlertDialog(
+        title: const Text('Verificación de Activo'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Nombre: ${article.name}'),
+            Text('Placa: ${article.licensePlate}'),
+            Text('Responsable: ${article.responsible ?? "No asignado"}'),
+            const SizedBox(height: 12),
+            Text(
+              isValid
+                  ? '✅ Responsable coincide'
+                  : '❌ Responsable NO coincide',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isValid ? Colors.green : Colors.red,
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () {
-              // Cerramos la alerta y luego reiniciamos el escaneo
-              Navigator.of(context).pop(); 
-              cameraController.start();
+              Navigator.of(context).pop();
+              Navigator.of(context).pop({
+                'article': article,
+                'isValid': isValid,
+              });
             },
-            child: const Text('Escanear de Nuevo'),
+            child: const Text('Confirmar'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(), // Solo cierra la alerta
-            child: const Text('Cerrar'),
+            onPressed: () {
+              Navigator.of(context).pop();
+              _processing = false;
+              cameraController.start();
+            },
+            child: const Text('Escanear de nuevo'),
           ),
         ],
       ),

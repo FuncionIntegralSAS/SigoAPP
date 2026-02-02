@@ -13,7 +13,7 @@ class NetworkClient {
   // Simulación de la base de datos de Personas
   static final List<PersonModel> _mockPeople = [
     PersonModel(
-      nationalId: '1018420001',
+      nationalId: 1018420001,
       fullName: 'Andrés Felipe Restrepo',
       accountExists: true,
       isActive: true,
@@ -21,7 +21,7 @@ class NetworkClient {
       createdByUserId: 'admin_user_001',
     ),
     PersonModel(
-      nationalId: '1018420002',
+      nationalId: 1018420002,
       fullName: 'Carolina Díaz Martínez',
       accountExists: false,
       isActive: true,
@@ -74,7 +74,7 @@ class NetworkClient {
 
   /// Simula POST /create-account
   Future<Map<String, dynamic>> postCreateAccount({
-    required String nationalId,
+    required int nationalId,
     required String creatorId,
   }) async {
     await _simulateNetworkDelay();

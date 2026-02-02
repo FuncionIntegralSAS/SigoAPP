@@ -188,7 +188,7 @@ class _AccountScreenState extends State<AccountScreen> {
           children: [
             Text(person.fullName, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryColor)),
             const Divider(height: 20),
-            _buildDetailRow('Cédula', person.nationalId, Icons.badge),
+            _buildDetailRow('Cédula', person.nationalId as String, Icons.badge),
             _buildDetailRow('Cuenta Registrada', person.accountExists ? 'SÍ' : 'NO', Icons.verified_user, color: person.accountExists ? Colors.green : Colors.red),
             
             // 4. Validación de existencia y estado activo
