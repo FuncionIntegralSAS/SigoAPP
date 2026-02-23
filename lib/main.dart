@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:sigo_app/repositories/mock_transfer_repository.dart';
+import 'package:sigo_app/services/in_app_notification_service.dart';
+import 'package:sigo_app/services/notification_service.dart';
 
 // Providers
 import 'providers/transfer_request_provider.dart';
 import 'providers/transfer_approval_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:sigo_app/providers/asset_verification_provider.dart';
+
+// Nuevos imports para el módulo de Requisiciones
+import 'package:sigo_app/providers/requisition_approval_provider.dart';
+import 'package:sigo_app/services/mock_requisition_service.dart';
 
 // Services
 import 'services/mock_inventory_service.dart';
@@ -18,12 +24,27 @@ import 'package:sigo_app/screens/dashboard_screen.dart';
 void main() {
   final inventoryService = MockInventoryService();
   final transferRepository = MockTransferRepository(inventoryService);
+  
+  // Instanciamos el servicio mock de requisiciones
+  final requisitionService = MockRequisitionService();
+
+  final messengerKey = GlobalKey<ScaffoldMessengerState>();
+  final notificationService = InAppNotificationService(messengerKey);
 
   runApp(
     MultiProvider(
       providers: [
+        // 🔔 Servicio de notificaciones (singleton)
+        Provider<NotificationService>.value(
+          value: notificationService,
+        ),
+
+        // 📦 Providers de dominio
         ChangeNotifierProvider(
-          create: (_) => TransferRequestProvider(transferRepository),
+          create: (_) => TransferRequestProvider(
+            transferRepository,
+            notificationService,
+          ),
         ),
         ChangeNotifierProvider(
           create: (_) => TransferApprovalProvider(transferRepository),
@@ -31,14 +52,21 @@ void main() {
         ChangeNotifierProvider(
           create: (_) => AssetVerificationProvider(),
         ),
+        
+        // Registramos el nuevo Provider de Requisiciones
+        ChangeNotifierProvider(
+          create: (_) => RequisitionApprovalProvider(requisitionService),
+        ),
       ],
-      child: const MyApp(),
+      child: MyApp(messengerKey),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final GlobalKey<ScaffoldMessengerState> messengerKey;
+
+  const MyApp(this.messengerKey, {super.key}); 
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +78,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: const AuthWrapper(),
+      scaffoldMessengerKey: messengerKey,
     );
   }
 }

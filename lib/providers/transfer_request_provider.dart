@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:sigo_app/services/notification_service.dart';
 import '../models/transfer_request.dart';
 import '../repositories/transfer_repository.dart';
 
 class TransferRequestProvider extends ChangeNotifier {
   final TransferRepository repository;
+  final NotificationService notificationService;
 
   bool _loading = false;
   bool get loading => _loading;
 
-  TransferRequestProvider(this.repository);
+  TransferRequestProvider(this.repository, this.notificationService);
 
   Future<void> createRequest({
     required String articleId,
@@ -39,6 +41,9 @@ class TransferRequestProvider extends ChangeNotifier {
     // ✅ MÉTODO CORRECTO
     repository.create(request);
 
+    notificationService.success(
+        'Solicitud de traspaso enviada correctamente',
+      ); //to do: incorporar Try Catch y llamar notificationService para cuando la solicitud falle
     _setLoading(false);
   }
 

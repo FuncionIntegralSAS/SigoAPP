@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:sigo_app/models/home_screen.dart';
+import 'package:sigo_app/screens/home_screen.dart';
 import 'package:sigo_app/screens/asset_verification_screen.dart';
 import '../screens/inventory_screen.dart';
 import '../screens/transfer_approval_screen.dart';
+import '../screens/requisitions_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -36,7 +37,7 @@ class DashboardScreen extends StatelessWidget {
             // OPCIÓN 2: Solicitud de traspaso de activos
             _DashboardItem(
               icon: Icons.inventory,
-              title: 'Solicitud de traspaso de activos',
+              title: 'Generar solicitud de traspaso',
               onTap: () {
                 Navigator.push(
                   context,
@@ -50,7 +51,7 @@ class DashboardScreen extends StatelessWidget {
             // OPCIÓN 3: Aprobación de trámites
             _DashboardItem(
               icon: Icons.approval,
-              title: 'Aprobación de Trámites',
+              title: 'Aprobación de Traspasos',
               onTap: () {
                 Navigator.push(
                   context,
@@ -60,8 +61,6 @@ class DashboardScreen extends StatelessWidget {
                 );
               },
             ),
-
-             // NUEVA OPCIÓN: Acceso al módulo principal
             _DashboardItem(
               icon: Icons.apps,
               title: 'Módulo Principal',
@@ -70,6 +69,18 @@ class DashboardScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const HomeScreen(),
+                  ),
+                );
+              },
+            ),
+            _DashboardItem(
+              icon: Icons.apps,
+              title: 'Requisiciones',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const RequisitionsScreen(),
                   ),
                 );
               },

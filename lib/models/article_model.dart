@@ -8,13 +8,13 @@ class ArticleModel extends Equatable {
   final String licensePlate;
   final String warehouse; // ID de la bodega/centro de costos
   final String? responsible;
+  final String? status;    // Estado del activo (Operativo, Dañado, etc.)
   
   // Ubicación GPS (opcional, se llena al generar el QR)
   final double? latitude;
   final double? longitude;
 
   // ATRIBUTOS PARA REGISTRO ADICIONAL
-  final String? status;    // Estado del activo (Operativo, Dañado, etc.)
   final String? comments;  // Comentarios o notas adicionales
   final String? photoPath; // Ruta local de la fotografía en el dispositivo
 
