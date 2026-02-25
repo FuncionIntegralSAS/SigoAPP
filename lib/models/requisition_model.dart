@@ -49,4 +49,7 @@ class RequisitionModel {
       observacion: json['observacion'] ?? '',
     );
   }
+
+  String get compositeId => '${empresa}_${tipoDocumento}_${numero}_${bodega}_${articulo}';
+
 }

@@ -3,30 +3,10 @@ import 'package:provider/provider.dart';
 import '../../providers/requisition_approval_provider.dart';
 import '../../widgets/requisition_action_card.dart';
 
-class ApprovalTabView extends StatefulWidget {
+class ApprovalTabView extends StatelessWidget {
   const ApprovalTabView({Key? key}) : super(key: key);
 
-  @override
-  State<ApprovalTabView> createState() => _ApprovalTabViewState();
-}
-
-class _ApprovalTabViewState extends State<ApprovalTabView> {
-  int _selectedCount = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Solicita explícitamente el estado 'in'
-      context.read<RequisitionApprovalProvider>().loadRequisitions('in');
-    });
-  }
-
-  void _updateSelectionCount(bool isSelected, int amount) {
-    setState(() {
-      isSelected ? _selectedCount++ : _selectedCount--;
-    });
-  }
+  // Ya no necesitamos StatefulWidget porque el Provider maneja todo el estado
 
   @override
   Widget build(BuildContext context) {
@@ -40,11 +20,10 @@ class _ApprovalTabViewState extends State<ApprovalTabView> {
           return Center(child: Text(provider.errorMessage!));
         }
 
-        // Aplicamos el filtro estricto por el estado 'in'
         final approvalList = provider.pendingRequisitions.where((req) => req.estado == 'in').toList();
 
         if (approvalList.isEmpty) {
-          return _buildEmptyState();
+          return _buildEmptyState(context);
         }
 
         return Scaffold(
@@ -54,6 +33,7 @@ class _ApprovalTabViewState extends State<ApprovalTabView> {
             itemBuilder: (context, index) {
               final item = approvalList[index];
               return RequisitionActionCard(
+                id: item.id, // Pasamos el ID
                 articulo: item.articulo,
                 solicita: item.solicita,
                 estado: item.estado,
@@ -64,24 +44,30 @@ class _ApprovalTabViewState extends State<ApprovalTabView> {
                 bodega: item.bodega,
                 unidad: item.unidad,
                 observacion: item.observacion,
-                // Pasamos los 3 campos fijos del modelo
                 cantidadSolicitada: item.cantidadSolicitada,
                 cantidadAprobada: item.cantidadAprobada,
                 cantidadEntregada: item.cantidadEntregada,
-                onSelectionChanged: _updateSelectionCount,
+                // Conectamos directamente con el Provider
+                onSelectionChanged: (id, isSelected, qty) {
+                  provider.toggleSelection(id, isSelected, qty);
+                },
               );
             },
           ),
-          floatingActionButton: _selectedCount > 0
+          // El botón reacciona al contador del Provider
+          floatingActionButton: provider.selectedCount > 0
               ? FloatingActionButton.extended(
-                  onPressed: () {
-                    // Acción pendiente de conectar con el Provider
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Procesando $_selectedCount requisiciones...')),
-                    );
+                  onPressed: () async {
+                    // Ejecutamos el envío masivo indicando la pestaña actual ('in')
+                    final success = await provider.processBatchSelection('in');
+                    if (success && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Lote procesado exitosamente')),
+                      );
+                    }
                   },
                   icon: const Icon(Icons.check_circle_outline),
-                  label: Text('Procesar Selección ($_selectedCount)'),
+                  label: Text('Procesar Selección (${provider.selectedCount})'),
                 )
               : null,
           floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -90,7 +76,7 @@ class _ApprovalTabViewState extends State<ApprovalTabView> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -99,7 +85,7 @@ class _ApprovalTabViewState extends State<ApprovalTabView> {
           const SizedBox(height: 16),
           Text(
             'Bandeja al día',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith( // Ya no dará error
                   color: Colors.grey.shade700,
                   fontWeight: FontWeight.bold,
                 ),
@@ -107,7 +93,7 @@ class _ApprovalTabViewState extends State<ApprovalTabView> {
           const SizedBox(height: 8),
           Text(
             'No hay requisiciones pendientes por aprobar.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith( // Ya no dará error
                   color: Colors.grey.shade600,
                 ),
           ),

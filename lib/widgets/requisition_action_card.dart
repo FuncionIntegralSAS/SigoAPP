@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class RequisitionActionCard extends StatefulWidget {
+  final String id;
   final String articulo;
   final String solicita;
   final String estado;
@@ -18,10 +19,11 @@ class RequisitionActionCard extends StatefulWidget {
   final int cantidadAprobada;
   final int cantidadEntregada;
   
-  final Function(bool, int) onSelectionChanged;
+  final Function(String, bool, int) onSelectionChanged;
 
   const RequisitionActionCard({
     Key? key,
+    required this.id,
     required this.articulo,
     required this.solicita,
     required this.estado,
@@ -84,7 +86,8 @@ class _RequisitionActionCardState extends State<RequisitionActionCard> {
       _isCheckboxEnabled = isValid;
       if (!isValid && _isChecked) {
         _isChecked = false;
-        widget.onSelectionChanged(false, 0);
+        // CORRECCIÓN AQUÍ: Añadir widget.id
+        widget.onSelectionChanged(widget.id, false, 0);
       }
     });
   }
@@ -117,7 +120,9 @@ class _RequisitionActionCardState extends State<RequisitionActionCard> {
                 onChanged: _isCheckboxEnabled
                     ? (bool? value) {
                         setState(() => _isChecked = value ?? false);
+                        // CORRECCIÓN AQUÍ: Añadir widget.id como primer parámetro
                         widget.onSelectionChanged(
+                          widget.id, 
                           _isChecked,
                           int.parse(_actionController.text),
                         );

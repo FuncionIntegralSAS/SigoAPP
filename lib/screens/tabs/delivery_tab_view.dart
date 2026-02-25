@@ -3,30 +3,8 @@ import 'package:provider/provider.dart';
 import '../../providers/requisition_approval_provider.dart';
 import '../../widgets/requisition_action_card.dart';
 
-class DeliveryTabView extends StatefulWidget {
+class DeliveryTabView extends StatelessWidget {
   const DeliveryTabView({Key? key}) : super(key: key);
-
-  @override
-  State<DeliveryTabView> createState() => _DeliveryTabViewState();
-}
-
-class _DeliveryTabViewState extends State<DeliveryTabView> {
-  int _selectedCount = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Solicita explícitamente el estado 'ap'
-      context.read<RequisitionApprovalProvider>().loadRequisitions('ap');
-    });
-  }
-
-  void _updateSelectionCount(bool isSelected, int amount) {
-    setState(() {
-      isSelected ? _selectedCount++ : _selectedCount--;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +24,7 @@ class _DeliveryTabViewState extends State<DeliveryTabView> {
             itemBuilder: (context, index) {
               final item = deliveryList[index];
               return RequisitionActionCard(
+                id: item.compositeId, 
                 articulo: item.articulo,
                 solicita: item.solicita,
                 estado: item.estado,
@@ -59,15 +38,25 @@ class _DeliveryTabViewState extends State<DeliveryTabView> {
                 cantidadSolicitada: item.cantidadSolicitada,
                 cantidadAprobada: item.cantidadAprobada,
                 cantidadEntregada: item.cantidadEntregada,
-                onSelectionChanged: _updateSelectionCount,
+                // 2. Conectamos directamente con el Provider
+                onSelectionChanged: (id, isSelected, qty) {
+                  provider.toggleSelection(id, isSelected, qty);
+                },
               );
             },
           ),
-          floatingActionButton: _selectedCount > 0
+          floatingActionButton: provider.selectedCount > 0
               ? FloatingActionButton.extended(
-                  onPressed: () {},
+                  onPressed: () async {
+                    final success = await provider.processBatchSelection('ap');
+                    if (success && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Entregas registradas exitosamente')),
+                      );
+                    }
+                  },
                   icon: const Icon(Icons.local_shipping_outlined),
-                  label: Text('Registrar Entrega ($_selectedCount)'),
+                  label: Text('Registrar Entrega (${provider.selectedCount})'),
                 )
               : null,
           floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
