@@ -4,6 +4,7 @@ import 'package:sigo_app/screens/asset_verification_screen.dart';
 import '../screens/inventory_screen.dart';
 import '../screens/transfer_approval_screen.dart';
 import '../screens/requisitions_screen.dart';
+import '../screens/physical_count_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -81,6 +82,18 @@ class DashboardScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const RequisitionsScreen(),
+                  ),
+                );
+              },
+            ),
+            _DashboardItem(
+              icon: Icons.playlist_add_check_circle,
+              title: 'Conteo Físico',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PhysicalCountScreen(),
                   ),
                 );
               },

@@ -59,13 +59,15 @@ class _RequisitionActionCardState extends State<RequisitionActionCard> {
   int get _maxAllowedQuantity {
     if (widget.estado == 'in') return widget.cantidadSolicitada;
     if (widget.estado == 'ap') return widget.cantidadAprobada;
-    return 0; // Para otros estados o fallback
+    if (widget.estado == 'en') return widget.cantidadEntregada;
+    return 0; // Para otros estados ('an') o fallback
   }
 
   // Define la etiqueta del indicador visual
   String get _chipLabel {
     if (widget.estado == 'in') return 'Req: ${widget.cantidadSolicitada}';
     if (widget.estado == 'ap') return 'Aprob: ${widget.cantidadAprobada}';
+    if (widget.estado == 'en') return 'Entr: ${widget.cantidadEntregada}';
     return 'Cant: 0';
   }
 

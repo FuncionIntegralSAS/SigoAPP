@@ -13,6 +13,10 @@ import 'package:sigo_app/providers/asset_verification_provider.dart';
 import 'package:sigo_app/providers/requisition_approval_provider.dart';
 import 'package:sigo_app/services/mock_requisition_service.dart';
 
+// Nuevos imports para el módulo de Conteo Físico
+import 'package:sigo_app/providers/physical_count_provider.dart';
+import 'package:sigo_app/services/physical_count_service.dart';
+
 // Services
 import 'services/mock_inventory_service.dart';
 import 'services/mock_auth_service.dart';
@@ -27,6 +31,9 @@ void main() {
   
   // Instanciamos el servicio mock de requisiciones
   final requisitionService = MockRequisitionService();
+
+  // Instanciamos el servicio de Conteo Físico
+  final physicalCountService = PhysicalCountService();
 
   final messengerKey = GlobalKey<ScaffoldMessengerState>();
   final notificationService = InAppNotificationService(messengerKey);
@@ -56,6 +63,11 @@ void main() {
         // Registramos el nuevo Provider de Requisiciones
         ChangeNotifierProvider(
           create: (_) => RequisitionApprovalProvider(requisitionService),
+        ),
+        
+        // Registramos el nuevo Provider de Conteo Físico
+        ChangeNotifierProvider(
+          create: (_) => PhysicalCountProvider(physicalCountService),
         ),
       ],
       child: MyApp(messengerKey),

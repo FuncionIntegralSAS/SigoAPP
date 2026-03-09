@@ -1,5 +1,17 @@
-enum TransferStatus { pending, approved, rejected, completed }
+import 'package:json_annotation/json_annotation.dart';
 
+// Es fundamental que esta línea coincida exactamente con el nombre de tu archivo
+part 'transfer_request.g.dart'; 
+
+// Mapeamos tu enum local a los valores exactos (Strings) que espera y devuelve Spring Boot
+enum TransferStatus { 
+  @JsonValue('pe') pending, 
+  @JsonValue('ap') approved, 
+  @JsonValue('na') rejected, 
+  @JsonValue('pr') completed 
+}
+
+@JsonSerializable()
 class TransferRequest {
   final String id;
   final String articleId;
@@ -29,6 +41,7 @@ class TransferRequest {
     this.appliedDate,
   });
 
+  // Mantenemos tu método copyWith intacto. Es una excelente práctica para inmutabilidad.
   TransferRequest copyWith({
   TransferStatus? status,
   String? rejectionReason,
@@ -50,23 +63,9 @@ class TransferRequest {
     );
   }
 
+  // Sustituimos tu antiguo toMap() por la generación automática
+  factory TransferRequest.fromJson(Map<String, dynamic> json) => 
+      _$TransferRequestFromJson(json);
 
-
-  // Helper para convertir a Map (útil para bases de datos/servicios)
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'articleId': articleId,
-      'articleName': articleName,
-      'currentResponsible': currentResponsible,
-      'proposedResponsible': proposedResponsible,
-      'currentWarehouse' : currentWarehouse,
-      'proposedWarehouse' : proposedWarehouse,
-      'requestReason': requestReason,
-      'requestDate': requestDate.toIso8601String(),
-      'status': status.name,
-      'rejectionReason': rejectionReason,
-      'appliedDate': appliedDate ?? this.appliedDate,
-    };
-  }
+  Map<String, dynamic> toJson() => _$TransferRequestToJson(this);
 }
