@@ -5,7 +5,7 @@ import 'package:sigo_app/models/article_model.dart';
 import 'package:sigo_app/models/person_model.dart';
 import 'package:sigo_app/models/physical_count_model.dart';
 import 'package:sigo_app/services/physical_count_service.dart';
-import 'package:dio/dio.dart'; // Si usas dio para errores
+import 'package:dio/dio.dart'; 
 
 enum PhysicalCountState { INITIAL, EN_PROCESO, CREADA, ERROR }
 

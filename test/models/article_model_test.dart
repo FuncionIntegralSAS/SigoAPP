@@ -12,10 +12,10 @@ void main() {
   );
 
   group('ArticleModel Tests', () {
-
     // Test 1: Verificar que el getter qrData funciona correctamente sin ubicación.
     test('qrData debe codificar los datos básicos sin ubicación', () {
-      final expectedQrData = 'Código:PC001|Placa:ABC-123|Nombre:Portátil Prueba';
+      final expectedQrData =
+          'Código:PC001|Placa:ABC-123|Nombre:Portátil Prueba';
       expect(baseArticle.qrData, expectedQrData);
     });
 
@@ -51,16 +51,16 @@ void main() {
       // Una nueva instancia (diferente referencia de memoria) con los mismos datos clave
       final articleB = ArticleModel(
         id: 'PC001',
-        licensePlate: 'OTRA PLACA', 
-        name: 'OTRO NOMBRE', 
+        licensePlate: 'OTRA PLACA',
+        name: 'OTRO NOMBRE',
         responsible: 'OTRO RESPONSABLE',
         warehouse: 'BOG001',
       );
-      
+
       // Test de igualdad: deben ser iguales porque 'code' y 'costCenter' coinciden.
-      expect(articleA, articleB); 
+      expect(articleA, articleB);
       // Test de desigualdad: si el código es diferente, no deben ser iguales.
-      final articleC = articleA.copyWith(code: 'PC002');
+      final articleC = articleA.copyWith(id: 'PC002');
       expect(articleA, isNot(articleC));
 
       // Test de hashCode: si son iguales, sus hashCodes también deben ser iguales.

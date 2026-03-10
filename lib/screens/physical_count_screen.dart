@@ -43,9 +43,9 @@ class _PhysicalCountScreenState extends State<PhysicalCountScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop(); // Cierra el dialog
+              Navigator.of(context).pop(); 
               context.read<PhysicalCountProvider>().resetForm();
-              Navigator.of(context).pop(); // Vuelve al dashboard
+              Navigator.of(context).pop();
             },
             child: const Text('Aceptar'),
           )
@@ -74,7 +74,7 @@ class _PhysicalCountScreenState extends State<PhysicalCountScreen> {
       ),
       body: Consumer<PhysicalCountProvider>(
         builder: (context, provider, child) {
-          // Si hubo error, lo mostramos y limpiamos el estado
+
           if (provider.state == PhysicalCountState.ERROR &&
               provider.errorMessage != null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -83,11 +83,10 @@ class _PhysicalCountScreenState extends State<PhysicalCountScreen> {
             });
           }
 
-          // Si pasó a estado CREADA, mostramos mensaje de éxito
           if (provider.state == PhysicalCountState.CREADA) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
                _showSuccessDialog(context);
-               provider.clearError(); // Para no dispararlo de nuevo
+               provider.clearError();
             });
           }
 
@@ -114,7 +113,6 @@ class _PhysicalCountScreenState extends State<PhysicalCountScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Bodega
                     DropdownButtonFormField<WarehouseModel>(
                       decoration: const InputDecoration(labelText: 'Bodega'),
                       value: provider.selectedWarehouse,
@@ -149,7 +147,6 @@ class _PhysicalCountScreenState extends State<PhysicalCountScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Artículos
                     DropdownButtonFormField<ArticleModel>(
                       decoration: const InputDecoration(labelText: 'Artículos'),
                       value: provider.selectedArticle,
@@ -165,7 +162,6 @@ class _PhysicalCountScreenState extends State<PhysicalCountScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Verificar Existencia
                     SwitchListTile(
                       title: const Text('Verificar existencia física'),
                       subtitle: const Text('Solo tener en cuenta artículos físicamente en la bodega'),
@@ -174,7 +170,6 @@ class _PhysicalCountScreenState extends State<PhysicalCountScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Selección de Personas (Participantes)
                     const Text('Personas Participantes:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 8),
                     TextField(
@@ -223,7 +218,6 @@ class _PhysicalCountScreenState extends State<PhysicalCountScreen> {
                     
                     const SizedBox(height: 16),
 
-                    // Personas Seleccionadas
                     if (provider.selectedPersons.isNotEmpty) ...[
                       const Text('Seleccionados:', style: TextStyle(fontWeight: FontWeight.bold)),
                       Wrap(

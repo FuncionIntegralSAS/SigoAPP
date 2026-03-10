@@ -12,8 +12,10 @@ import 'package:sigo_app/main.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+    final messengerKey = GlobalKey<ScaffoldMessengerState>();
+
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(MyApp(messengerKey));
 
     // Verify that our counter starts at 0.
     expect(find.text('0'), findsOneWidget);

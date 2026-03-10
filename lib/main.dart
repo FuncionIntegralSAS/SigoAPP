@@ -9,11 +9,11 @@ import 'providers/transfer_approval_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:sigo_app/providers/asset_verification_provider.dart';
 
-// Nuevos imports para el módulo de Requisiciones
+// Imports para el módulo de Requisiciones
 import 'package:sigo_app/providers/requisition_approval_provider.dart';
 import 'package:sigo_app/services/mock_requisition_service.dart';
 
-// Nuevos imports para el módulo de Conteo Físico
+// Imports para el módulo de Conteo Físico
 import 'package:sigo_app/providers/physical_count_provider.dart';
 import 'package:sigo_app/services/physical_count_service.dart';
 
@@ -41,12 +41,12 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
-        // 🔔 Servicio de notificaciones (singleton)
+        // Servicio de notificaciones (singleton)
         Provider<NotificationService>.value(
           value: notificationService,
         ),
 
-        // 📦 Providers de dominio
+        // Providers de dominio
         ChangeNotifierProvider(
           create: (_) => TransferRequestProvider(
             transferRepository,
