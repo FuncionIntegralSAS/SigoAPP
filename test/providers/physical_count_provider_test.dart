@@ -27,7 +27,11 @@ class MockPhysicalCountService extends PhysicalCountService {
   }
 
   @override
-  Future<List<PersonModel>> searchPersons(String query) async {
+  Future<List<PersonModel>> searchPersons({
+    String? nombre,
+    String? apellido,
+    String? cedula,
+  }) async {
     return [PersonModel(nationalId: 1, fullName: 'Test user')];
   }
 

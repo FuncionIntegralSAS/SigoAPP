@@ -1,7 +1,7 @@
 # Documentación de Arquitectura de Software
 Proyecto: SigoAPP
-Versión: 1.8
-Fecha de actualización: Febrero 2026
+Versión: 1.9
+Fecha de actualización: Marzo 2026
 
 ## 1. Estructura de Directorios (Mapping)
 El proyecto organiza el código fuente bajo el directorio lib/, siguiendo principios de Clean Architecture para facilitar el mantenimiento y la inyección de dependencias hacia el backend (Spring Boot / Oracle).
@@ -28,6 +28,11 @@ Representa una solicitud administrativa de consumo o salida de inventario.
 * Llave Primaria: compositeId (generada a partir de empresa, tipo de documento, número, bodega y artículo).
 * Estados soportados: 'pe' (Pendiente), 'ap' (Aprobada), 'na' (Rechazada/No aprobada), 'pr' (Procesada).
 
+### 2.4 physical_count_model.dart y company_model.dart (Módulo de Conteo Físico)
+Modelos encargados de la recolección de datos para la generación de la apertura de un conteo físico de inventario.
+* `PhysicalCountRequest`: Capta empresa, bodega, fecha, artículos, bandera de verificación lógica/física y lista de participantes (solo IDs enviados en JSON para optimización).
+* `CompanyModel`: Entidad simple para listar empresas base.
+
 ## 3. Capa de Repositorios (lib/repositories/)
 ### 3.1 TransferRepository
 Contrato que define la creación, consulta y procesamiento de solicitudes de traspaso de activos.
@@ -47,6 +52,9 @@ Capa de conexión real hacia los endpoints desarrollados en Spring Boot.
 * Reglas de catálogos: Carga jerárquica obligatoria (Búsqueda de empleado por identificador -> Obtención de divisionId -> Consulta de bodegas autorizadas por división).
 * Lógica pesada: Delegada a procedimientos almacenados en Oracle (ej. PKGTRASPASO).
 
+### 4.3 physical_count_service.dart
+Simula la red para el módulo de Conteo Físico. Retorna listas maestras (empresas, bodegas, artículos, personal) con latencia y soporta la inyección simulada de errores HTTP (400, 409, 500) para comprobar el manejo robusto del Provider asociado.
+
 ## 5. Providers (lib/providers/)
 ### 5.1 TransferRequestProvider y TransferApprovalProvider
 Orquestadores de estado para la creación y aprobación de traslados físicos de activos.
@@ -60,6 +68,12 @@ Gestor de estado centralizado para el flujo de requisiciones administrativas.
 * Administra un mapa temporal de ítems seleccionados para procesamiento en lote.
 * Dispara el método processBatchSelection() hacia el repositorio.
 
+### 5.4 PhysicalCountProvider
+Orquestador de estado para el submódulo de Conteo Físico.
+* Administra las listas maestras de selectores (dropdowns) y búsquedas reactivas en texto.
+* Maneja los estados del submódulo de forma reaccionaria a eventos del usuario (`INITIAL`, `EN_PROCESO`, `CREADA`, `ERROR`).
+* Implementa las validaciones estrictas de campos de la UI antes de derivar responsabilidades al service.
+
 ## 6. Componentes de UI y Navegación
 ### 6.1 RequisitionsScreen y Tabs
 Pantalla principal de requisiciones construida sobre un TabController explícito. 
@@ -70,6 +84,12 @@ Pantalla principal de requisiciones construida sobre un TabController explícito
 Componente visual tipo tarjeta expandible para iterar sobre listas de requisiciones.
 * Utiliza las propiedades jerárquicas del modelo para limitar dinámicamente las cantidades que el usuario puede ingresar.
 * Maneja checkboxes condicionales e indicadores visuales de requerimientos.
+
+### 6.3 PhysicalCountScreen
+Pantalla que implementa el formulario principal para generar un conteo físico. 
+* Ofrece selectores con soporte de opción masiva "Todas/Todos".
+* Implementa lista interactiva y búsqueda por cédula/nombre para la asignación múltiple de contadores.
+* Despliega de forma limpia errores HTTP y modales de éxito informados por su Provider en tiempo real.
 
 ## 7. Flujo Funcional Integrado (Traspasos y Requisiciones)
 El sistema opera bajo una premisa de desacoplamiento de interfaz y negocio. La UI solo despacha intenciones al Provider, quien delega al Repositorio. El inventario real o los estados de requisición solo se alteran tras la respuesta exitosa del servidor.
@@ -96,3 +116,8 @@ A continuación, se evidencian las modificaciones arquitectónicas introducidas 
 6. Lógica de Catálogos: Inclusión de la regla de negocio de carga en cascada para la búsqueda de personal y filtrado de bodegas por divisionId.
 7. Adaptación de Scanner: Delegación de la lógica de partición de cadenas QR (placa y artículo) a la capa frontend antes del envío al backend.
 
+## 10. Control de Cambios e Histórico (v1.8 a v1.9)
+1. Integración del Módulo de Conteo Físico: Se crearon los modelos `PhysicalCountRequest` y `CompanyModel` para envío de datos estructurados hacia el backend, logrando optimizar el ancho de banda enviando únicamente el `nationalId` en forma de arreglo numérico.
+2. Gestión Reactiva de Estados con `PhysicalCountProvider`: Orquestación robusta de operaciones del UI y el servicio, integrando transiciones `INITIAL` -> `EN_PROCESO` -> `CREADA` / `ERROR`.
+3. Pantalla de Conteo Físico Avanzada (`PhysicalCountScreen`): Formulario dinámico con capacidades de búsqueda en tiempo real (por nombre y cédula para contadores), así como soporte para asignaciones holísticas (valores `"All"`).
+4. Manejo Expandido de Códigos HTTP Estrictos: Ampliación de las simulaciones y captación de arquitecturas de red con respuestas intencionales HTTP 400 (Bad Request), 409 (Conflict/Bodegas bloqueadas) y 500 (Internal Error).

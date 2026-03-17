@@ -107,17 +107,40 @@ class PhysicalCountProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> searchPersons(String query) async {
-    if (query.isEmpty) {
+  Future<void> searchPersons({
+    String? nombre,
+    String? apellido,
+    String? cedula,
+  }) async {
+    // Validar en el cliente antes de enviar al servicio para no desperdiciar recursos
+    final hasNombre = nombre != null && nombre.trim().isNotEmpty;
+    final hasApellido = apellido != null && apellido.trim().isNotEmpty;
+    final hasCedula = cedula != null && cedula.trim().isNotEmpty;
+
+    if (!hasNombre && !hasApellido && !hasCedula) {
       foundPersons = [];
-      notifyListeners();
+      _setError('Por favor llena al menos un campo de búsqueda (Nombre, Apellido o Cédula).');
       return;
     }
+
+    // Limpiar mensaje error de búsqueda al intentar buscar 
+    if (state == PhysicalCountState.ERROR) {
+      clearError();
+    }
+
     try {
-      foundPersons = await _service.searchPersons(query);
+      foundPersons = await _service.searchPersons(
+        nombre: nombre,
+        apellido: apellido,
+        cedula: cedula,
+      );
       notifyListeners();
     } catch (e) {
-      // Manejar error de forma silenciosa o mostrar mensaje
+      if (e is DioException && e.response?.statusCode == 400) {
+         _setError(e.response?.data['message'] ?? 'Falta parámetro de búsqueda.');
+      } else {
+         _setError('Error en la búsqueda de personal.');
+      }
     }
   }
 

@@ -50,7 +50,29 @@ class PhysicalCountService {
     ];
   }
 
-  Future<List<PersonModel>> searchPersons(String query) async {
+  Future<List<PersonModel>> searchPersons({
+    String? nombre,
+    String? apellido,
+    String? cedula,
+  }) async {
+    // Regla de Validación Importante
+    final hasNombre = nombre != null && nombre.trim().isNotEmpty;
+    final hasApellido = apellido != null && apellido.trim().isNotEmpty;
+    final hasCedula = cedula != null && cedula.trim().isNotEmpty;
+
+    if (!hasNombre && !hasApellido && !hasCedula) {
+      // Simulando rechazo del servidor 400 Bad Request
+      throw DioException(
+        requestOptions: RequestOptions(path: '/api/v1/personal/buscar'),
+        response: Response(
+          statusCode: 400,
+          requestOptions: RequestOptions(path: '/api/v1/personal/buscar'),
+          data: {'message': 'Debe enviarse al menos uno de los tres parámetros (nombre, apellido o cedula).'},
+        ),
+        type: DioExceptionType.badResponse,
+      );
+    }
+
     await Future.delayed(const Duration(milliseconds: 800));
     final allPersons = [
       PersonModel(nationalId: 101, fullName: 'Juan Perez', isActive: true),
@@ -59,11 +81,27 @@ class PhysicalCountService {
       PersonModel(nationalId: 104, fullName: 'Ana Gomez', isActive: true),
     ];
 
-    if (query.isEmpty) return allPersons;
-
     return allPersons.where((p) {
-      final q = query.toLowerCase();
-      return p.fullName.toLowerCase().contains(q) || p.nationalId.toString().contains(q);
+      bool matchesNombre = true;
+      bool matchesApellido = true;
+      bool matchesCedula = true;
+
+      // Simulando un query por nombre: verifica si el nombre existe en la bd (en este caso el fullName)
+      if (hasNombre) {
+        matchesNombre = p.fullName.toLowerCase().contains(nombre.trim().toLowerCase());
+      }
+      
+      if (hasApellido) {
+        matchesApellido = p.fullName.toLowerCase().contains(apellido.trim().toLowerCase());
+      }
+
+      if (hasCedula) {
+        matchesCedula = p.nationalId.toString().contains(cedula.trim());
+      }
+
+      // El comportamiento exacto del backend dependerá si es un AND o un OR.
+      // Se asume un filtro acumulativo (AND) para mayor completitud en la simulación.
+      return matchesNombre && matchesApellido && matchesCedula;
     }).toList();
   }
 
