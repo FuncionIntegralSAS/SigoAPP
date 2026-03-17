@@ -1,0 +1,37 @@
+# Documento Funcional: Módulo de Conteo Físico de Inventario
+
+## 1. Propósito del Módulo
+El Módulo de Conteo Físico permite a las empresas gestionar la auditoría periódica de sus activos y artículos. Facilita la planeación, selección del equipo auditor y el bloqueo lógico de la bodega para garantizar la integridad de las existencias mientras se ejecuta una revisión física real versus el sistema.
+
+---
+
+## 2. Historias de Usuario Principales
+
+### 2.1 Fase 1: Apertura de Conteo (Desarrollo Avanzado UI)
+**Rol:** Administrador o Jefe de Inventario.
+**Descripción:** Como líder de inventarios, quiero programar la apertura de un conteo físico para una bodega designada, indicando qué artículos se contarán y escogiendo las personas que apoyarán el conteo físico, para luego ordenar al sistema el bloqueo temporal de la bodega o artículos.
+
+**Criterios de Aceptación Desarrollados (App Frontend):**
+- Selección dependiente en cascada de la Empresa hacia la Bodega y finalmente los Artículos.
+- Soporte para incluir subconjuntos holísticos masivos (Opción: "Todos/Todas" enviando constante `"All"`).
+- Selección de la Fecha esperada de la labor.
+- Bandera de control para priorizar verificación estricta de existencias de sistema o contar desde 0.
+- Búsqueda Avanzada de personal por coincidencias de Nombre, Apellido y/o Cédula a nivel servidor.
+- Selección múltiple de estos responsables desde una lista interactiva de fácil borrado.
+- Informes claros al usuario en pantalla de errores 409 (Conflicto / Bodega Bloqueada) que garantizan que no haya cruce de conteos, y alertas de éxito de Creación.
+
+### 2.2 Fase 2: Escaneo y Conteo de Activos (Por Definir)
+*(Pantalla donde las personas asignadas puedan leer el código QR de los activos de la bodega).*
+
+### 2.3 Fase 3: Conciliación y Cierre (Por Definir)
+*(Cierre lógico del proceso y generación de diferencias de inventario para ajuste automático o manual en Sistema).*
+
+---
+
+## ❓ Preguntas de Negocio (Para Stakeholders o Product Owner)
+A nivel de desarrollo de producto, para evitar re-procesos o que la solución final no coincida con el proceso físico real, requerimos aclaraciones funcionales:
+
+1. **Flujo de Asignados:** Una vez realizado y aceptado el paso de "Apertura", de qué forma sabrán las "Personas Asignadas/Participantes" qué deben buscar? ¿Verán una bandeja de entrada nueva en su SigoAPP cuando inicien sesión, con una opción de "Realizar Conteo"?
+2. **Uso de Scanners:** A la hora de realizar el conteo en sí como Fase 2, ¿El personal lo hará a mano apuntando cifras de manera abierta, o vamos a usar la cámara del dispositivo móvil para escanear los QR de los artículos uno a uno como en el módulo de Traspasos?
+3. **Rol de Aprobador:** ¿Las diferencias/sobrantes/faltantes que arroje el sistema al finalizar el conteo se enviarán directo a base de datos, o requerimos una "Aprobación de Ajuste de Sistema" realizada por el jefe antes de aplicarlas?
+4. **Desbloqueo de Bodega:** ¿El desbloqueo lógico es automático apenas se cierra el conteo desde la base de datos o desde Oracle lo manejan a través de otro proceso administrativo existente?

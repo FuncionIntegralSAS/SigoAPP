@@ -67,7 +67,10 @@ class PhysicalCountService {
         response: Response(
           statusCode: 400,
           requestOptions: RequestOptions(path: '/api/v1/personal/buscar'),
-          data: {'message': 'Debe enviarse al menos uno de los tres parámetros (nombre, apellido o cedula).'},
+          data: {
+            'message':
+                'Debe enviarse al menos uno de los tres parámetros (nombre, apellido o cedula).',
+          },
         ),
         type: DioExceptionType.badResponse,
       );
@@ -88,19 +91,21 @@ class PhysicalCountService {
 
       // Simulando un query por nombre: verifica si el nombre existe en la bd (en este caso el fullName)
       if (hasNombre) {
-        matchesNombre = p.fullName.toLowerCase().contains(nombre.trim().toLowerCase());
+        matchesNombre = p.fullName.toLowerCase().contains(
+          nombre.trim().toLowerCase(),
+        );
       }
-      
+
       if (hasApellido) {
-        matchesApellido = p.fullName.toLowerCase().contains(apellido.trim().toLowerCase());
+        matchesApellido = p.fullName.toLowerCase().contains(
+          apellido.trim().toLowerCase(),
+        );
       }
 
       if (hasCedula) {
         matchesCedula = p.nationalId.toString().contains(cedula.trim());
       }
 
-      // El comportamiento exacto del backend dependerá si es un AND o un OR.
-      // Se asume un filtro acumulativo (AND) para mayor completitud en la simulación.
       return matchesNombre && matchesApellido && matchesCedula;
     }).toList();
   }
@@ -115,7 +120,7 @@ class PhysicalCountService {
     //   response: Response(statusCode: 409, requestOptions: RequestOptions(path: '')),
     //   type: DioExceptionType.badResponse,
     // );
-    
+
     // Acá iría la lógica real usando tu cliente de red.
     // final response = await networkClient.post('/api/physical-count', data: request.toJson());
     // if (response.statusCode != 200) { throw Exception(...); }

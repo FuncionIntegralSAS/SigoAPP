@@ -27,15 +27,12 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
   ];
 
   Future<void> _openScanner() async {
-    final result =
-        await showModalBottomSheet<Map<String, dynamic>>(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       builder: (_) => SizedBox(
         height: MediaQuery.of(context).size.height * 0.9,
-        child: ScannerScreen(
-          expectedResponsible: selectedResponsible,
-        ),
+        child: ScannerScreen(expectedResponsible: selectedResponsible),
       ),
     );
 
@@ -84,24 +81,17 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
             const SizedBox(height: 8),
 
             DropdownButtonFormField<String>(
-              value: selectedResponsible,
+              initialValue: selectedResponsible,
               hint: const Text('Seleccione un responsable'),
               items: responsibles
-                  .map(
-                    (r) => DropdownMenuItem(
-                      value: r,
-                      child: Text(r),
-                    ),
-                  )
+                  .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                   .toList(),
               onChanged: (value) {
                 setState(() {
                   selectedResponsible = value;
                 });
               },
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(border: OutlineInputBorder()),
             ),
 
             const SizedBox(height: 24),
