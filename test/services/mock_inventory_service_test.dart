@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/article_model.dart';
 import 'package:sigo_app/services/mock_inventory_service.dart';
 
 void main() {

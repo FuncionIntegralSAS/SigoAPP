@@ -1,32 +1,30 @@
 import 'package:equatable/equatable.dart';
 
-import 'person_model.dart'; // Asegúrate de que este archivo existe y se importa correctamente
-
 class PhysicalCountRequest extends Equatable {
   final String companyId;
   final String warehouseId; // Puede ser 'All' o ID específico
+  final String? logicalWarehouseId;
   final DateTime date;
   final String articleId; // Puede ser 'All' o ID específico
   final bool verifyExistence;
-  final List<PersonModel> participants;
 
   const PhysicalCountRequest({
     required this.companyId,
     required this.warehouseId,
+    this.logicalWarehouseId,
     required this.date,
     required this.articleId,
     required this.verifyExistence,
-    required this.participants,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'companyId': companyId,
-      'warehouseId': warehouseId,
-      'date': date.toIso8601String(),
-      'articleId': articleId,
-      'verifyExistence': verifyExistence,
-      'participantsIds': participants.map((p) => p.nationalId).toList(), 
+      'empresa': companyId,
+      'bodega': warehouseId == 'All' ? '%' : warehouseId,
+      if (logicalWarehouseId != null) 'bodegaLogica': logicalWarehouseId,
+      'articulo': articleId == 'All' ? '%' : articleId,
+      'fecha': date.toIso8601String().split('.')[0], // Formato: YYYY-MM-DDTHH:mm:ss
+      'verificarExistencia': verifyExistence ? 'S' : 'N',
     };
   }
 
@@ -34,9 +32,9 @@ class PhysicalCountRequest extends Equatable {
   List<Object?> get props => [
     companyId,
     warehouseId,
+    logicalWarehouseId,
     date,
     articleId,
     verifyExistence,
-    participants,
   ];
 }

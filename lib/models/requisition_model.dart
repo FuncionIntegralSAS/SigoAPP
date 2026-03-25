@@ -3,7 +3,7 @@ class RequisitionModel {
   final String articulo;
   final String solicita;
   final int cantidadSolicitada;
-  final int cantidadAprobada; 
+  final int cantidadAprobada;
   final int cantidadEntregada;
   final String estado;
   final String empresa;
@@ -50,6 +50,6 @@ class RequisitionModel {
     );
   }
 
-  String get compositeId => '${empresa}_${tipoDocumento}_${numero}_${bodega}_${articulo}';
-
+  String get compositeId =>
+      '${empresa}_${tipoDocumento}_${numero}_${bodega}_$articulo';
 }

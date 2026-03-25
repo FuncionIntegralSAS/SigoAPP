@@ -5,9 +5,12 @@ import 'package:sigo_app/models/company_model.dart';
 import 'package:sigo_app/models/warehouse_model.dart';
 import 'package:sigo_app/models/article_model.dart';
 import 'package:sigo_app/models/person_model.dart';
+import 'package:dio/dio.dart';
 
 // Mock service para poder probar el provider de forma aislada
 class MockPhysicalCountService extends PhysicalCountService {
+  MockPhysicalCountService() : super(Dio());
+
   bool simulateError = false;
 
   @override
@@ -54,13 +57,13 @@ void main() {
     test('Initial state should be EN_PROCESO or INITIAL after load', () async {
       // Al ser async, inicializa y luego pasa a INITIAL cuando termina el constructor
       await Future.delayed(const Duration(milliseconds: 100)); // Esperar carga
-      expect(provider.state, PhysicalCountState.INITIAL);
+      expect(provider.state, PhysicalCountState.initial);
       expect(provider.companies.isNotEmpty, true);
     });
 
     test('Validating empty form should set error state', () async {
       await provider.submitPhysicalCount();
-      expect(provider.state, PhysicalCountState.ERROR);
+      expect(provider.state, PhysicalCountState.error);
       expect(provider.errorMessage, 'Debe seleccionar una Empresa.');
     });
 
@@ -79,7 +82,7 @@ void main() {
       
       await provider.submitPhysicalCount();
 
-      expect(provider.state, PhysicalCountState.CREADA);
+      expect(provider.state, PhysicalCountState.creada);
       expect(provider.errorMessage, isNull);
     });
   });

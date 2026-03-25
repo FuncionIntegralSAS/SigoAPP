@@ -6,24 +6,22 @@ import 'package:sigo_app/models/physical_count_model.dart';
 import 'package:dio/dio.dart'; // Asegúrate de omitir si tu proyecto usa http en vez de dio. Si es necesario quita la dependencia.
 
 class PhysicalCountService {
-  // Simula un cliente HTTP o base de datos.
-  // Podrías inyectar 'NetworkClient' aquí si existe.
+  final Dio _dio;
+  
+  PhysicalCountService(this._dio);
 
   Future<List<CompanyModel>> getCompanies() async {
-    await Future.delayed(const Duration(seconds: 1));
-    return [
-      const CompanyModel(id: 'C1', name: 'Empresa Principal S.A.'),
-      const CompanyModel(id: 'C2', name: 'Sucursal Norte Ltda.'),
-    ];
+    final response = await _dio.get('/api/v1/empresas/getAll');
+    final List<dynamic> data = response.data;
+    return data.map((json) => CompanyModel.fromJson(json)).toList();
   }
 
   Future<List<WarehouseModel>> getWarehouses(String companyId) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return [
-      const WarehouseModel(id: 'All', name: 'Todas'),
-      const WarehouseModel(id: 'W1', name: 'Bodega Central'),
-      const WarehouseModel(id: 'W2', name: 'Bodega Secundaria'),
-    ];
+    final response = await _dio.get('/api/v1/bodegas/empresa/$companyId');
+    final List<dynamic> data = response.data;
+    // Si se requiere incluir "Todas", debería agregarse a la lista mapeada aquí o controlarlo en el provider.
+    // Dejaremos que parseé las reales del backend.
+    return data.map((json) => WarehouseModel.fromJson(json)).toList();
   }
 
   Future<List<ArticleModel>> getArticles(String warehouseId) async {
@@ -61,7 +59,7 @@ class PhysicalCountService {
     final hasCedula = cedula != null && cedula.trim().isNotEmpty;
 
     if (!hasNombre && !hasApellido && !hasCedula) {
-      // Simulando rechazo del servidor 400 Bad Request
+      // Rechazo del servidor 400 Bad Request
       throw DioException(
         requestOptions: RequestOptions(path: '/api/v1/personal/buscar'),
         response: Response(
@@ -76,55 +74,18 @@ class PhysicalCountService {
       );
     }
 
-    await Future.delayed(const Duration(milliseconds: 800));
-    final allPersons = [
-      PersonModel(nationalId: 101, fullName: 'Juan Perez', isActive: true),
-      PersonModel(nationalId: 102, fullName: 'Maria Rodriguez', isActive: true),
-      PersonModel(nationalId: 103, fullName: 'Carlos Sanchez', isActive: true),
-      PersonModel(nationalId: 104, fullName: 'Ana Gomez', isActive: true),
-    ];
+    final queryParams = <String, dynamic>{};
+    if (hasNombre) queryParams['nombre'] = nombre.trim();
+    if (hasApellido) queryParams['apellido'] = apellido.trim();
+    if (hasCedula) queryParams['cedula'] = cedula.trim();
 
-    return allPersons.where((p) {
-      bool matchesNombre = true;
-      bool matchesApellido = true;
-      bool matchesCedula = true;
-
-      // Simulando un query por nombre: verifica si el nombre existe en la bd (en este caso el fullName)
-      if (hasNombre) {
-        matchesNombre = p.fullName.toLowerCase().contains(
-          nombre.trim().toLowerCase(),
-        );
-      }
-
-      if (hasApellido) {
-        matchesApellido = p.fullName.toLowerCase().contains(
-          apellido.trim().toLowerCase(),
-        );
-      }
-
-      if (hasCedula) {
-        matchesCedula = p.nationalId.toString().contains(cedula.trim());
-      }
-
-      return matchesNombre && matchesApellido && matchesCedula;
-    }).toList();
+    final response = await _dio.get('/api/v1/personal/buscar', queryParameters: queryParams);
+    
+    final List<dynamic> data = response.data;
+    return data.map((json) => PersonModel.fromJson(json)).toList();
   }
 
   Future<void> createPhysicalCount(PhysicalCountRequest request) async {
-    // Simular latencia de red
-    await Future.delayed(const Duration(seconds: 2));
-
-    // Descomentar para simular errores:
-    // throw DioException(
-    //   requestOptions: RequestOptions(path: '/api/physical-count'),
-    //   response: Response(statusCode: 409, requestOptions: RequestOptions(path: '')),
-    //   type: DioExceptionType.badResponse,
-    // );
-
-    // Acá iría la lógica real usando tu cliente de red.
-    // final response = await networkClient.post('/api/physical-count', data: request.toJson());
-    // if (response.statusCode != 200) { throw Exception(...); }
-
-    return; // Si no hay error, retorna exitosamente.
+    await _dio.post('/api/v1/conteo-fisico/registrar', data: request.toJson());
   }
 }

@@ -1,4 +1,3 @@
-import '../models/person_model.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -11,23 +10,6 @@ class NetworkClient {
   NetworkClient._internal();
 
   // Simulación de la base de datos de Personas
-  static final List<PersonModel> _mockPeople = [
-    PersonModel(
-      nationalId: 1018420001,
-      fullName: 'Andrés Felipe Restrepo',
-      accountExists: true,
-      isActive: true,
-      creationDate: DateTime.now().subtract(const Duration(days: 30)),
-      createdByUserId: 'admin_user_001',
-    ),
-    PersonModel(
-      nationalId: 1018420002,
-      fullName: 'Carolina Díaz Martínez',
-      accountExists: false,
-      isActive: true,
-    ),
-  ];
-
   final List<Map<String, dynamic>> _mockDatabase = [
     {
       'id': '1',
@@ -64,9 +46,7 @@ class NetworkClient {
     _simulateRandomError();
 
     try {
-      return _mockDatabase.firstWhere(
-        (p) => p['nationalId'] == nationalId,
-      );
+      return _mockDatabase.firstWhere((p) => p['nationalId'] == nationalId);
     } catch (e) {
       return null;
     }
@@ -78,15 +58,15 @@ class NetworkClient {
     required String creatorId,
   }) async {
     await _simulateNetworkDelay();
-    
+
     // Buscar en la "DB" y actualizar
     int index = _mockDatabase.indexWhere((p) => p['nationalId'] == nationalId);
-    
+
     if (index != -1) {
       _mockDatabase[index]['accountExists'] = true;
       _mockDatabase[index]['creationDate'] = DateTime.now().toIso8601String();
       _mockDatabase[index]['createdByUserId'] = creatorId;
-      
+
       return _mockDatabase[index];
     } else {
       throw Exception("No se pudo encontrar la persona para crear la cuenta.");
@@ -108,18 +88,18 @@ class NetworkClient {
 
   /// **NUEVO MÉTODO: Simulación de POST para crear un Activo en Inventario**
   /// Recibe un mapa de datos y devuelve el objeto creado con un ID generado por el "servidor".
-  Future<Map<String, dynamic>> postCreateArticle(Map<String, dynamic> articleData) async {
+  Future<Map<String, dynamic>> postCreateArticle(
+    Map<String, dynamic> articleData,
+  ) async {
     // Simula latencia de red al procesar el guardado
     await Future.delayed(const Duration(milliseconds: 1200));
-    
+
     // Simulación de generación de ID único en el servidor
-    final String newId = 'A${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
-    
+    final String newId =
+        'A${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+
     // El servidor retorna el objeto completo con su nuevo ID
-    final Map<String, dynamic> response = {
-      ...articleData,
-      'id': newId,
-    };
+    final Map<String, dynamic> response = {...articleData, 'id': newId};
 
     return response;
   }

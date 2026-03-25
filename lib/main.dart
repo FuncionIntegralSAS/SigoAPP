@@ -16,6 +16,7 @@ import 'package:sigo_app/services/mock_requisition_service.dart';
 // Imports para el módulo de Conteo Físico
 import 'package:sigo_app/providers/physical_count_provider.dart';
 import 'package:sigo_app/services/physical_count_service.dart';
+import 'package:dio/dio.dart';
 
 // Services
 import 'services/mock_inventory_service.dart';
@@ -32,8 +33,9 @@ void main() {
   // Instanciamos el servicio mock de requisiciones
   final requisitionService = MockRequisitionService();
 
-  // Instanciamos el servicio de Conteo Físico
-  final physicalCountService = PhysicalCountService();
+  // Instanciamos el servicio de Conteo Físico con Dio
+  final backendDio = Dio();
+  final physicalCountService = PhysicalCountService(backendDio);
 
   final messengerKey = GlobalKey<ScaffoldMessengerState>();
   final notificationService = InAppNotificationService(messengerKey);

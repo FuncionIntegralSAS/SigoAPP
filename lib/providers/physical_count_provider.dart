@@ -5,14 +5,14 @@ import 'package:sigo_app/models/article_model.dart';
 import 'package:sigo_app/models/person_model.dart';
 import 'package:sigo_app/models/physical_count_model.dart';
 import 'package:sigo_app/services/physical_count_service.dart';
-import 'package:dio/dio.dart'; 
+import 'package:dio/dio.dart';
 
-enum PhysicalCountState { INITIAL, EN_PROCESO, CREADA, ERROR }
+enum PhysicalCountState { initial, enProceso, creada, error }
 
 class PhysicalCountProvider extends ChangeNotifier {
   final PhysicalCountService _service;
 
-  PhysicalCountState _state = PhysicalCountState.INITIAL;
+  PhysicalCountState _state = PhysicalCountState.initial;
   PhysicalCountState get state => _state;
 
   String? _errorMessage;
@@ -39,10 +39,10 @@ class PhysicalCountProvider extends ChangeNotifier {
   }
 
   Future<void> _loadInitialData() async {
-    _setState(PhysicalCountState.EN_PROCESO);
+    _setState(PhysicalCountState.enProceso);
     try {
       companies = await _service.getCompanies();
-      _setState(PhysicalCountState.INITIAL);
+      _setState(PhysicalCountState.initial);
     } catch (e) {
       _setError('Error al cargar datos iniciales. $e');
     }
@@ -62,10 +62,10 @@ class PhysicalCountProvider extends ChangeNotifier {
   }
 
   Future<void> _loadWarehouses(String companyId) async {
-    _setState(PhysicalCountState.EN_PROCESO);
+    _setState(PhysicalCountState.enProceso);
     try {
       warehouses = await _service.getWarehouses(companyId);
-      _setState(PhysicalCountState.INITIAL);
+      _setState(PhysicalCountState.initial);
     } catch (e) {
       _setError('Error al cargar bodegas.');
     }
@@ -83,10 +83,10 @@ class PhysicalCountProvider extends ChangeNotifier {
   }
 
   Future<void> _loadArticles(String warehouseId) async {
-    _setState(PhysicalCountState.EN_PROCESO);
+    _setState(PhysicalCountState.enProceso);
     try {
       articles = await _service.getArticles(warehouseId);
-      _setState(PhysicalCountState.INITIAL);
+      _setState(PhysicalCountState.initial);
     } catch (e) {
       _setError('Error al cargar artículos.');
     }
@@ -119,12 +119,14 @@ class PhysicalCountProvider extends ChangeNotifier {
 
     if (!hasNombre && !hasApellido && !hasCedula) {
       foundPersons = [];
-      _setError('Por favor llena al menos un campo de búsqueda (Nombre, Apellido o Cédula).');
+      _setError(
+        'Por favor llena al menos un campo de búsqueda (Nombre, Apellido o Cédula).',
+      );
       return;
     }
 
-    // Limpiar mensaje error de búsqueda al intentar buscar 
-    if (state == PhysicalCountState.ERROR) {
+    // Limpiar mensaje error de búsqueda al intentar buscar
+    if (state == PhysicalCountState.error) {
       clearError();
     }
 
@@ -137,15 +139,19 @@ class PhysicalCountProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 400) {
-         _setError(e.response?.data['message'] ?? 'Falta parámetro de búsqueda.');
+        _setError(
+          e.response?.data['message'] ?? 'Falta parámetro de búsqueda.',
+        );
       } else {
-         _setError('Error en la búsqueda de personal.');
+        _setError('Error en la búsqueda de personal.');
       }
     }
   }
 
   void togglePersonSelection(PersonModel person) {
-    final index = selectedPersons.indexWhere((p) => p.nationalId == person.nationalId);
+    final index = selectedPersons.indexWhere(
+      (p) => p.nationalId == person.nationalId,
+    );
     if (index >= 0) {
       selectedPersons.removeAt(index);
     } else {
@@ -163,7 +169,7 @@ class PhysicalCountProvider extends ChangeNotifier {
   Future<void> submitPhysicalCount() async {
     if (!_validateFields()) return;
 
-    _setState(PhysicalCountState.EN_PROCESO);
+    _setState(PhysicalCountState.enProceso);
 
     final request = PhysicalCountRequest(
       companyId: selectedCompany!.id,
@@ -171,19 +177,20 @@ class PhysicalCountProvider extends ChangeNotifier {
       date: selectedDate,
       articleId: selectedArticle!.id,
       verifyExistence: verifyExistence,
-      participants: selectedPersons,
     );
 
     try {
       await _service.createPhysicalCount(request);
-      _setState(PhysicalCountState.CREADA);
+      _setState(PhysicalCountState.creada);
     } catch (e) {
       String msg = 'Un error inesperado ha ocurrido.';
       if (e is DioException) {
         if (e.response?.statusCode == 400) {
-          msg = 'Solicitud incorrecta (Error 400). Verifique los datos enviados.';
+          msg =
+              'Solicitud incorrecta (Error 400). Verifique los datos enviados.';
         } else if (e.response?.statusCode == 409) {
-          msg = 'Conflicto (Error 409). Es posible que la bodega ya esté bloqueada.';
+          msg =
+              'Conflicto (Error 409). Es posible que la bodega ya esté bloqueada.';
         } else if (e.response?.statusCode == 500) {
           msg = 'Error del servidor (Error 500). Inténtalo más tarde.';
         } else {
@@ -207,16 +214,13 @@ class PhysicalCountProvider extends ChangeNotifier {
       _setError('Debe seleccionar un Artículo o la opción "Todos".');
       return false;
     }
-    if (selectedPersons.isEmpty) {
-      _setError('Debe seleccionar al menos un participante.');
-      return false;
-    }
+    // Personas participantes no son obligatorias en esta fase ya que se extraerán a otra vista.
     return true;
   }
 
   void _setState(PhysicalCountState newState) {
     _state = newState;
-    if (newState != PhysicalCountState.ERROR) {
+    if (newState != PhysicalCountState.error) {
       _errorMessage = null; // Limpiar errores pasados al cambiar estado
     }
     notifyListeners();
@@ -224,13 +228,13 @@ class PhysicalCountProvider extends ChangeNotifier {
 
   void _setError(String message) {
     _errorMessage = message;
-    _state = PhysicalCountState.ERROR;
+    _state = PhysicalCountState.error;
     notifyListeners();
   }
 
   void clearError() {
     _errorMessage = null;
-    _state = PhysicalCountState.INITIAL;
+    _state = PhysicalCountState.initial;
     notifyListeners();
   }
 
@@ -241,6 +245,6 @@ class PhysicalCountProvider extends ChangeNotifier {
     selectedPersons.clear();
     verifyExistence = false;
     selectedDate = DateTime.now();
-    _setState(PhysicalCountState.INITIAL);
+    _setState(PhysicalCountState.initial);
   }
 }
