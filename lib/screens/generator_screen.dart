@@ -15,24 +15,24 @@ class GeneratorScreen extends StatefulWidget {
 
 class _GeneratorScreenState extends State<GeneratorScreen> {
   // Instancia única del servicio
-  final MockInventoryService _service = MockInventoryService(); 
+  final MockInventoryService _service = MockInventoryService();
 
   // --- Estado de la Pantalla ---
   List<WarehouseModel> _warehouses = [];
   WarehouseModel? _selectedWarehouse; // Bodega seleccionada (Filtro 1)
-  
+
   List<ArticleModel> _articles = [];
   ArticleModel? _selectedArticle; // Artículo seleccionado (Filtro 2)
 
   String _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
   bool _isGenerating = false;
   String _message = 'Seleccione el activo y presione "Generar QR".';
-  
+
   final Color primaryColor = Colors.orange.shade700;
 
   @override
   void initState() {
-    super.initState();  
+    super.initState();
     _loadInitialData();
   }
 
@@ -42,7 +42,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     if (_warehouses.isNotEmpty) {
       // Inicializar con la primera bodega y cargar sus artículos
       _selectedWarehouse = _warehouses.first;
-      _loadArticles(_selectedWarehouse!.id);
+      _loadArticles(_selectedWarehouse!.bodeCodi);
     }
   }
 
@@ -50,7 +50,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   void _loadArticles(String costCenterId) {
     setState(() {
       // USANDO EL MÉTODO CORREGIDO del servicio
-      _articles = _service.getArticlesByWarehouseId(costCenterId); 
+      _articles = _service.getArticlesByWarehouseId(costCenterId);
       _selectedArticle = null; // Reiniciar selección del artículo
       _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
     });
@@ -58,24 +58,23 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
 
   // FUNCIÓN: obtención de la geolocalización.
   Future<Map<String, double>> _getLocation() async {
-    
     // Verificar si el servicio de ubicación está habilitado:
-       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-       if (!serviceEnabled) { 
-          // Mostrar error al usuario
-          throw Exception('Servicio de ubicación deshabilitado.');
-       }
-      
-      // Solicitar y verificar permisos de ubicación:
-       LocationPermission permission = await Geolocator.checkPermission();
-       if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-          if (permission == LocationPermission.denied || 
-              permission == LocationPermission.deniedForever) {
-              // Mostrar error si el permiso es denegado
-              throw Exception('Permisos de ubicación denegados.');
-          }
-       }
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Mostrar error al usuario
+      throw Exception('Servicio de ubicación deshabilitado.');
+    }
+
+    // Solicitar y verificar permisos de ubicación:
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        // Mostrar error si el permiso es denegado
+        throw Exception('Permisos de ubicación denegados.');
+      }
+    }
 
     setState(() {
       _isGenerating = true;
@@ -83,10 +82,10 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     });
 
     final Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high, // Nivel de precisión solicitado
-          timeLimit: Duration(seconds: 10), // Tiempo máximo para la lectura
-        )
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high, // Nivel de precisión solicitado
+        timeLimit: Duration(seconds: 10), // Tiempo máximo para la lectura
+      ),
     );
 
     setState(() {
@@ -94,12 +93,14 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     });
     return {'latitude': position.latitude, 'longitude': position.longitude};
   }
-  
+
   // Función que se ejecuta SOLO al presionar el botón de generación.
   void _generateQr() async {
     if (_selectedArticle == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debe seleccionar un activo para generar el QR.')),
+        const SnackBar(
+          content: Text('Debe seleccionar un activo para generar el QR.'),
+        ),
       );
       return;
     }
@@ -115,34 +116,36 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         latitude: lat,
         longitude: lon,
       );
-      
+
       // 3. Reemplazamos la instancia en el estado y en la lista mock
       _service.updateArticle(updatedArticle);
-      
+
       setState(() {
         // Aseguramos que el selectedArticle se actualice
-        _selectedArticle = updatedArticle; 
-        
+        _selectedArticle = updatedArticle;
+
         // 4. Asignamos el dato del QR (que ahora incluye la ubicación)
-        _dataToEncodeForQR = _selectedArticle!.qrData; 
+        _dataToEncodeForQR = _selectedArticle!.qrData;
         _message = '✅ Ubicación obtenida y registrada en el activo.';
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('QR generado con ubicación para ${_selectedArticle!.name}')),
+        SnackBar(
+          content: Text(
+            'QR generado con ubicación para ${_selectedArticle!.name}',
+          ),
+        ),
       );
-
     } catch (e) {
       setState(() {
         _isGenerating = false;
         _message = 'Error de Ubicación: $e';
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al obtener ubicación: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al obtener ubicación: $e')));
     }
   }
-
 
   // --- Estructura Visual (build) ---
   @override
@@ -151,7 +154,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       appBar: AppBar(
         title: const Text('Generador de Código QR de Activo'),
         backgroundColor: primaryColor,
-        automaticallyImplyLeading: false, 
+        automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -171,9 +174,14 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             const SizedBox(height: 20),
 
             // 4. Mensaje de Estado
-            Text(_message, 
-              textAlign: TextAlign.center, 
-              style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey.shade600)),
+            Text(
+              _message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: Colors.grey.shade600,
+              ),
+            ),
             const SizedBox(height: 30),
 
             // 5. Contenedor del QR
@@ -195,15 +203,15 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       value: _selectedWarehouse,
       items: _warehouses.map((warehouse) {
         return DropdownMenuItem<WarehouseModel>(
-          value: warehouse, 
-          child: Text('${warehouse.name} (${warehouse.id})'),
+          value: warehouse,
+          child: Text('${warehouse.bodeDesc} (${warehouse.bodeCodi})'),
         );
       }).toList(),
       onChanged: (WarehouseModel? newValue) {
         if (newValue != null) {
           setState(() {
             _selectedWarehouse = newValue;
-            _loadArticles(newValue.id); // Recargar artículos
+            _loadArticles(newValue.bodeCodi); // Recargar artículos
           });
         }
       },
@@ -222,17 +230,20 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       items: _articles.map((article) {
         // Usamos la igualdad sobrecargada (==) para que Dart pueda determinar la selección
         return DropdownMenuItem<ArticleModel>(
-          value: article, 
+          value: article,
           child: Text('${article.name} (${article.licensePlate})'),
         );
       }).toList(),
-      onChanged: _articles.isEmpty ? null : (ArticleModel? newValue) {
-        setState(() {
-          _selectedArticle = newValue;
-          // Si se selecciona un artículo, mostramos sus datos QR actuales
-          _dataToEncodeForQR = newValue?.qrData ?? 'Seleccione un Activo para Generar QR';
-        });
-      },
+      onChanged: _articles.isEmpty
+          ? null
+          : (ArticleModel? newValue) {
+              setState(() {
+                _selectedArticle = newValue;
+                // Si se selecciona un artículo, mostramos sus datos QR actuales
+                _dataToEncodeForQR =
+                    newValue?.qrData ?? 'Seleccione un Activo para Generar QR';
+              });
+            },
     );
   }
 
@@ -240,10 +251,20 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   Widget _buildGenerateButton() {
     return ElevatedButton.icon(
       onPressed: _isGenerating || _selectedArticle == null ? null : _generateQr,
-      icon: _isGenerating 
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-          : const SizedBox.shrink(), 
-      label: Text(_isGenerating ? 'Generando QR...' : '3. Generar QR', style: const TextStyle(color: Colors.white)),
+      icon: _isGenerating
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
+          : const SizedBox.shrink(),
+      label: Text(
+        _isGenerating ? 'Generando QR...' : '3. Generar QR',
+        style: const TextStyle(color: Colors.white),
+      ),
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -282,19 +303,33 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
               size: 250.0,
               backgroundColor: Colors.white,
               // Color de los módulos (los cuadraditos)
-              eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black), 
-              dataModuleStyle: QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
+              eyeStyle: QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Colors.black,
+              ),
+              dataModuleStyle: QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Colors.black,
+              ),
             ),
             const SizedBox(height: 10),
             Text(
-              isPlaceholder ? 'Contenido del QR: (Esperando Activo)' : 'Contenido del QR:',
-              style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
+              isPlaceholder
+                  ? 'Contenido del QR: (Esperando Activo)'
+                  : 'Contenido del QR:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+              ),
             ),
             // Muestra los datos codificados
             SelectableText(
               _dataToEncodeForQR,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: isPlaceholder ? 14 : 12, color: isPlaceholder ? Colors.grey : Colors.black87),
+              style: TextStyle(
+                fontSize: isPlaceholder ? 14 : 12,
+                color: isPlaceholder ? Colors.grey : Colors.black87,
+              ),
             ),
           ],
         ),

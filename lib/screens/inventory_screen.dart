@@ -7,8 +7,9 @@ import '../services/mock_auth_service.dart';
 import '../widgets/transfer_form_widget.dart'; // Importamos el widget del formulario
 
 const WarehouseModel _allWarehousesFilter = WarehouseModel(
-  id: 'ALL',
-  name: 'Todas las Bodegas (Inventario Total)',
+  bodeCodi: 'ALL',
+  bodeDesc: 'Todas las Bodegas (Inventario Total)',
+  bodeEsta: '',
 );
 
 class InventoryScreen extends StatefulWidget {
@@ -61,11 +62,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   List<ArticleModel> get _filteredArticles {
     if (_selectedWarehouse == null ||
-        _selectedWarehouse!.id == _allWarehousesFilter.id) {
+        _selectedWarehouse!.bodeCodi == _allWarehousesFilter.bodeCodi) {
       return _allArticles;
     }
     return _allArticles
-        .where((a) => a.warehouse == _selectedWarehouse!.id)
+        .where((a) => a.warehouse == _selectedWarehouse!.bodeCodi)
         .toList();
   }
 
@@ -93,7 +94,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     String? photoPath = article.photoPath;
 
     WarehouseModel? selectedWh = _service.getWarehouses().firstWhere(
-      (w) => w.id == article.warehouse,
+      (w) => w.bodeCodi == article.warehouse,
       orElse: () => _service.getWarehouses().first,
     );
 
@@ -203,8 +204,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     items: _service
                         .getWarehouses()
                         .map(
-                          (w) =>
-                              DropdownMenuItem(value: w, child: Text(w.name)),
+                          (w) => DropdownMenuItem(
+                            value: w,
+                            child: Text(w.bodeDesc),
+                          ),
                         )
                         .toList(),
                     onChanged: (v) => setModalState(() => selectedWh = v),
@@ -359,7 +362,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               final updatedArticle = article.copyWith(
                                 name: nameController.text,
                                 licensePlate: plateController.text,
-                                warehouse: selectedWh!.id,
+                                warehouse: selectedWh!.bodeCodi,
                                 responsible: selectedResponsible,
                                 latitude: currentLat,
                                 longitude: currentLon,
@@ -539,8 +542,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     items: _service
                         .getWarehouses()
                         .map(
-                          (w) =>
-                              DropdownMenuItem(value: w, child: Text(w.name)),
+                          (w) => DropdownMenuItem(
+                            value: w,
+                            child: Text(w.bodeDesc),
+                          ),
                         )
                         .toList(),
                     onChanged: (v) => setModalState(() => selectedWh = v),
@@ -684,7 +689,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               await _service.registerNewArticle(
                                 name: nameController.text,
                                 plate: plateController.text,
-                                warehouseId: selectedWh!.id,
+                                warehouseId: selectedWh!.bodeCodi,
                                 responsible: selectedResponsible,
                                 status: selectedStatus,
                                 comments: commentsController.text,
@@ -805,7 +810,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
       items: _warehouses
-          .map((w) => DropdownMenuItem(value: w, child: Text(w.name)))
+          .map((w) => DropdownMenuItem(value: w, child: Text(w.bodeDesc)))
           .toList(),
       onChanged: (v) => setState(() => _selectedWarehouse = v),
     );

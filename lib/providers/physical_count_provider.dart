@@ -57,7 +57,7 @@ class PhysicalCountProvider extends ChangeNotifier {
     notifyListeners();
 
     if (company != null) {
-      _loadWarehouses(company.id);
+      _loadWarehouses(company.codigo);
     }
   }
 
@@ -78,7 +78,7 @@ class PhysicalCountProvider extends ChangeNotifier {
     notifyListeners();
 
     if (warehouse != null) {
-      _loadArticles(warehouse.id);
+      _loadArticles(warehouse.bodeCodi);
     }
   }
 
@@ -172,8 +172,8 @@ class PhysicalCountProvider extends ChangeNotifier {
     _setState(PhysicalCountState.enProceso);
 
     final request = PhysicalCountRequest(
-      companyId: selectedCompany!.id,
-      warehouseId: selectedWarehouse!.id,
+      companyId: selectedCompany!.codigo,
+      warehouseId: selectedWarehouse!.bodeCodi,
       date: selectedDate,
       articleId: selectedArticle!.id,
       verifyExistence: verifyExistence,

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:sigo_app/repositories/mock_transfer_repository.dart';
@@ -29,7 +30,9 @@ import 'services/mock_auth_service.dart';
 import 'screens/auth_screen.dart';
 import 'package:sigo_app/screens/dashboard_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   final inventoryService = MockInventoryService();
   final transferRepository = MockTransferRepository(inventoryService);
 
@@ -37,7 +40,12 @@ void main() {
   final requisitionService = MockRequisitionService();
 
   // Instanciamos el servicio de Conteo Físico con Dio
-  final backendDio = Dio();
+  final backendDio = Dio(
+    BaseOptions(
+      baseUrl: dotenv.env['API_URL'] ?? 'https://api.tu-servidor.com',
+    ),
+  );
+
   final physicalCountService = PhysicalCountService(backendDio);
 
   final messengerKey = GlobalKey<ScaffoldMessengerState>();

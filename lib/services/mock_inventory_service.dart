@@ -2,15 +2,13 @@ import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
 import '../models/transfer_request.dart';
 
-
 import 'network_client.dart';
 
 /// **MOCK INVENTORY SERVICE**
-/// 
+///
 /// Gestiona la lógica de negocio de los activos, incluyendo los nuevos campos
 /// de estado, comentarios y fotografía.
 class MockInventoryService {
-
   static final MockInventoryService _instance =
       MockInventoryService._internal();
 
@@ -24,35 +22,47 @@ class MockInventoryService {
 
   // Lista de bodegas/centros de costos (Datos maestros)
   final List<WarehouseModel> _warehouses = const [
-    WarehouseModel(id: 'CC001', name: 'Almacén Central'),
-    WarehouseModel(id: 'CC002', name: 'Taller de Mantenimiento'),
-    WarehouseModel(id: 'CC003', name: 'Oficinas Administrativas'),
+    WarehouseModel(
+      bodeCodi: 'CC001',
+      bodeDesc: 'Almacén Central',
+      bodeEsta: 'ac',
+    ),
+    WarehouseModel(
+      bodeCodi: 'CC002',
+      bodeDesc: 'Taller de Mantenimiento',
+      bodeEsta: 'ac',
+    ),
+    WarehouseModel(
+      bodeCodi: 'CC003',
+      bodeDesc: 'Oficinas Administrativas',
+      bodeEsta: 'ia',
+    ),
   ];
 
   // Base de datos simulada de artículos
   final List<ArticleModel> _articles = [
     ArticleModel(
-      id: 'A1001', 
-      name: 'Montacargas 5T', 
-      licensePlate: 'MTG-5001', 
-      warehouse: 'CC001', 
+      id: 'A1001',
+      name: 'Montacargas 5T',
+      licensePlate: 'MTG-5001',
+      warehouse: 'CC001',
       responsible: 'Juan Pérez',
       status: 'Operativo',
       comments: 'Mantenimiento preventivo al día.',
     ),
     ArticleModel(
-      id: 'A1002', 
-      name: 'Rack de Paletas P-20', 
-      licensePlate: 'RK-20-01', 
-      warehouse: 'CC001', 
+      id: 'A1002',
+      name: 'Rack de Paletas P-20',
+      licensePlate: 'RK-20-01',
+      warehouse: 'CC001',
       responsible: 'Maria López',
       status: 'Operativo',
     ),
     ArticleModel(
-      id: 'A2001', 
-      name: 'Compresor Industrial', 
-      licensePlate: 'CI-2001', 
-      warehouse: 'CC002', 
+      id: 'A2001',
+      name: 'Compresor Industrial',
+      licensePlate: 'CI-2001',
+      warehouse: 'CC002',
       responsible: 'Carlos Ruiz',
       status: 'En Mantenimiento',
       comments: 'Fuga de aceite detectada en válvula principal.',
@@ -67,7 +77,9 @@ class MockInventoryService {
 
   /// **Obtener artículos filtrados por ID de Bodega**
   List<ArticleModel> getArticlesByWarehouseId(String warehouseId) {
-    return _articles.where((article) => article.warehouse == warehouseId).toList();
+    return _articles
+        .where((article) => article.warehouse == warehouseId)
+        .toList();
   }
 
   /// **Lógica para registrar un nuevo activo**
@@ -107,7 +119,7 @@ class MockInventoryService {
       id: response['id'],
       name: response['name'],
       licensePlate: response['licensePlate'],
-      warehouse: response['costCenterId'], 
+      warehouse: response['costCenterId'],
       responsible: response['responsible'],
       status: status ?? 'Operativo',
       comments: comments,
@@ -135,8 +147,7 @@ class MockInventoryService {
   }
 
   List<TransferRequest> get transferRequests =>
-    List.unmodifiable(_transferRequests);
-
+      List.unmodifiable(_transferRequests);
 
   List<TransferRequest> getPendingTransferRequests() {
     return _transferRequests
@@ -146,12 +157,12 @@ class MockInventoryService {
 
   //Aprobación de Transferencias
   void approveTransferRequest(String requestId) {
-  final index = _transferRequests.indexWhere((r) => r.id == requestId);
-  if (index == -1) return;
+    final index = _transferRequests.indexWhere((r) => r.id == requestId);
+    if (index == -1) return;
 
-  final request = _transferRequests[index];
+    final request = _transferRequests[index];
 
-  _transferRequests[index] = TransferRequest(
+    _transferRequests[index] = TransferRequest(
       id: request.id,
       articleId: request.articleId,
       articleName: request.articleName,
@@ -192,24 +203,19 @@ class MockInventoryService {
   void applyApprovedTransfer(TransferRequest request) {
     // Validar estado
     if (request.status != TransferStatus.pending) {
-      throw Exception(
-        'El traspaso ya fue procesado (${request.status.name}).',
-      );
+      throw Exception('El traspaso ya fue procesado (${request.status.name}).');
     }
 
     // Buscar el activo
-    final articleIndex =
-        _articles.indexWhere((a) => a.id == request.articleId);
+    final articleIndex = _articles.indexWhere((a) => a.id == request.articleId);
 
     if (articleIndex == -1) {
-      throw Exception(
-        'No se encontró el activo asociado al traspaso.',
-      );
+      throw Exception('No se encontró el activo asociado al traspaso.');
     }
 
     final currentArticle = _articles[articleIndex];
 
-    // Aplicar cambios al activo 
+    // Aplicar cambios al activo
     final updatedArticle = currentArticle.copyWith(
       responsible: request.proposedResponsible,
       warehouse: request.proposedWarehouse,
@@ -218,22 +224,20 @@ class MockInventoryService {
     _articles[articleIndex] = updatedArticle;
 
     // Actualizar estado del traspaso
-    final requestIndex =
-        _transferRequests.indexWhere((r) => r.id == request.id);
+    final requestIndex = _transferRequests.indexWhere(
+      (r) => r.id == request.id,
+    );
 
     if (requestIndex != -1) {
-      _transferRequests[requestIndex] =
-          request.copyWith(status: TransferStatus.approved);
+      _transferRequests[requestIndex] = request.copyWith(
+        status: TransferStatus.approved,
+      );
     }
 
     //Lista privada de solicitudes de traspaso
-    
   }
 
-  void rejectTransfer(
-  TransferRequest request,
-  String rejectionReason,
-  ) {
+  void rejectTransfer(TransferRequest request, String rejectionReason) {
     final index = _transferRequests.indexWhere((r) => r.id == request.id);
     if (index == -1) return;
 
@@ -242,6 +246,4 @@ class MockInventoryService {
       rejectionReason: rejectionReason,
     );
   }
-
-
 }

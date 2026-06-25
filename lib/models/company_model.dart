@@ -1,28 +1,36 @@
 import 'package:equatable/equatable.dart';
 
 class CompanyModel extends Equatable {
-  final String id;
-  final String name;
+  final String codigo;
+  final String descripcion;
+  final String nit;
+  final String estado;
 
   const CompanyModel({
-    required this.id,
-    required this.name,
+    required this.codigo,
+    required this.descripcion,
+    required this.nit,
+    required this.estado,
   });
 
   factory CompanyModel.fromJson(Map<String, dynamic> json) {
     return CompanyModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
+      codigo: json['codigo'] as String,
+      descripcion: json['descripcion'] as String,
+      nit: json['nit'] as String,
+      estado: json['estado'] as String,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'name': name,
+      'codigo': codigo,
+      'descripcion': descripcion,
+      'nit': nit,
+      'estado': estado,
     };
   }
 
   @override
-  List<Object?> get props => [id, name];
+  List<Object?> get props => [codigo, descripcion, nit, estado];
 }

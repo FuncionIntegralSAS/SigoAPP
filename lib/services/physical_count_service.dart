@@ -7,7 +7,7 @@ import 'package:dio/dio.dart'; // Asegúrate de omitir si tu proyecto usa http e
 
 class PhysicalCountService {
   final Dio _dio;
-  
+
   PhysicalCountService(this._dio);
 
   Future<List<CompanyModel>> getCompanies() async {
@@ -19,8 +19,6 @@ class PhysicalCountService {
   Future<List<WarehouseModel>> getWarehouses(String companyId) async {
     final response = await _dio.get('/api/v1/bodegas/empresa/$companyId');
     final List<dynamic> data = response.data;
-    // Si se requiere incluir "Todas", debería agregarse a la lista mapeada aquí o controlarlo en el provider.
-    // Dejaremos que parseé las reales del backend.
     return data.map((json) => WarehouseModel.fromJson(json)).toList();
   }
 
@@ -79,8 +77,11 @@ class PhysicalCountService {
     if (hasApellido) queryParams['apellido'] = apellido.trim();
     if (hasCedula) queryParams['cedula'] = cedula.trim();
 
-    final response = await _dio.get('/api/v1/personal/buscar', queryParameters: queryParams);
-    
+    final response = await _dio.get(
+      '/api/v1/personal/buscar',
+      queryParameters: queryParams,
+    );
+
     final List<dynamic> data = response.data;
     return data.map((json) => PersonModel.fromJson(json)).toList();
   }

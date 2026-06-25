@@ -16,17 +16,37 @@ class MockPhysicalCountService extends PhysicalCountService {
   @override
   Future<List<CompanyModel>> getCompanies() async {
     if (simulateError) throw Exception('Error');
-    return [const CompanyModel(id: 'C1', name: 'Empresa Test')];
+    return [
+      const CompanyModel(
+        codigo: 'C1',
+        nit: 'C1',
+        estado: 'C1',
+        descripcion: 'Empresa Test',
+      ),
+    ];
   }
 
   @override
   Future<List<WarehouseModel>> getWarehouses(String companyId) async {
-    return [const WarehouseModel(id: 'W1', name: 'Bodega Test')];
+    return [
+      const WarehouseModel(
+        bodeCodi: 'W1',
+        bodeDesc: 'Bodega Test',
+        bodeEsta: 'W1',
+      ),
+    ];
   }
 
   @override
   Future<List<ArticleModel>> getArticles(String warehouseId) async {
-    return [const ArticleModel(id: 'A1', name: 'Artículo Test', licensePlate: '', warehouse: 'W1')];
+    return [
+      const ArticleModel(
+        id: 'A1',
+        name: 'Artículo Test',
+        licensePlate: '',
+        warehouse: 'W1',
+      ),
+    ];
   }
 
   @override
@@ -77,9 +97,11 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 10));
 
       provider.selectArticle(provider.articles.first);
-      
-      provider.togglePersonSelection(PersonModel(nationalId: 1, fullName: 'Test user'));
-      
+
+      provider.togglePersonSelection(
+        PersonModel(nationalId: 1, fullName: 'Test user'),
+      );
+
       await provider.submitPhysicalCount();
 
       expect(provider.state, PhysicalCountState.creada);

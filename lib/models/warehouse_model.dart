@@ -1,17 +1,20 @@
 // Modelo de datos para una Bodega o Centro de Costos
 class WarehouseModel {
-  final String id; // ID que se usará para filtrar los artículos
-  final String name;
+  final String bodeCodi; // ID que se usará para filtrar los artículos
+  final String bodeDesc;
+  final String bodeEsta;
 
   const WarehouseModel({
-    required this.id,
-    required this.name,
+    required this.bodeCodi,
+    required this.bodeDesc,
+    required this.bodeEsta,
   });
 
   factory WarehouseModel.fromJson(Map<String, dynamic> json) {
     return WarehouseModel(
-      id: json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
+      bodeCodi: json['bodeCodi']?.toString() ?? '',
+      bodeDesc: json['bodeDesc'] ?? '',
+      bodeEsta: json['bodeEsta'] ?? '',
     );
   }
 }
