@@ -23,9 +23,6 @@ class TransferRequestProvider extends ChangeNotifier {
   }) async {
     _setLoading(true);
 
-    // Simulación mínima (opcional, útil para UX)
-    await Future.delayed(const Duration(milliseconds: 300));
-
     final request = TransferRequest(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       articleId: articleId,
@@ -38,13 +35,18 @@ class TransferRequestProvider extends ChangeNotifier {
       requestDate: DateTime.now(),
     );
 
-    // ✅ MÉTODO CORRECTO
-    repository.create(request);
-
-    notificationService.success(
+    try {
+      await repository.create(request);
+      notificationService.success(
         'Solicitud de traspaso enviada correctamente',
-      ); //to do: incorporar Try Catch y llamar notificationService para cuando la solicitud falle
-    _setLoading(false);
+      );
+    } catch (e) {
+      notificationService.error(
+        'Error al crear la solicitud: $e',
+      );
+    } finally {
+      _setLoading(false);
+    }
   }
 
   void _setLoading(bool value) {

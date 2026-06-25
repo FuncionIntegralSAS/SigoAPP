@@ -7,7 +7,9 @@ import '../repositories/transfer_repository.dart';
 class TransferApprovalProvider extends ChangeNotifier {
   final TransferRepository repository;
 
-  TransferApprovalProvider(this.repository);
+  TransferApprovalProvider(this.repository) {
+    loadTransfers();
+  }
 
   // ============================
   // FILTROS
@@ -26,8 +28,30 @@ class TransferApprovalProvider extends ChangeNotifier {
   // FUENTE DE DATOS
   // ============================
 
-  List<TransferRequest> get allTransfers =>
-      repository.getAllTransfers();
+  List<TransferRequest> _transfers = [];
+  List<TransferRequest> get allTransfers => _transfers;
+
+  bool _loading = false;
+  bool get loading => _loading;
+
+  String? _error;
+  String? get error => _error;
+
+  /// Carga las solicitudes de traspaso desde el repositorio.
+  Future<void> loadTransfers() async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _transfers = await repository.getAllTransfers();
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
 
   // ============================
   // LISTA FILTRADA PARA LA UI
@@ -38,7 +62,7 @@ class TransferApprovalProvider extends ChangeNotifier {
   }
 
   bool _applyFilter(TransferRequest request) {
-    if (_filter.status != null && request.status != _filter.status) {
+    if (request.status != _filter.status) {
       return false;
     }
 
@@ -66,30 +90,45 @@ class TransferApprovalProvider extends ChangeNotifier {
   // APROBAR SOLICITUD
   // ============================
 
-  void approveTransfer(String requestId) {
-    repository.approveTransfer(requestId);
-    notifyListeners();
+  Future<void> approveTransfer(String requestId) async {
+    try {
+      await repository.approveTransfer(requestId);
+      await loadTransfers(); // Recarga la lista tras la acción
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
   }
 
   // ============================
   // RECHAZAR SOLICITUD
   // ============================
 
-  void rejectTransfer(String requestId, String reason) {
-    repository.rejectTransfer(
-      requestId: requestId,
-      rejectionReason: reason,
-    );
-    notifyListeners();
+  Future<void> rejectTransfer(String requestId, String reason) async {
+    try {
+      await repository.rejectTransfer(
+        requestId: requestId,
+        rejectionReason: reason,
+      );
+      await loadTransfers(); // Recarga la lista tras la acción
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
   }
 
   // ============================
   // APLICAR TRASPASO
   // ============================
 
-  void applyTransfer(TransferRequest request) {
-    repository.applyTransfer(request);
-    notifyListeners();
+  Future<void> applyTransfer(TransferRequest request) async {
+    try {
+      await repository.applyTransfer(request);
+      await loadTransfers(); // Recarga la lista tras la acción
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
   }
 
   // ============================
@@ -97,6 +136,6 @@ class TransferApprovalProvider extends ChangeNotifier {
   // ============================
 
   void refresh() {
-    notifyListeners();
+    loadTransfers();
   }
 }

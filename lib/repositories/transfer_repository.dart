@@ -1,19 +1,29 @@
 import '../models/transfer_request.dart';
 
+/// Contrato único de acceso a datos para el módulo de Traspasos.
+///
+/// Define las operaciones asíncronas que tanto la implementación mock
+/// ([MockTransferRepository]) como la implementación HTTP real
+/// ([HttpTransferRepository]) deben cumplir.
+///
+/// El uso de [Future] permite que el contrato sea agnóstico a la fuente
+/// de datos: datos locales simulados o peticiones reales al backend.
 abstract class TransferRepository {
-  // Crear solicitud
-  void create(TransferRequest request);
+  /// Crea una nueva solicitud de traspaso.
+  Future<void> create(TransferRequest request);
 
-  // Lectura
-  List<TransferRequest> getAllTransfers();
+  /// Obtiene todas las solicitudes de traspaso.
+  Future<List<TransferRequest>> getAllTransfers();
 
-  // Acciones
-  void approveTransfer(String requestId);
+  /// Aprueba una solicitud de traspaso identificada por [requestId].
+  Future<void> approveTransfer(String requestId);
 
-  void rejectTransfer({
+  /// Rechaza una solicitud de traspaso con una [rejectionReason] obligatoria.
+  Future<void> rejectTransfer({
     required String requestId,
     required String rejectionReason,
   });
 
-  void applyTransfer(TransferRequest request);
+  /// Aplica un traspaso previamente aprobado.
+  Future<void> applyTransfer(TransferRequest request);
 }
