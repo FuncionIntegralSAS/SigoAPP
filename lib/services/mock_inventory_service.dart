@@ -23,12 +23,12 @@ class MockInventoryService {
   // Lista de bodegas/centros de costos (Datos maestros)
   final List<WarehouseModel> _warehouses = const [
     WarehouseModel(
-      bodeCodi: 'CC001',
+      bodeCodi: 'BOG001',
       bodeDesc: 'Almacén Central',
       bodeEsta: 'ac',
     ),
     WarehouseModel(
-      bodeCodi: 'CC002',
+      bodeCodi: 'MED002',
       bodeDesc: 'Taller de Mantenimiento',
       bodeEsta: 'ac',
     ),
@@ -41,31 +41,46 @@ class MockInventoryService {
 
   // Base de datos simulada de artículos
   final List<ArticleModel> _articles = [
-    ArticleModel(
-      id: 'A1001',
-      name: 'Montacargas 5T',
-      licensePlate: 'MTG-5001',
-      warehouse: 'CC001',
-      responsible: 'Juan Pérez',
+    const ArticleModel(
+      id: 'PC001',
+      name: 'Portátil Prueba',
+      licensePlate: 'ABC-123',
+      warehouse: 'BOG001',
+      responsible: 'Responsable Test',
       status: 'Operativo',
-      comments: 'Mantenimiento preventivo al día.',
     ),
-    ArticleModel(
+    const ArticleModel(
       id: 'A1002',
       name: 'Rack de Paletas P-20',
       licensePlate: 'RK-20-01',
-      warehouse: 'CC001',
+      warehouse: 'BOG001',
       responsible: 'Maria López',
       status: 'Operativo',
     ),
-    ArticleModel(
+    const ArticleModel(
+      id: 'A1003',
+      name: 'Mesa de Trabajo',
+      licensePlate: 'MT-01',
+      warehouse: 'BOG001',
+      responsible: 'Juan Pérez',
+      status: 'Operativo',
+    ),
+    const ArticleModel(
       id: 'A2001',
       name: 'Compresor Industrial',
       licensePlate: 'CI-2001',
-      warehouse: 'CC002',
+      warehouse: 'MED002',
       responsible: 'Carlos Ruiz',
       status: 'En Mantenimiento',
       comments: 'Fuga de aceite detectada en válvula principal.',
+    ),
+    const ArticleModel(
+      id: 'A2002',
+      name: 'Herramienta Neumática',
+      licensePlate: 'HN-01',
+      warehouse: 'MED002',
+      responsible: 'Carlos Ruiz',
+      status: 'Operativo',
     ),
   ];
 

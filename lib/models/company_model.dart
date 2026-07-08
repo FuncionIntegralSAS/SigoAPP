@@ -14,11 +14,12 @@ class CompanyModel extends Equatable {
   });
 
   factory CompanyModel.fromJson(Map<String, dynamic> json) {
+    final code = json['codigo']?.toString() ?? json['id']?.toString() ?? '';
     return CompanyModel(
-      codigo: json['codigo'] as String,
-      descripcion: json['descripcion'] as String,
-      nit: json['nit'] as String,
-      estado: json['estado'] as String,
+      codigo: code,
+      descripcion: json['descripcion']?.toString() ?? json['name']?.toString() ?? '',
+      nit: json['nit']?.toString() ?? code,
+      estado: json['estado']?.toString() ?? code,
     );
   }
 

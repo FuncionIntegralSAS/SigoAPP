@@ -1,7 +1,7 @@
 import 'package:sigo_app/models/company_model.dart';
+import 'package:sigo_app/models/personal_model.dart';
 import 'package:sigo_app/models/warehouse_model.dart';
 import 'package:sigo_app/models/article_model.dart';
-import 'package:sigo_app/models/person_model.dart';
 import 'package:sigo_app/models/physical_count_model.dart';
 import 'package:dio/dio.dart'; // Asegúrate de omitir si tu proyecto usa http en vez de dio. Si es necesario quita la dependencia.
 
@@ -22,25 +22,30 @@ class PhysicalCountService {
     return data.map((json) => WarehouseModel.fromJson(json)).toList();
   }
 
-  Future<List<ArticleModel>> getArticles(String warehouseId, [String? companyId]) async {
+  Future<List<ArticleModel>> getArticles(
+    String warehouseId, [
+    String? companyId,
+  ]) async {
     if (companyId == null || companyId.isEmpty) {
       await Future.delayed(const Duration(seconds: 1));
       return _getMockArticles();
     }
 
     try {
-      final response = await _dio.get('/api/v1/articulos/asignados/$warehouseId/$companyId');
+      final response = await _dio.get(
+        '/api/v1/articulos/asignados/$warehouseId/$companyId',
+      );
       final List<dynamic> data = response.data;
-      
+
       final List<ArticleModel> articles = [
         const ArticleModel(
           id: 'All',
           name: 'Todos',
           licensePlate: '',
           warehouse: 'All',
-        )
+        ),
       ];
-      
+
       articles.addAll(data.map((json) => ArticleModel.fromJson(json)));
       return articles;
     } on DioException catch (_) {
@@ -71,7 +76,7 @@ class PhysicalCountService {
     ];
   }
 
-  Future<List<PersonModel>> searchPersons({
+  Future<List<PersonalModel>> searchPersons({
     String? nombre,
     String? apellido,
     String? cedula,
@@ -102,13 +107,16 @@ class PhysicalCountService {
     if (hasApellido) queryParams['apellido'] = apellido.trim();
     if (hasCedula) queryParams['cedula'] = cedula.trim();
 
+    print('searchPersons Query Parameters: $queryParams');
+
     final response = await _dio.get(
       '/api/v1/personal/buscar',
       queryParameters: queryParams,
     );
 
     final List<dynamic> data = response.data;
-    return data.map((json) => PersonModel.fromJson(json)).toList();
+    print('searchPersons Response Data: $data');
+    return data.map((json) => PersonalModel.fromJson(json)).toList();
   }
 
   Future<void> createPhysicalCount(PhysicalCountRequest request) async {

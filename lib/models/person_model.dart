@@ -23,10 +23,15 @@ class PersonModel {
     if (json['creationDate'] is String) {
       date = DateTime.tryParse(json['creationDate'] as String);
     }
-    
+
+    final rawId = json['nationalId'];
+    final parsedId = rawId is int
+        ? rawId
+        : int.tryParse(rawId?.toString() ?? '') ?? 0;
+
     return PersonModel(
-      nationalId: json['nationalId'] as int,
-      fullName: json['fullName'] as String,
+      nationalId: parsedId,
+      fullName: json['fullName']?.toString() ?? '',
       accountExists: (json['accountExists'] ?? false) as bool,
       isActive: (json['isActive'] ?? true) as bool,
       creationDate: date,

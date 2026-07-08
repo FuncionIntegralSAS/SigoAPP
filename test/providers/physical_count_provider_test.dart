@@ -4,7 +4,7 @@ import 'package:sigo_app/services/physical_count_service.dart';
 import 'package:sigo_app/models/company_model.dart';
 import 'package:sigo_app/models/warehouse_model.dart';
 import 'package:sigo_app/models/article_model.dart';
-import 'package:sigo_app/models/person_model.dart';
+import 'package:sigo_app/models/personal_model.dart';
 import 'package:dio/dio.dart';
 
 // Mock service para poder probar el provider de forma aislada
@@ -50,12 +50,21 @@ class MockPhysicalCountService extends PhysicalCountService {
   }
 
   @override
-  Future<List<PersonModel>> searchPersons({
+  Future<List<PersonalModel>> searchPersons({
     String? nombre,
     String? apellido,
     String? cedula,
   }) async {
-    return [PersonModel(nationalId: 1, fullName: 'Test user')];
+    return [
+      PersonalModel(
+        perscodi: '1',
+        persnomb: 'Test',
+        persapel: 'user',
+        perscoel: 'test@sigo.com',
+        persdivi: '1',
+        persesta: 'A',
+      )
+    ];
   }
 
   @override
@@ -99,7 +108,14 @@ void main() {
       provider.selectArticle(provider.articles.first);
 
       provider.togglePersonSelection(
-        PersonModel(nationalId: 1, fullName: 'Test user'),
+        PersonalModel(
+          perscodi: '1',
+          persnomb: 'Test',
+          persapel: 'user',
+          perscoel: 'test@sigo.com',
+          persdivi: '1',
+          persesta: 'A',
+        ),
       );
 
       await provider.submitPhysicalCount();

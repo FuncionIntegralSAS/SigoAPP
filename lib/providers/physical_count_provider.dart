@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:sigo_app/models/company_model.dart';
+import 'package:sigo_app/models/personal_model.dart';
 import 'package:sigo_app/models/warehouse_model.dart';
 import 'package:sigo_app/models/article_model.dart';
 import 'package:sigo_app/models/person_model.dart';
@@ -22,10 +23,10 @@ class PhysicalCountProvider extends ChangeNotifier {
   List<CompanyModel> companies = [];
   List<WarehouseModel> warehouses = [];
   List<ArticleModel> articles = [];
-  List<PersonModel> foundPersons = [];
+  List<PersonalModel> foundPersons = [];
 
   // Múltiples personas seleccionadas
-  List<PersonModel> selectedPersons = [];
+  List<PersonalModel> selectedPersons = [];
 
   // Valores seleccionados
   CompanyModel? selectedCompany;
@@ -130,13 +131,15 @@ class PhysicalCountProvider extends ChangeNotifier {
       clearError();
     }
 
+    _setState(PhysicalCountState.enProceso);
+
     try {
       foundPersons = await _service.searchPersons(
         nombre: nombre,
         apellido: apellido,
         cedula: cedula,
       );
-      notifyListeners();
+      _setState(PhysicalCountState.initial);
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 400) {
         _setError(
@@ -148,9 +151,9 @@ class PhysicalCountProvider extends ChangeNotifier {
     }
   }
 
-  void togglePersonSelection(PersonModel person) {
+  void togglePersonSelection(PersonalModel person) {
     final index = selectedPersons.indexWhere(
-      (p) => p.nationalId == person.nationalId,
+      (p) => p.perscodi == person.perscodi,
     );
     if (index >= 0) {
       selectedPersons.removeAt(index);
@@ -160,8 +163,8 @@ class PhysicalCountProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void removePerson(PersonModel person) {
-    selectedPersons.removeWhere((p) => p.nationalId == person.nationalId);
+  void removePerson(PersonalModel person) {
+    selectedPersons.removeWhere((p) => p.perscodi == person.perscodi);
     notifyListeners();
   }
 

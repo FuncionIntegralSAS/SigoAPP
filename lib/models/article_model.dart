@@ -45,9 +45,12 @@ class ArticleModel extends Equatable {
   /// NOTA: Por seguridad y optimización, los campos de comentarios, estado
   /// y ruta de foto NO se incluyen en el código QR.
   String get qrData {
-    final lat = latitude?.toStringAsFixed(6) ?? 'No disp.';
-    final lon = longitude?.toStringAsFixed(6) ?? 'No disp.';
-    return 'ID:$id|NAME:$name|PLATE:$licensePlate|WH:$warehouse|RESP:${responsible ?? "N/A"}|LAT:$lat|LON:$lon';
+    if (latitude != null && longitude != null) {
+      final latStr = latitude!.toStringAsFixed(6);
+      final lonStr = longitude!.toStringAsFixed(6);
+      return 'Código:$id|Placa:$licensePlate|Nombre:$name|Lat:$latStr|Lon:$lonStr';
+    }
+    return 'Código:$id|Placa:$licensePlate|Nombre:$name';
   }
 
   /// Método para crear una copia del modelo con campos actualizados.
@@ -78,16 +81,5 @@ class ArticleModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
-    id, 
-    name, 
-    licensePlate, 
-    warehouse, 
-    responsible, 
-    latitude, 
-    longitude,
-    status,
-    comments,
-    photoPath,
-  ];
+  List<Object?> get props => [id, warehouse];
 }
