@@ -77,15 +77,15 @@ class PhysicalCountProvider extends ChangeNotifier {
     articles.clear();
     notifyListeners();
 
-    if (warehouse != null) {
-      _loadArticles(warehouse.bodeCodi);
+    if (warehouse != null && selectedCompany != null) {
+      _loadArticles(warehouse.bodeCodi, selectedCompany!.codigo);
     }
   }
 
-  Future<void> _loadArticles(String warehouseId) async {
+  Future<void> _loadArticles(String warehouseId, String companyId) async {
     _setState(PhysicalCountState.enProceso);
     try {
-      articles = await _service.getArticles(warehouseId);
+      articles = await _service.getArticles(warehouseId, companyId);
       _setState(PhysicalCountState.initial);
     } catch (e) {
       _setError('Error al cargar artículos.');
@@ -172,11 +172,11 @@ class PhysicalCountProvider extends ChangeNotifier {
     _setState(PhysicalCountState.enProceso);
 
     final request = PhysicalCountRequest(
-      companyId: selectedCompany!.codigo,
-      warehouseId: selectedWarehouse!.bodeCodi,
-      date: selectedDate,
-      articleId: selectedArticle!.id,
-      verifyExistence: verifyExistence,
+      empresa: selectedCompany!.codigo,
+      bodega: selectedWarehouse!.bodeCodi,
+      fecha: selectedDate,
+      articulo: selectedArticle!.id,
+      verificarExistencia: verifyExistence,
     );
 
     try {

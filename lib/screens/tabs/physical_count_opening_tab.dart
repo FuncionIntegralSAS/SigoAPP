@@ -5,6 +5,8 @@ import 'package:sigo_app/providers/physical_count_provider.dart';
 import 'package:sigo_app/models/company_model.dart';
 import 'package:sigo_app/models/warehouse_model.dart';
 import 'package:sigo_app/models/article_model.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:sigo_app/utils/dropdown_template.dart';
 
 class PhysicalCountOpeningTab extends StatefulWidget {
   const PhysicalCountOpeningTab({super.key});
@@ -15,13 +17,39 @@ class PhysicalCountOpeningTab extends StatefulWidget {
 }
 
 class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
-  // Clave del formulario para controlar el reseteo visual de los campos
   final _formKey = GlobalKey<FormState>();
-
-  // Formateador de fecha extraído como campo para evitar re-instanciar en cada build
   static final _dateFormat = DateFormat('dd/MM/yyyy');
-
   PhysicalCountState? _lastHandledState;
+
+  final TextEditingController _companySearchController =
+      TextEditingController();
+  final TextEditingController _warehouseSearchController =
+      TextEditingController();
+  final TextEditingController _articleSearchController =
+      TextEditingController();
+
+  late final ValueNotifier<CompanyModel?> _companyNotifier;
+  late final ValueNotifier<WarehouseModel?> _warehouseNotifier;
+  late final ValueNotifier<ArticleModel?> _articleNotifier;
+
+  @override
+  void initState() {
+    super.initState();
+    _companyNotifier = ValueNotifier<CompanyModel?>(null);
+    _warehouseNotifier = ValueNotifier<WarehouseModel?>(null);
+    _articleNotifier = ValueNotifier<ArticleModel?>(null);
+  }
+
+  @override
+  void dispose() {
+    _companySearchController.dispose();
+    _warehouseSearchController.dispose();
+    _articleSearchController.dispose();
+    _companyNotifier.dispose();
+    _warehouseNotifier.dispose();
+    _articleNotifier.dispose();
+    super.dispose();
+  }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -42,7 +70,6 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // Reinicia el estado en el provider y resetea visualmente el Form
               provider.resetForm();
               _formKey.currentState?.reset();
             },
@@ -87,6 +114,17 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
           }
         }
 
+        // Sincronizar notifiers con el estado del provider
+        if (_companyNotifier.value != provider.selectedCompany) {
+          _companyNotifier.value = provider.selectedCompany;
+        }
+        if (_warehouseNotifier.value != provider.selectedWarehouse) {
+          _warehouseNotifier.value = provider.selectedWarehouse;
+        }
+        if (_articleNotifier.value != provider.selectedArticle) {
+          _articleNotifier.value = provider.selectedArticle;
+        }
+
         final isLoading = provider.state == PhysicalCountState.enProceso;
 
         return Stack(
@@ -98,14 +136,14 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    DropdownButtonFormField<CompanyModel>(
+                    DropdownButtonFormField2<CompanyModel>(
                       decoration: const InputDecoration(
                         labelText: 'Empresa',
                         border: OutlineInputBorder(),
                       ),
-                      initialValue: provider.selectedCompany,
+                      valueListenable: _companyNotifier,
                       items: provider.companies.map((company) {
-                        return DropdownMenuItem(
+                        return DropdownItem(
                           value: company,
                           child: Text(company.descripcion),
                         );
@@ -113,16 +151,28 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                       onChanged: isLoading
                           ? null
                           : (val) => provider.selectCompany(val),
+                      dropdownSearchData: DropdownTemplates.searchData(
+                        controller: _companySearchController,
+                        hintText: 'Buscar empresa...',
+                        searchMatchFn: (item, searchValue) {
+                          return item.value!.descripcion.toLowerCase().contains(
+                            searchValue.toLowerCase(),
+                          );
+                        },
+                      ),
+                      onMenuStateChange: (isOpen) {
+                        if (!isOpen) _companySearchController.clear();
+                      },
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<WarehouseModel>(
+                    DropdownButtonFormField2<WarehouseModel>(
                       decoration: const InputDecoration(
                         labelText: 'Bodega',
                         border: OutlineInputBorder(),
                       ),
-                      initialValue: provider.selectedWarehouse,
+                      valueListenable: _warehouseNotifier,
                       items: provider.warehouses.map((wh) {
-                        return DropdownMenuItem(
+                        return DropdownItem(
                           value: wh,
                           child: Text(wh.bodeDesc),
                         );
@@ -130,6 +180,21 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                       onChanged: isLoading || provider.warehouses.isEmpty
                           ? null
                           : (val) => provider.selectWarehouse(val),
+                      dropdownSearchData: DropdownTemplates.searchData(
+                        controller: _warehouseSearchController,
+                        hintText: 'Buscar bodega...',
+                        searchMatchFn: (item, searchValue) {
+                          return item.value!.bodeDesc.toLowerCase().contains(
+                                searchValue.toLowerCase(),
+                              ) ||
+                              item.value!.bodeCodi.toLowerCase().contains(
+                                searchValue.toLowerCase(),
+                              );
+                        },
+                      ),
+                      onMenuStateChange: (isOpen) {
+                        if (!isOpen) _warehouseSearchController.clear();
+                      },
                     ),
                     const SizedBox(height: 16),
                     InkWell(
@@ -149,21 +214,36 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<ArticleModel>(
+                    DropdownButtonFormField2<ArticleModel>(
                       decoration: const InputDecoration(
                         labelText: 'Artículos',
                         border: OutlineInputBorder(),
                       ),
-                      initialValue: provider.selectedArticle,
+                      valueListenable: _articleNotifier,
                       items: provider.articles.map((art) {
-                        return DropdownMenuItem(
-                          value: art,
-                          child: Text(art.name),
-                        );
+                        return DropdownItem(value: art, child: Text(art.name));
                       }).toList(),
                       onChanged: isLoading || provider.articles.isEmpty
                           ? null
                           : (val) => provider.selectArticle(val),
+                      dropdownSearchData: DropdownTemplates.searchData(
+                        controller: _articleSearchController,
+                        hintText: 'Buscar artículo...',
+                        searchMatchFn: (item, searchValue) {
+                          return item.value!.name.toLowerCase().contains(
+                                searchValue.toLowerCase(),
+                              ) ||
+                              item.value!.id.toLowerCase().contains(
+                                searchValue.toLowerCase(),
+                              ) ||
+                              (item.value!.licensePlate).toLowerCase().contains(
+                                searchValue.toLowerCase(),
+                              );
+                        },
+                      ),
+                      onMenuStateChange: (isOpen) {
+                        if (!isOpen) _articleSearchController.clear();
+                      },
                     ),
                     const SizedBox(height: 16),
                     SwitchListTile(

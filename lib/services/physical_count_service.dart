@@ -22,8 +22,33 @@ class PhysicalCountService {
     return data.map((json) => WarehouseModel.fromJson(json)).toList();
   }
 
-  Future<List<ArticleModel>> getArticles(String warehouseId) async {
-    await Future.delayed(const Duration(seconds: 1));
+  Future<List<ArticleModel>> getArticles(String warehouseId, [String? companyId]) async {
+    if (companyId == null || companyId.isEmpty) {
+      await Future.delayed(const Duration(seconds: 1));
+      return _getMockArticles();
+    }
+
+    try {
+      final response = await _dio.get('/api/v1/articulos/asignados/$warehouseId/$companyId');
+      final List<dynamic> data = response.data;
+      
+      final List<ArticleModel> articles = [
+        const ArticleModel(
+          id: 'All',
+          name: 'Todos',
+          licensePlate: '',
+          warehouse: 'All',
+        )
+      ];
+      
+      articles.addAll(data.map((json) => ArticleModel.fromJson(json)));
+      return articles;
+    } on DioException catch (_) {
+      return _getMockArticles();
+    }
+  }
+
+  List<ArticleModel> _getMockArticles() {
     return [
       const ArticleModel(
         id: 'All',

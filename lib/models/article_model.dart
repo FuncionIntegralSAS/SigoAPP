@@ -31,6 +31,16 @@ class ArticleModel extends Equatable {
     this.photoPath,
   });
 
+  factory ArticleModel.fromJson(Map<String, dynamic> json) {
+    return ArticleModel(
+      id: json['artiCodi']?.toString() ?? json['id']?.toString() ?? '',
+      name: json['artiDesc']?.toString() ?? json['name']?.toString() ?? '',
+      licensePlate: json['artiPlac']?.toString() ?? json['licensePlate']?.toString() ?? '',
+      warehouse: json['bodeCodi']?.toString() ?? json['warehouse']?.toString() ?? '',
+      responsible: json['responsable']?.toString() ?? json['responsible']?.toString(),
+    );
+  }
+
   /// Retorna los datos que se codificarán en el QR.
   /// NOTA: Por seguridad y optimización, los campos de comentarios, estado
   /// y ruta de foto NO se incluyen en el código QR.

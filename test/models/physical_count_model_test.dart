@@ -7,19 +7,19 @@ void main() {
 
     test('Soporta comparación por valor (Equatable)', () {
       final request1 = PhysicalCountRequest(
-        companyId: 'C1',
-        warehouseId: 'W1',
-        date: testDate,
-        articleId: 'A1',
-        verifyExistence: true,
+        empresa: 'C1',
+        bodega: 'W1',
+        fecha: testDate,
+        articulo: 'A1',
+        verificarExistencia: true,
       );
 
       final request2 = PhysicalCountRequest(
-        companyId: 'C1',
-        warehouseId: 'W1',
-        date: testDate,
-        articleId: 'A1',
-        verifyExistence: true,
+        empresa: 'C1',
+        bodega: 'W1',
+        fecha: testDate,
+        articulo: 'A1',
+        verificarExistencia: true,
       );
 
       expect(request1, equals(request2));
@@ -27,12 +27,12 @@ void main() {
 
     test('toJson convierte correctamente el objeto al formato esperado por el backend', () {
       final request = PhysicalCountRequest(
-        companyId: 'C1',
-        warehouseId: 'W1',
-        logicalWarehouseId: 'L2',
-        date: testDate,
-        articleId: 'A1',
-        verifyExistence: true,
+        empresa: 'C1',
+        bodega: 'W1',
+        bodegaLogica: 'L2',
+        fecha: testDate,
+        articulo: 'A1',
+        verificarExistencia: true,
       );
 
       final result = request.toJson();

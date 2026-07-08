@@ -38,7 +38,7 @@ class MockPhysicalCountService extends PhysicalCountService {
   }
 
   @override
-  Future<List<ArticleModel>> getArticles(String warehouseId) async {
+  Future<List<ArticleModel>> getArticles(String warehouseId, [String? companyId]) async {
     return [
       const ArticleModel(
         id: 'A1',

@@ -1,5 +1,7 @@
+import 'package:equatable/equatable.dart';
+
 // Modelo de datos para una Bodega o Centro de Costos
-class WarehouseModel {
+class WarehouseModel extends Equatable {
   final String bodeCodi; // ID que se usará para filtrar los artículos
   final String bodeDesc;
   final String bodeEsta;
@@ -17,4 +19,7 @@ class WarehouseModel {
       bodeEsta: json['bodeEsta'] ?? '',
     );
   }
+
+  @override
+  List<Object?> get props => [bodeCodi, bodeDesc, bodeEsta];
 }
