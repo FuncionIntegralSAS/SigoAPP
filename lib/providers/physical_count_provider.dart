@@ -3,7 +3,6 @@ import 'package:sigo_app/models/company_model.dart';
 import 'package:sigo_app/models/personal_model.dart';
 import 'package:sigo_app/models/warehouse_model.dart';
 import 'package:sigo_app/models/article_model.dart';
-import 'package:sigo_app/models/person_model.dart';
 import 'package:sigo_app/models/physical_count_model.dart';
 import 'package:sigo_app/services/physical_count_service.dart';
 import 'package:dio/dio.dart';
@@ -198,6 +197,54 @@ class PhysicalCountProvider extends ChangeNotifier {
           msg = 'Error del servidor (Error 500). Inténtalo más tarde.';
         } else {
           msg = 'Error de red: ${e.message}';
+        }
+      }
+      _setError(msg);
+    }
+  }
+
+  Future<void> assignPhysicalCount() async {
+    if (selectedCompany == null || selectedWarehouse == null) {
+      _setError(
+        'Debe seleccionar la Empresa y la Bodega en la pestaña de Apertura.',
+      );
+      return;
+    }
+
+    if (selectedPersons.isEmpty) {
+      _setError('Debe seleccionar al menos un participante para la asignación.');
+      return;
+    }
+
+    _setState(PhysicalCountState.enProceso);
+
+    final request = AsignacionConteoRequest(
+      empresa: selectedCompany!.codigo,
+      bodega: selectedWarehouse!.bodeCodi,
+      fechaConteo: selectedDate,
+      usuarios:
+          selectedPersons
+              .map(
+                (p) => UsuarioAsignacion(
+                  documento: p.perscodi,
+                  nombre: '${p.persnomb} ${p.persapel}'.trim(),
+                  email: p.perscoel,
+                ),
+              )
+              .toList(),
+    );
+
+    try {
+      await _service.assignArticles(request);
+      _setState(PhysicalCountState.creada); // Reutilizamos el estado de éxito
+    } catch (e) {
+      String msg = 'Error al asignar el conteo.';
+      if (e is DioException) {
+        if (e.response?.statusCode == 400) {
+          msg =
+              'Error de validación (400). Verifique los datos de la asignación.';
+        } else {
+          msg = 'Error de red al asignar: ${e.message}';
         }
       }
       _setError(msg);

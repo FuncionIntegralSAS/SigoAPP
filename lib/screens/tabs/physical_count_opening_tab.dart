@@ -145,7 +145,9 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                       items: provider.companies.map((company) {
                         return DropdownItem(
                           value: company,
-                          child: Text(company.descripcion),
+                          child: Text(
+                            '${company.codigo} - ${company.descripcion}',
+                          ),
                         );
                       }).toList(),
                       onChanged: isLoading
@@ -174,7 +176,7 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                       items: provider.warehouses.map((wh) {
                         return DropdownItem(
                           value: wh,
-                          child: Text(wh.bodeDesc),
+                          child: Text('${wh.bodeCodi}-${wh.bodeDesc}'),
                         );
                       }).toList(),
                       onChanged: isLoading || provider.warehouses.isEmpty
@@ -221,7 +223,10 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                       ),
                       valueListenable: _articleNotifier,
                       items: provider.articles.map((art) {
-                        return DropdownItem(value: art, child: Text(art.name));
+                        return DropdownItem(
+                          value: art,
+                          child: Text('${art.id} - ${art.name}'),
+                        );
                       }).toList(),
                       onChanged: isLoading || provider.articles.isEmpty
                           ? null

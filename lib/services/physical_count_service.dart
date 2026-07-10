@@ -107,19 +107,23 @@ class PhysicalCountService {
     if (hasApellido) queryParams['apellido'] = apellido.trim();
     if (hasCedula) queryParams['cedula'] = cedula.trim();
 
-    print('searchPersons Query Parameters: $queryParams');
-
     final response = await _dio.get(
       '/api/v1/personal/buscar',
       queryParameters: queryParams,
     );
 
     final List<dynamic> data = response.data;
-    print('searchPersons Response Data: $data');
     return data.map((json) => PersonalModel.fromJson(json)).toList();
   }
 
   Future<void> createPhysicalCount(PhysicalCountRequest request) async {
     await _dio.post('/api/v1/conteo-fisico/registrar', data: request.toJson());
+  }
+
+  Future<void> assignArticles(AsignacionConteoRequest request) async {
+    await _dio.post(
+      '/api/v1/conteo-fisico/asignar_articulos',
+      data: request.toJson(),
+    );
   }
 }

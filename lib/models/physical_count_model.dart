@@ -38,3 +38,52 @@ class PhysicalCountRequest extends Equatable {
     verificarExistencia,
   ];
 }
+
+class AsignacionConteoRequest extends Equatable {
+  final String empresa;
+  final String bodega;
+  final DateTime fechaConteo;
+  final List<UsuarioAsignacion> usuarios;
+
+  const AsignacionConteoRequest({
+    required this.empresa,
+    required this.bodega,
+    required this.fechaConteo,
+    required this.usuarios,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'empresa': empresa,
+      'bodega': bodega,
+      'fechaConteo': fechaConteo.toUtc().toIso8601String(),
+      'usuarios': usuarios.map((u) => u.toJson()).toList(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [empresa, bodega, fechaConteo, usuarios];
+}
+
+class UsuarioAsignacion extends Equatable {
+  final String documento;
+  final String nombre;
+  final String email;
+
+  const UsuarioAsignacion({
+    required this.documento,
+    required this.nombre,
+    required this.email,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'documento': documento,
+      'nombre': nombre,
+      'email': email,
+    };
+  }
+
+  @override
+  List<Object?> get props => [documento, nombre, email];
+}

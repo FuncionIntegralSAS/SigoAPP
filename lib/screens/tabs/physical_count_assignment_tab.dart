@@ -156,7 +156,9 @@ class _PhysicalCountAssignmentTabState
                                     : '?',
                               ),
                             ),
-                            title: Text('${person.persnomb} ${person.persapel}'.trim()),
+                            title: Text(
+                              '${person.persnomb} ${person.persapel}'.trim(),
+                            ),
                             subtitle: Text('Cédula: ${person.perscodi}'),
                             trailing: Checkbox(
                               value: isSelected,
@@ -204,6 +206,31 @@ class _PhysicalCountAssignmentTabState
                             ),
                           )
                           .toList(),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: () async {
+                          await provider.assignPhysicalCount();
+                          if (provider.state == PhysicalCountState.creada &&
+                              context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Asignación realizada con éxito.',
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            provider.resetForm();
+                          }
+                        },
+                        child: const Text('Asignar Participantes al Conteo'),
+                      ),
                     ),
                   ],
                 ],
