@@ -1,27 +1,32 @@
-import 'package:sigo_app/models/company_model.dart';
-import 'package:sigo_app/models/personal_model.dart';
-import 'package:sigo_app/models/warehouse_model.dart';
-import 'package:sigo_app/models/article_model.dart';
-import 'package:sigo_app/models/physical_count_model.dart';
-import 'package:dio/dio.dart'; // Asegúrate de omitir si tu proyecto usa http en vez de dio. Si es necesario quita la dependencia.
+import 'package:dio/dio.dart';
+import '../models/company_model.dart';
+import '../models/warehouse_model.dart';
+import '../models/article_model.dart';
+import '../models/personal_model.dart';
+import '../models/physical_count_model.dart';
+import 'physical_count_repository.dart';
 
-class PhysicalCountService {
+/// Implementación HTTP real del [PhysicalCountRepository] usando [Dio].
+class HttpPhysicalCountRepository implements PhysicalCountRepository {
   final Dio _dio;
 
-  PhysicalCountService(this._dio);
+  HttpPhysicalCountRepository(this._dio);
 
+  @override
   Future<List<CompanyModel>> getCompanies() async {
     final response = await _dio.get('/api/v1/empresas/getAll');
     final List<dynamic> data = response.data;
     return data.map((json) => CompanyModel.fromJson(json)).toList();
   }
 
+  @override
   Future<List<WarehouseModel>> getWarehouses(String companyId) async {
     final response = await _dio.get('/api/v1/bodegas/empresa/$companyId');
     final List<dynamic> data = response.data;
     return data.map((json) => WarehouseModel.fromJson(json)).toList();
   }
 
+  @override
   Future<List<ArticleModel>> getArticles(
     String warehouseId, [
     String? companyId,
@@ -76,18 +81,17 @@ class PhysicalCountService {
     ];
   }
 
+  @override
   Future<List<PersonalModel>> searchPersons({
     String? nombre,
     String? apellido,
     String? cedula,
   }) async {
-    // Regla de Validación Importante
     final hasNombre = nombre != null && nombre.trim().isNotEmpty;
     final hasApellido = apellido != null && apellido.trim().isNotEmpty;
     final hasCedula = cedula != null && cedula.trim().isNotEmpty;
 
     if (!hasNombre && !hasApellido && !hasCedula) {
-      // Rechazo del servidor 400 Bad Request
       throw DioException(
         requestOptions: RequestOptions(path: '/api/v1/personal/buscar'),
         response: Response(
@@ -116,10 +120,12 @@ class PhysicalCountService {
     return data.map((json) => PersonalModel.fromJson(json)).toList();
   }
 
+  @override
   Future<void> createPhysicalCount(PhysicalCountRequest request) async {
     await _dio.post('/api/v1/conteo-fisico/registrar', data: request.toJson());
   }
 
+  @override
   Future<void> assignArticles(AsignacionConteoRequest request) async {
     await _dio.post(
       '/api/v1/conteo-fisico/asignar_articulos',

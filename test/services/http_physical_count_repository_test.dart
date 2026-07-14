@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/services/physical_count_service.dart';
+import 'package:sigo_app/repositories/http_physical_count_repository.dart';
 import 'package:dio/dio.dart';
 
 import 'package:sigo_app/utils/json_interceptor.dart';
@@ -44,12 +44,12 @@ class FakeDio implements Dio {
 }
 
 void main() {
-  group('PhysicalCountService.getArticles Tests', () {
+  group('HttpPhysicalCountRepository.getArticles Tests', () {
     test('Should return mock articles when companyId is null', () async {
       final dio = Dio();
-      final service = PhysicalCountService(dio);
+      final repository = HttpPhysicalCountRepository(dio);
 
-      final articles = await service.getArticles('W1', null);
+      final articles = await repository.getArticles('W1', null);
       expect(articles.length, 3);
       expect(articles.first.id, 'All');
       expect(articles.first.name, 'Todos');
@@ -57,9 +57,9 @@ void main() {
 
     test('Should return mock articles when companyId is empty', () async {
       final dio = Dio();
-      final service = PhysicalCountService(dio);
+      final repository = HttpPhysicalCountRepository(dio);
 
-      final articles = await service.getArticles('W1', '');
+      final articles = await repository.getArticles('W1', '');
       expect(articles.length, 3);
       expect(articles.first.id, 'All');
       expect(articles.first.name, 'Todos');
@@ -73,9 +73,9 @@ void main() {
           message: 'Connection failed',
         );
       });
-      final service = PhysicalCountService(fakeDio);
+      final repository = HttpPhysicalCountRepository(fakeDio);
 
-      final articles = await service.getArticles('W1', 'C1');
+      final articles = await repository.getArticles('W1', 'C1');
       expect(articles.length, 3);
       expect(articles.first.id, 'All');
       expect(articles[1].id, 'A1');
@@ -97,9 +97,9 @@ void main() {
           ],
         );
       });
-      final service = PhysicalCountService(fakeDio);
+      final repository = HttpPhysicalCountRepository(fakeDio);
 
-      final articles = await service.getArticles('W1', 'C1');
+      final articles = await repository.getArticles('W1', 'C1');
       expect(articles.length, 2);
       expect(articles[0].id, 'All');
       expect(articles[0].name, 'Todos');

@@ -1,86 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sigo_app/providers/physical_count_provider.dart';
-import 'package:sigo_app/services/physical_count_service.dart';
-import 'package:sigo_app/models/company_model.dart';
-import 'package:sigo_app/models/warehouse_model.dart';
-import 'package:sigo_app/models/article_model.dart';
+import 'package:sigo_app/repositories/mock_physical_count_repository.dart';
 import 'package:sigo_app/models/personal_model.dart';
-import 'package:dio/dio.dart';
-
-// Mock service para poder probar el provider de forma aislada
-class MockPhysicalCountService extends PhysicalCountService {
-  MockPhysicalCountService() : super(Dio());
-
-  bool simulateError = false;
-
-  @override
-  Future<List<CompanyModel>> getCompanies() async {
-    if (simulateError) throw Exception('Error');
-    return [
-      const CompanyModel(
-        codigo: 'C1',
-        nit: 'C1',
-        estado: 'C1',
-        descripcion: 'Empresa Test',
-      ),
-    ];
-  }
-
-  @override
-  Future<List<WarehouseModel>> getWarehouses(String companyId) async {
-    return [
-      const WarehouseModel(
-        bodeCodi: 'W1',
-        bodeDesc: 'Bodega Test',
-        bodeEsta: 'W1',
-      ),
-    ];
-  }
-
-  @override
-  Future<List<ArticleModel>> getArticles(String warehouseId, [String? companyId]) async {
-    return [
-      const ArticleModel(
-        id: 'A1',
-        name: 'Artículo Test',
-        licensePlate: '',
-        warehouse: 'W1',
-      ),
-    ];
-  }
-
-  @override
-  Future<List<PersonalModel>> searchPersons({
-    String? nombre,
-    String? apellido,
-    String? cedula,
-  }) async {
-    return [
-      PersonalModel(
-        perscodi: '1',
-        persnomb: 'Test',
-        persapel: 'user',
-        perscoel: 'test@sigo.com',
-        persdivi: '1',
-        persesta: 'A',
-      )
-    ];
-  }
-
-  @override
-  Future<void> createPhysicalCount(request) async {
-    if (simulateError) throw Exception('Error creating count');
-  }
-}
 
 void main() {
   group('PhysicalCountProvider', () {
     late PhysicalCountProvider provider;
-    late MockPhysicalCountService mockService;
+    late MockPhysicalCountRepository mockRepository;
 
     setUp(() {
-      mockService = MockPhysicalCountService();
-      provider = PhysicalCountProvider(mockService);
+      mockRepository = MockPhysicalCountRepository();
+      provider = PhysicalCountProvider(mockRepository);
     });
 
     test('Initial state should be EN_PROCESO or INITIAL after load', () async {
@@ -97,13 +27,13 @@ void main() {
     });
 
     test('Completing form and submitting should succeed', () async {
-      await Future.delayed(const Duration(milliseconds: 10)); // Espera inicial
+      await Future.delayed(const Duration(milliseconds: 100)); // Espera inicial
 
       provider.selectCompany(provider.companies.first);
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future.delayed(const Duration(milliseconds: 100));
 
       provider.selectWarehouse(provider.warehouses.first);
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future.delayed(const Duration(milliseconds: 100));
 
       provider.selectArticle(provider.articles.first);
 

@@ -4,13 +4,13 @@ import 'package:sigo_app/models/personal_model.dart';
 import 'package:sigo_app/models/warehouse_model.dart';
 import 'package:sigo_app/models/article_model.dart';
 import 'package:sigo_app/models/physical_count_model.dart';
-import 'package:sigo_app/services/physical_count_service.dart';
+import 'package:sigo_app/repositories/physical_count_repository.dart';
 import 'package:dio/dio.dart';
 
 enum PhysicalCountState { initial, enProceso, creada, error }
 
 class PhysicalCountProvider extends ChangeNotifier {
-  final PhysicalCountService _service;
+  final PhysicalCountRepository _repository;
 
   PhysicalCountState _state = PhysicalCountState.initial;
   PhysicalCountState get state => _state;
@@ -34,14 +34,14 @@ class PhysicalCountProvider extends ChangeNotifier {
   ArticleModel? selectedArticle;
   bool verifyExistence = false;
 
-  PhysicalCountProvider(this._service) {
+  PhysicalCountProvider(this._repository) {
     _loadInitialData();
   }
 
   Future<void> _loadInitialData() async {
     _setState(PhysicalCountState.enProceso);
     try {
-      companies = await _service.getCompanies();
+      companies = await _repository.getCompanies();
       _setState(PhysicalCountState.initial);
     } catch (e) {
       _setError('Error al cargar datos iniciales. $e');
@@ -64,7 +64,7 @@ class PhysicalCountProvider extends ChangeNotifier {
   Future<void> _loadWarehouses(String companyId) async {
     _setState(PhysicalCountState.enProceso);
     try {
-      warehouses = await _service.getWarehouses(companyId);
+      warehouses = await _repository.getWarehouses(companyId);
       _setState(PhysicalCountState.initial);
     } catch (e) {
       _setError('Error al cargar bodegas.');
@@ -85,7 +85,7 @@ class PhysicalCountProvider extends ChangeNotifier {
   Future<void> _loadArticles(String warehouseId, String companyId) async {
     _setState(PhysicalCountState.enProceso);
     try {
-      articles = await _service.getArticles(warehouseId, companyId);
+      articles = await _repository.getArticles(warehouseId, companyId);
       _setState(PhysicalCountState.initial);
     } catch (e) {
       _setError('Error al cargar artículos.');
@@ -133,7 +133,7 @@ class PhysicalCountProvider extends ChangeNotifier {
     _setState(PhysicalCountState.enProceso);
 
     try {
-      foundPersons = await _service.searchPersons(
+      foundPersons = await _repository.searchPersons(
         nombre: nombre,
         apellido: apellido,
         cedula: cedula,
@@ -182,7 +182,7 @@ class PhysicalCountProvider extends ChangeNotifier {
     );
 
     try {
-      await _service.createPhysicalCount(request);
+      await _repository.createPhysicalCount(request);
       _setState(PhysicalCountState.creada);
     } catch (e) {
       String msg = 'Un error inesperado ha ocurrido.';
@@ -235,7 +235,7 @@ class PhysicalCountProvider extends ChangeNotifier {
     );
 
     try {
-      await _service.assignArticles(request);
+      await _repository.assignArticles(request);
       _setState(PhysicalCountState.creada); // Reutilizamos el estado de éxito
     } catch (e) {
       String msg = 'Error al asignar el conteo.';
