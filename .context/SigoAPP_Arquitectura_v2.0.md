@@ -1,7 +1,7 @@
 # Documentación de Arquitectura de Software
 Proyecto: SigoAPP
-Versión: 2.0
-Fecha de actualización: Junio 2026
+Versión: 2.1
+Fecha de actualización: Julio 2026
 
 ## 1. Estructura de Directorios (Mapping)
 El proyecto organiza el código fuente bajo el directorio lib/, siguiendo principios de Clean Architecture para facilitar el mantenimiento y la inyección de dependencias hacia el backend (Spring Boot / Oracle).
@@ -47,9 +47,14 @@ Modelos diseñados para la operación offline del conteo físico en piso (SQLite
   - API Spring Boot (`toJsonApi`) para sincronización con el backend. El formato de API utiliza nomenclatura en español según convención del procedimiento almacenado.
 
 ### 2.7 Modelos de Soporte
-* `person_model.dart`: Persona con estado de cuenta asociado. Soporta deserialización desde API (`fromJson`) y patrón `activateAccount()` inmutable.
+* `personal_model.dart`: Modelo de datos del personal de la empresa para el módulo de Conteo Físico. Almacena los datos de identificación del empleado bajo la nomenclatura de base de datos (`perscodi`, `persnomb`, `persapel`, `perscoel`, `persdivi`, `persesta`). Su factory constructor `fromJson` implementa un mapeo tolerante a múltiples formatos de llave (minúsculas, mayúsculas, camelCase y las llaves directas del endpoint de personal: `cedula`, `nombre`, `apellido`, `correo`, `division`, `estado`).
 * `user_model.dart`: Modelo básico de usuario autenticado (id, name, email).
-* `warehouse_model.dart`: Bodega o centro de costos con deserialización desde API.
+* `warehouse_model.dart`: Bodega o centro de costos con deserialización desde API. Extiende `Equatable` con `bodeCodi`, `bodeDesc` y `bodeEsta` como `props`, permitiendo la comparación por valor requerida por `DropdownButton`.
+
+### 2.8 Modelos de Asignación de Conteo Físico (physical_count_model.dart)
+Además de `PhysicalCountRequest`, este archivo contiene los modelos para el flujo de asignación de personal:
+* `AsignacionConteoRequest`: Encapsula los datos requeridos por el endpoint `POST /api/v1/conteo-fisico/asignar_articulos`: `empresa`, `bodega`, `fechaConteo` (ISO 8601 UTC) y la lista de `UsuarioAsignacion`.
+* `UsuarioAsignacion`: Representa a cada contador asignado con `documento` (cédula), `nombre` (nombre + apellido concatenados) y `email`. Ambas clases implementan `Equatable` y exponen `toJson()` con la estructura exacta del schema Swagger.
 
 ## 3. Capa de Repositorios (lib/repositories/)
 ### 3.1 TransferRepository (Contrato Único)
@@ -100,7 +105,13 @@ Capa de conexión real hacia los endpoints desarrollados en Spring Boot.
 * Lógica pesada: Delegada a procedimientos almacenados en Oracle (ej. PKGTRASPASO).
 
 ### 4.6 physical_count_service.dart
-Simula la red para el módulo de Conteo Físico. Retorna listas maestras (empresas, bodegas, artículos, personal) con latencia y soporta la inyección simulada de errores HTTP (400, 409, 500) para comprobar el manejo robusto del Provider asociado.
+Servicio HTTP real para el módulo de Conteo Físico. Conecta con el backend Spring Boot a través de `Dio` para las siguientes operaciones:
+* `getCompanies()` → `GET /api/v1/empresas`: Carga el catálogo de empresas.
+* `getWarehouses(companyId)` → `GET /api/v1/bodegas/{empresa}`: Carga bodegas por empresa.
+* `getArticles(warehouseId, companyId)` → `GET /api/v1/bodegas/asignados/{bodega}/{empresa}`: Carga artículos asignados a una bodega. Implementa fallback a datos mock cuando `companyId` es nulo/vacío o cuando el backend lanza `DioException`. Antepone la opción `"Todos"` (id: `'All'`) al resultado exitoso del backend.
+* `searchPersons({nombre, apellido, cedula})` → `GET /api/v1/personal/buscar`: Búsqueda de personal por coincidencia. Envía los query params con las llaves exactas del backend (`nombre`, `apellido`, `cedula`). Lanza `DioException` 400 de forma local si no se provee ningún parámetro, sin consumir recursos de red.
+* `createPhysicalCount(request)` → `POST /api/v1/conteo-fisico/registrar`: Crea la apertura del conteo físico.
+* `assignArticles(request)` → `POST /api/v1/conteo-fisico/asignar_articulos`: Asigna los contadores seleccionados al conteo abierto.
 
 ## 5. Persistencia Local (lib/database/)
 ### 5.1 database_helper.dart
@@ -167,10 +178,13 @@ Gestor de estado centralizado para el flujo de requisiciones administrativas.
 * Dispara el método processBatchSelection() hacia el repositorio.
 
 ### 8.6 PhysicalCountProvider
-Orquestador de estado para el submódulo de Conteo Físico (Apertura).
-* Administra las listas maestras de selectores (dropdowns) y búsquedas reactivas en texto.
+Orquestador de estado para el submódulo de Conteo Físico (Apertura y Asignación).
+* Administra las listas maestras de selectores (dropdowns) con carga en cascada: Empresa → Bodega → Artículos.
 * Maneja los estados del submódulo de forma reaccionaria a eventos del usuario (`INITIAL`, `EN_PROCESO`, `CREADA`, `ERROR`).
 * Implementa las validaciones estrictas de campos de la UI antes de derivar responsabilidades al service.
+* `searchPersons({nombre, apellido, cedula})`: Valida en cliente que al menos un campo tenga valor, delega al servicio y actualiza `foundPersons`. Maneja errores 400 y de red con mensajes diferenciados.
+* `togglePersonSelection(person)` / `removePerson(person)`: Gestionan la lista `selectedPersons` comparando personas por `perscodi` (sin dependencia de referencia de objeto).
+* `assignPhysicalCount()`: Valida que haya empresa, bodega y al menos un participante seleccionados; construye el objeto `AsignacionConteoRequest` mapeando `selectedPersons` a `UsuarioAsignacion` y delega al servicio. Tras éxito, transita al estado `CREADA`.
 
 ### 8.7 ActiveCountProvider
 Orquestador de estado para la ejecución offline del conteo físico en piso.
@@ -189,9 +203,15 @@ Componente visual tipo tarjeta expandible para iterar sobre listas de requisicio
 * Maneja checkboxes condicionales e indicadores visuales de requerimientos.
 
 ### 9.3 PhysicalCountScreen y Tabs
-Pantalla que implementa el formulario principal para generar un conteo físico, organizada en pestañas.
-* `PhysicalCountOpeningTab`: Formulario de apertura con selectores, fecha y verificación lógica/física.
-* `PhysicalCountAssignmentTab`: Asignación de contadores con búsqueda por cédula/nombre.
+Pantalla que implementa el formulario principal para generar y asignar un conteo físico, organizada en pestañas.
+* `PhysicalCountOpeningTab`: Formulario de apertura con selectores en cascada (Empresa, Bodega, Artículo) implementados con `dropdown_button2` v3.x. Incluye barras de búsqueda dinámicas en cada dropdown usando `DropdownTemplates.searchData` y `ValueNotifier` por selector para sincronizar estado con el Provider. Los ítems se muestran en formato `"código - descripción"`.
+* `PhysicalCountAssignmentTab`: Asignación de contadores al conteo. Incluye:
+  - Panel `ExpansionTile` de búsqueda avanzada con campos Nombre, Apellido y Cédula.
+  - `ListView` de resultados con `CircleAvatar`, nombre completo y cédula por entrada; selección múltiple mediante `Checkbox`.
+  - Sección de participantes seleccionados como `Chip` eliminables.
+  - Botón **"Asignar Participantes al Conteo"** (ancho completo) que dispara `provider.assignPhysicalCount()`, muestra `SnackBar` verde en éxito y resetea el formulario para prevenir duplicados.
+  - Overlay de `CircularProgressIndicator` durante operaciones asíncronas.
+  - Manejo de errores vía `SnackBar` rojo usando `addPostFrameCallback` para evitar llamadas a `setState` durante el build.
 
 ### 9.4 ActiveCountScreen
 Pantalla para la ejecución del conteo físico en piso (modo offline).
@@ -250,3 +270,11 @@ A continuación, se evidencian las modificaciones arquitectónicas introducidas 
 4. **Integración de TransferBusinessException**: La excepción tipada se integró en `HttpTransferRepository`, transformando errores de red (`DioException`) en mensajes de negocio legibles para el usuario. Esto permite a los Providers distinguir errores de dominio de errores técnicos.
 5. **Asincronización de Providers de Traspasos**: `TransferApprovalProvider` y `TransferRequestProvider` se adaptaron al contrato asíncrono. El primero ahora mantiene estado local de la lista, expone `loadTransfers()` y ejecuta carga automática al instanciarse. El segundo implementó el `try/catch` pendiente con notificación de errores vía `NotificationService`.
 6. **Limpieza de dependencias**: Se eliminaron `cupertino_icons` (sin uso detectado) y `win32` (dependencia transitiva, no requiere declaración explícita). Se conservaron `pdf`, `path_provider` y `open_filex` para uso en desarrollo posterior.
+
+## 15. Control de Cambios e Histórico (v2.0 a v2.1)
+1. **Integración real del servicio de Personal**: Se implementó `searchPersons` en `physical_count_service.dart` como llamada HTTP real a `GET /api/v1/personal/buscar`. Los parámetros de búsqueda se envían con las llaves exactas del backend (`nombre`, `apellido`, `cedula`). Se eliminaron todos los `print` de diagnóstico del código de producción.
+2. **Modelo `PersonalModel` con mapeo tolerante**: Se rediseñó `personal_model.dart` bajo la nomenclatura de base de datos. Su `fromJson` prioriza las llaves reales del endpoint de personal (`cedula`, `nombre`, `apellido`, `correo`, `division`, `estado`) manteniendo compatibilidad con variantes en mayúsculas y camelCase. Esto resolvió el problema de visualización donde la cédula aparecía como `0` y nombre/apellido vacíos.
+3. **Nuevo flujo de Asignación de Personal**: Se incorporaron dos nuevas clases en `physical_count_model.dart` (`AsignacionConteoRequest` y `UsuarioAsignacion`) con serialización `toJson` alineada al schema Swagger del endpoint `POST /api/v1/conteo-fisico/asignar_articulos`. Se corrigió la ruta del endpoint que en una versión intermedia apuntaba a `/asignar_articulos` sin el prefijo de la API.
+4. **`assignPhysicalCount()` en el Provider**: El `PhysicalCountProvider` incorpora la lógica de negocio para validar y construir la petición de asignación a partir del estado compartido (empresa, bodega, fecha y personas seleccionadas), permitiendo que la pestaña de Asignación consuma datos capturados en la pestaña de Apertura sin acoplamiento directo entre vistas.
+5. **Mejoras de UI en dropdowns**: Los ítems de los selectores Empresa, Bodega y Artículo ahora muestran formato `"código - descripción"` para facilitar la identificación visual. `WarehouseModel` extendido con `Equatable` para resolver el error de aserción de `DropdownButton` al comparar elementos por valor.
+6. **Integración `dropdown_button2` con barras de búsqueda**: Migración completa de los tres selectores de apertura a `dropdown_button2` v3.x con `ValueNotifier` y `valueListenable` por selector. Se configuraron `onMenuStateChange` para limpiar el filtro de búsqueda al cerrar cada dropdown.
