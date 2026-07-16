@@ -20,10 +20,13 @@ El Módulo de Conteo Físico permite a las empresas gestionar la auditoría peri
 - Selección múltiple de estos responsables desde una lista interactiva de fácil borrado.
 - Informes claros al usuario en pantalla de errores 409 (Conflicto / Bodega Bloqueada) que garantizan que no haya cruce de conteos, y alertas de éxito de Creación.
 
-### 2.2 Fase 2: Escaneo y Conteo de Activos (Por Definir)
+### 2.2 Fase 2: Autenticación de Asignados y Descarga Offline (Por Definir)
+*(Los contadores asignados reciben un código temporal por correo. Inician sesión mediante un login alterno, descargan la lista de artículos para disponibilidad offline y almacenan el código temporal en el dispositivo).*
+
+### 2.3 Fase 3: Escaneo y Conteo de Activos (Por Definir)
 *(Pantalla donde las personas asignadas puedan leer el código QR de los activos de la bodega).*
 
-### 2.3 Fase 3: Conciliación y Cierre (Por Definir)
+### 2.4 Fase 4: Conciliación y Cierre (Por Definir)
 *(Cierre lógico del proceso y generación de diferencias de inventario para ajuste automático o manual en Sistema).*
 
 ---

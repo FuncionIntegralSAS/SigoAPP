@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:sigo_app/providers/active_count_provider.dart';
 import 'package:sigo_app/widgets/continuous_scan_view.dart';
 import 'package:sigo_app/widgets/list_count_view.dart';
+import 'package:sigo_app/providers/auth_provider.dart';
 
 class ActiveCountScreen extends StatefulWidget {
   const ActiveCountScreen({super.key});
@@ -15,9 +16,12 @@ class _ActiveCountScreenState extends State<ActiveCountScreen> {
   @override
   void initState() {
     super.initState();
-    // Simulamos un usuario logueado cargando su conteo local
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ActiveCountProvider>().loadLocalActiveCount('USER-MOBILE');
+      //context.read<ActiveCountProvider>().loadLocalActiveCount('USER-MOBILE');
+      // Obtenemos el usuario autenticado desde AuthProvider
+      final authProvider = context.read<AuthProvider>();
+      final userId = authProvider.currentCedula ?? 'UNKNOWN';
+      context.read<ActiveCountProvider>().loadLocalActiveCount(userId);
     });
   }
 
@@ -27,7 +31,8 @@ class _ActiveCountScreenState extends State<ActiveCountScreen> {
       builder: (ctx) => AlertDialog(
         title: Text('Finalizar Conteo ${provider.currentIteration}'),
         content: const Text(
-            '¿Estás seguro de finalizar esta iteración? Si existen diferencias, se habilitará el siguiente conteo.'),
+          '¿Estás seguro de finalizar esta iteración? Si existen diferencias, se habilitará el siguiente conteo.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -48,9 +53,7 @@ class _ActiveCountScreenState extends State<ActiveCountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ejecución de Conteo Físico'),
-      ),
+      appBar: AppBar(title: const Text('Ejecución de Conteo Físico')),
       body: Consumer<ActiveCountProvider>(
         builder: (context, provider, child) {
           if (provider.state == ActiveCountState.loading) {
@@ -59,9 +62,9 @@ class _ActiveCountScreenState extends State<ActiveCountScreen> {
 
           if (provider.errorMessage != null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(provider.errorMessage!)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(provider.errorMessage!)));
               provider.clearError();
             });
           }
@@ -80,7 +83,10 @@ class _ActiveCountScreenState extends State<ActiveCountScreen> {
               // Header de Progreso
               Container(
                 color: Colors.blue.shade50,
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 12.0,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -89,7 +95,10 @@ class _ActiveCountScreenState extends State<ActiveCountScreen> {
                       children: [
                         Text(
                           'ITERACIÓN: Conteo ${provider.currentIteration}/3',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -120,8 +129,14 @@ class _ActiveCountScreenState extends State<ActiveCountScreen> {
                         unselectedLabelColor: Colors.grey,
                         indicatorColor: Colors.blue,
                         tabs: [
-                          Tab(icon: Icon(Icons.qr_code_scanner), text: 'Escaneo Continuo'),
-                          Tab(icon: Icon(Icons.list_alt), text: 'Conteos por Lista'),
+                          Tab(
+                            icon: Icon(Icons.qr_code_scanner),
+                            text: 'Escaneo Continuo',
+                          ),
+                          Tab(
+                            icon: Icon(Icons.list_alt),
+                            text: 'Conteos por Lista',
+                          ),
                         ],
                       ),
                       Expanded(

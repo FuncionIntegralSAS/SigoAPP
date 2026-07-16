@@ -30,16 +30,16 @@ void main() {
         'id': 'MITEM-001',
         'physicalCountId': 'COUNT-001',
         'financialArticleId': 'ART-001',
-        'articleName': 'Laptop Dell',
+        'descripcion': 'Laptop Dell',
         'expectedQuantity': 5.0,
       },
       {
         'id': 'MITEM-002',
         'physicalCountId': 'COUNT-001',
         'financialArticleId': 'ART-002',
-        'articleName': 'Mouse Logitech',
+        'descripcion': 'Mouse Logitech',
         'expectedQuantity': 10.0,
-      }
+      },
     ];
 
     await dbHelper.saveActiveCount(countForm, masterItems);
@@ -51,7 +51,7 @@ void main() {
     expect(forms.length, 1);
     expect(forms.first['id'], 'COUNT-001');
     expect(items.length, 2);
-    expect(items.first['articleName'], 'Laptop Dell');
+    expect(items.first['descripcion'], 'Laptop Dell');
   });
 
   test('Should insert and retrieve CountRecords', () async {
@@ -107,7 +107,7 @@ void main() {
       'status': 'CONTADO',
       'isSynced': 'N',
     };
-    
+
     final recordMap2 = Map<String, dynamic>.from(recordMap1);
     recordMap2['barcode'] = '987654321';
 
@@ -117,8 +117,12 @@ void main() {
     await dbHelper.markRecordsAsSynced([id1, id2]);
 
     final db = await dbHelper.database;
-    final syncedRecords = await db.query('CountRecords', where: 'isSynced = ?', whereArgs: ['S']);
-    
+    final syncedRecords = await db.query(
+      'CountRecords',
+      where: 'isSynced = ?',
+      whereArgs: ['S'],
+    );
+
     expect(syncedRecords.length, 2);
   });
 }

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
@@ -16,13 +15,6 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDB(String filePath) async {
-    // Inicializar FFI si estamos ejecutando la app en escritorio (Windows/Linux)
-    // kIsWeb asegura que no intentemos acceder a dart:io en el navegador
-    if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
-    }
-
     if (kIsWeb) {
       throw UnsupportedError(
         'La base de datos SQLite no está configurada para Web aún.',
@@ -32,7 +24,62 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 4,
+      onCreate: _createDB,
+      onUpgrade: _onUpgrade,
+    );
+  }
+
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE CountMasterItems ADD COLUMN barcode TEXT');
+    }
+    if (oldVersion < 3) {
+      // Migración V3: Eliminar la columna expectedQuantity (NOT NULL) que causaba el error 1299
+      // En SQLite la forma más segura y compatible de eliminar una columna es recrear la tabla.
+      await db.transaction((txn) async {
+        await txn.execute(
+          'ALTER TABLE CountMasterItems RENAME TO _CountMasterItems_old',
+        );
+
+        await txn.execute('''
+          CREATE TABLE CountMasterItems (
+            id TEXT PRIMARY KEY,
+            physicalCountId TEXT NOT NULL,
+            financialArticleId TEXT NOT NULL,
+            articleName TEXT NOT NULL,
+            barcode TEXT,
+            FOREIGN KEY (physicalCountId) REFERENCES ActiveCountForms (id) ON DELETE CASCADE
+          )
+        ''');
+
+        await txn.execute('''
+          INSERT INTO CountMasterItems (id, physicalCountId, financialArticleId, articleName, barcode)
+          SELECT id, physicalCountId, financialArticleId, articleName, barcode
+          FROM _CountMasterItems_old
+        ''');
+
+        await txn.execute('DROP TABLE _CountMasterItems_old');
+      });
+    }
+
+    if (oldVersion < 4) {
+      // Migración V4: Renombrar articleName a descripcion
+      // Ocurre porque se hizo el cambio en el código fuente, pero la BD local seguía esperando articleName
+      try {
+        await db.execute(
+          'ALTER TABLE CountMasterItems RENAME COLUMN articleName TO descripcion',
+        );
+      } catch (e) {
+        // En caso de que se haya modificado la v3 manualmente y la tabla ya tuviera descripion pero el esquema
+        // estuviera corrupto, evitamos crasheo de la migración si la columna ya existía.
+        debugPrint(
+          'Nota: La columna descripcion podría ya existir o renombrarse. \$e',
+        );
+      }
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -59,8 +106,8 @@ class DatabaseHelper {
         id $idType,
         physicalCountId $textType,
         financialArticleId $textType,
-        articleName $textType,
-        expectedQuantity $doubleType,
+        descripcion $textType,
+        barcode $textNullType,
         FOREIGN KEY (physicalCountId) REFERENCES ActiveCountForms (id) ON DELETE CASCADE
       )
     ''');

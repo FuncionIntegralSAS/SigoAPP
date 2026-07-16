@@ -20,6 +20,8 @@ import 'package:sigo_app/services/mock_requisition_service.dart';
 import 'package:sigo_app/providers/physical_count_provider.dart';
 import 'package:sigo_app/providers/active_count_provider.dart';
 import 'package:sigo_app/repositories/http_physical_count_repository.dart';
+import 'package:sigo_app/providers/auth_provider.dart';
+import 'package:sigo_app/repositories/http_auth_repository.dart';
 import 'package:dio/dio.dart';
 
 // Services
@@ -47,6 +49,9 @@ Future<void> main() async {
   );
 
   final physicalCountRepository = HttpPhysicalCountRepository(backendDio);
+
+  // Puedes cambiar a HttpAuthRepository() cuando el backend esté listo .MockAuthRepository
+  final authRepository = HttpAuthRepository();
 
   final messengerKey = GlobalKey<ScaffoldMessengerState>();
   final notificationService = InAppNotificationService(messengerKey);
@@ -82,6 +87,9 @@ Future<void> main() async {
 
         // Provider local offline para la Ejecución del Conteo Físico (Piso)
         ChangeNotifierProvider(create: (_) => ActiveCountProvider()),
+
+        // Provider para el login alterno y descarga offline de contadores
+        ChangeNotifierProvider(create: (_) => AuthProvider(authRepository)),
       ],
       child: MyApp(messengerKey),
     ),

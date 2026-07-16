@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/mock_auth_service.dart';
+import 'account_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -145,11 +146,31 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(height: 10),
                 // Sugerencia para credenciales mock
                 const Padding(
-                  padding: EdgeInsets.only(top: 8.0),
+                  padding: EdgeInsets.only(top: 8.0, bottom: 20),
                   child: Text(
                     'Credenciales de prueba: operador@inventario.com / 123456',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
+                
+                const Divider(),
+                
+                // Botón Login de Contador (Alternativo)
+                TextButton.icon(
+                  onPressed: () {
+                    // Navegamos al nuevo AccountScreen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AccountScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: const Text('Acceso para Contadores (Conteo Físico)'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.blue.shade700,
                   ),
                 ),
               ],

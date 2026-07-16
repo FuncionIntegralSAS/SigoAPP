@@ -5,12 +5,16 @@ class ListCountView extends StatelessWidget {
   final ActiveCountProvider provider;
   const ListCountView({super.key, required this.provider});
 
-  void _showNumericKeyboard(BuildContext context, String articleId, String articleName) {
+  void _showNumericKeyboard(
+    BuildContext context,
+    String articleId,
+    String descripcion,
+  ) {
     final TextEditingController qtyController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Inventariar: $articleName'),
+        title: Text('Inventariar: $articleId - $descripcion'),
         content: TextField(
           controller: qtyController,
           keyboardType: TextInputType.number,
@@ -30,7 +34,7 @@ class ListCountView extends StatelessWidget {
               final val = double.tryParse(qtyController.text);
               if (val != null && val >= 0) {
                 // Al ingresar manual, sobreescribimos o sumamos? Dependerá de las reglas,
-                // Pero asumiendo registro limpio, guardamos lo que digita (como adición). 
+                // Pero asumiendo registro limpio, guardamos lo que digita (como adición).
                 // En un app real, podríamos mostrar lo contabilizado y sobreescribir.
                 provider.recordCount(articleId, val);
                 Navigator.of(ctx).pop();
@@ -58,18 +62,18 @@ class ListCountView extends StatelessWidget {
       itemBuilder: (context, index) {
         final articleId = masterList[index].key;
         final data = masterList[index].value;
-        final name = data['articleName'] as String;
-        final expectedQty = data['expectedQuantity'] as double;
+        final name = data['descripcion'] as String;
         final countedQty = provider.currentIterationRecords[articleId] ?? 0.0;
 
         return ListTile(
           leading: const Icon(Icons.inventory_2, color: Colors.blueGrey),
-          title: Text(name),
-          subtitle: Text('ID: $articleId\nEsperado: $expectedQty unidades'),
+          title: Text('$articleId - $name'),
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: countedQty > 0 ? Colors.green.shade100 : Colors.grey.shade200,
+              color: countedQty > 0
+                  ? Colors.green.shade100
+                  : Colors.grey.shade200,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

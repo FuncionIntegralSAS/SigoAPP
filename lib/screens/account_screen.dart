@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../models/person_model.dart';
-import '../services/mock_account_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/active_count_provider.dart';
+import 'active_count_screen.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -10,261 +12,368 @@ class AccountScreen extends StatefulWidget {
 }
 
 class _AccountScreenState extends State<AccountScreen> {
-  final MockAccountService _service = MockAccountService();
-  final TextEditingController _idController = TextEditingController();
-  
-  PersonModel? _searchResult;
-  bool _isSearching = false;
-  String _message = 'Ingrese el número de cédula y presione Buscar.';
+  final TextEditingController _cedulaController = TextEditingController();
+  final TextEditingController _codigoController = TextEditingController();
+  final Color primaryColor = Colors.blue.shade800;
 
-  final Color primaryColor = Colors.blue.shade700;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      if (auth.isAuthenticated && auth.currentCedula != null) {
+        context.read<ActiveCountProvider>().loadLocalActiveCount(auth.currentCedula!);
+      }
+    });
+  }
 
-  // 1. Lógica de búsqueda por cédula (AHORA ES ASÍNCRONA)
-  void _searchPerson() async {
-    final nationalId = _idController.text.trim();
-    if (nationalId.isEmpty) {
-      setState(() {
-        _message = 'El campo de cédula no puede estar vacío.';
-        _searchResult = null;
-      });
+  @override
+  void dispose() {
+    _cedulaController.dispose();
+    _codigoController.dispose();
+    super.dispose();
+  }
+
+  void _handleLogin(BuildContext context, AuthProvider authProvider) async {
+    final cedula = _cedulaController.text.trim();
+    final codigo = _codigoController.text.trim();
+
+    if (cedula.isEmpty || codigo.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor ingresa tu cédula y código temporal.'),
+        ),
+      );
       return;
     }
 
-    setState(() {
-      _isSearching = true;
-      _searchResult = null;
-      _message = 'Buscando persona con ID $nationalId...';
-    });
-
-    try {
-      // Llama a la capa de negocio, que a su vez llama a la capa de red (con delay simulado)
-      final person = await _service.searchPersonByNationalId(nationalId);
-      
-      setState(() {
-        _isSearching = false;
-        _searchResult = person;
-
-        if (person == null) {
-          _message = 'Persona no encontrada en el sistema de registro.';
-        } else if (person.accountExists) {
-          _message = '¡Cuenta existente encontrada!';
-        } else {
-          _message = 'Persona encontrada. La cuenta NO ha sido generada.';
-        }
-      });
-    } catch (e) {
-      // Manejo de errores de red (simulado)
-      setState(() {
-        _isSearching = false;
-        _message = 'Error en la búsqueda: $e';
-      });
-      // Muestra un SnackBar con el error
+    final success = await authProvider.loginContador(cedula, codigo);
+    if (!context.mounted) return;
+    if (success) {
+      context.read<ActiveCountProvider>().loadLocalActiveCount(cedula);
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error de red: $e')),
+        SnackBar(
+          content: Text(authProvider.errorMessage ?? 'Error al iniciar sesión'),
+        ),
       );
     }
   }
 
-  // 3. Lógica para generar la cuenta (AHORA ES ASÍNCRONA)
-  void _createAccount(PersonModel person) async {
-    setState(() {
-      _isSearching = true;
-      _message = 'Generando cuenta para ${person.fullName}...';
-    });
-
+  void _descargarPendientes(
+    BuildContext context,
+    AuthProvider auth,
+    ActiveCountProvider activeCount,
+  ) async {
     try {
-      // Llama a la capa de negocio para crear la cuenta a través de la red (con delay simulado)
-      final newAccount = await _service.createAccount(person);
-      
-      // 5. Mostrar mensaje de confirmación
+      final pendientes = await auth.descargarPendientes();
+      if (!context.mounted) return;
+
+      if (pendientes.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No tienes artículos pendientes por contar.'),
+          ),
+        );
+        return;
+      }
+
+      await activeCount.guardarPendientesLocales(pendientes);
+      await activeCount.loadLocalActiveCount(auth.currentCedula!);
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ ¡Cuenta creada con éxito para ${newAccount.fullName}!'),
+          content: Text(
+            '${pendientes.length} artículos descargados exitosamente.',
+          ),
           backgroundColor: Colors.green,
         ),
       );
-      
-      setState(() {
-        _isSearching = false;
-        _searchResult = newAccount;
-        _message = 'Cuenta creada. Usuario registrado por: ${newAccount.createdByUserId}';
-      });
     } catch (e) {
-      // Manejo de errores de red (simulado)
-       setState(() {
-        _isSearching = false;
-        _message = 'Error en la creación de la cuenta: $e';
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error de red al crear cuenta: $e')),
-      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gestión de Cuentas y Perfil'),
-        backgroundColor: primaryColor,
-        automaticallyImplyLeading: false,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Campo de Búsqueda
-            _buildSearchField(),
-            const SizedBox(height: 20),
-            
-            // Botón de Búsqueda
-            ElevatedButton.icon(
-              onPressed: _isSearching ? null : _searchPerson,
-              icon: _isSearching 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Icon(Icons.search, color: Colors.white),
-              label: Text(_isSearching ? 'Buscando...' : 'Buscar Persona por Cédula', style: const TextStyle(color: Colors.white)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+    return Consumer2<AuthProvider, ActiveCountProvider>(
+      builder: (context, authProvider, activeCountProvider, child) {
+        return Scaffold(
+          backgroundColor: Colors.grey.shade50,
+          appBar: AppBar(
+            title: const Text(
+              'Módulo de Contadores',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: primaryColor,
+            iconTheme: const IconThemeData(color: Colors.white),
+            actions: [
+              if (authProvider.isAuthenticated)
+                IconButton(
+                  icon: const Icon(Icons.logout),
+                  tooltip: 'Cerrar Sesión',
+                  onPressed: () {
+                    authProvider.logout();
+                  },
+                ),
+            ],
+          ),
+          body: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 400),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 10,
+                      offset: Offset(0, 5),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(32.0),
+                child: authProvider.isAuthenticated
+                    ? _buildAuthenticatedMenu(
+                        context,
+                        authProvider,
+                        activeCountProvider,
+                      )
+                    : _buildLoginForm(context, authProvider),
               ),
             ),
-            
-            const SizedBox(height: 30),
-
-            // Mensajes de Estado
-            Text(_message, 
-              textAlign: TextAlign.center, 
-              style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey.shade600)),
-            
-            const SizedBox(height: 20),
-
-            // Contenido Condicional (Información/Creación/Error)
-            if (_searchResult != null) 
-              _buildPersonResultCard(_searchResult!),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildSearchField() {
-    return TextField(
-      controller: _idController,
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: 'Número de Cédula (Ej: 1018420001)',
-        border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-        prefixIcon: const Icon(Icons.credit_card),
-        suffixIcon: IconButton(
-          icon: const Icon(Icons.clear),
-          onPressed: () {
-            _idController.clear();
-            setState(() {
-              _searchResult = null;
-              _message = 'Ingrese el número de cédula y presione Buscar.';
-            });
-          },
+  Widget _buildLoginForm(BuildContext context, AuthProvider authProvider) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Icon(Icons.qr_code_scanner, size: 80, color: primaryColor),
+        const SizedBox(height: 20),
+        Text(
+          'Autenticación de Conteo',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: primaryColor,
+          ),
         ),
-      ),
+        const SizedBox(height: 10),
+        const Text(
+          'Ingresa los datos proporcionados por correo.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey),
+        ),
+        const SizedBox(height: 30),
+        TextField(
+          controller: _cedulaController,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Cédula',
+            prefixIcon: const Icon(Icons.badge),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          enabled: !authProvider.isLoading,
+        ),
+        const SizedBox(height: 20),
+        TextField(
+          controller: _codigoController,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: 'Código Temporal',
+            prefixIcon: const Icon(Icons.password),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          enabled: !authProvider.isLoading,
+        ),
+        const SizedBox(height: 30),
+        ElevatedButton(
+          onPressed: authProvider.isLoading
+              ? null
+              : () => _handleLogin(context, authProvider),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: authProvider.isLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+              : const Text(
+                  'INGRESAR',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+        ),
+      ],
     );
   }
-  
-  Widget _buildPersonResultCard(PersonModel person) {
-    // Helper para formatear fechas si existen
-    String formatDateTime(DateTime? dt) {
-      if (dt == null) return 'N/A';
-      return dt.toLocal().toString().split('.')[0];
-    }
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(person.fullName, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryColor)),
-            const Divider(height: 20),
-            _buildDetailRow('Cédula', person.nationalId as String, Icons.badge),
-            _buildDetailRow('Cuenta Registrada', person.accountExists ? 'SÍ' : 'NO', Icons.verified_user, color: person.accountExists ? Colors.green : Colors.red),
-            
-            // 4. Validación de existencia y estado activo
-            _buildDetailRow('Estado Activo', person.isActive ? 'ACTIVO' : 'INACTIVO', Icons.circle, color: person.isActive ? Colors.green : Colors.red),
-            
-            if (person.accountExists) ...[
-              const SizedBox(height: 15),
-              Text('Metadata de Creación', style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor)),
-              _buildDetailRow('Fecha de Creación', formatDateTime(person.creationDate), Icons.date_range),
-              // 6. Registrar usuario, fecha y hora de creación
-              _buildDetailRow('Creado por Usuario', person.createdByUserId ?? 'Desconocido', Icons.person_pin),
-            ],
-            
-            const SizedBox(height: 20),
-            
-            // Acción condicional (Crear cuenta)
-            _buildConditionalAction(person),
-          ],
+  Widget _buildAuthenticatedMenu(
+    BuildContext context,
+    AuthProvider authProvider,
+    ActiveCountProvider activeCountProvider,
+  ) {
+    final bool hasDownloadedCounts = activeCountProvider.hasActiveCount;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Icon(Icons.verified_user, size: 80, color: Colors.green.shade600),
+        const SizedBox(height: 20),
+        Text(
+          '¡Hola, ${authProvider.currentUsername ?? authProvider.currentCedula}!',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: primaryColor,
+          ),
         ),
-      ),
-    );
-  }
-  
-  Widget _buildDetailRow(String label, String value, IconData icon, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color ?? Colors.grey.shade600),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  TextSpan(text: value, style: TextStyle(color: color, fontWeight: color != null ? FontWeight.w600 : FontWeight.normal)),
+        const SizedBox(height: 30),
+
+        // Botón Descargar Asignaciones
+        ElevatedButton.icon(
+          onPressed: authProvider.isLoading
+              ? null
+              : () => _descargarPendientes(
+                  context,
+                  authProvider,
+                  activeCountProvider,
+                ),
+          icon: authProvider.isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.cloud_download),
+          label: const Text('Descargar Asignaciones (Offline)'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue.shade50,
+            foregroundColor: primaryColor,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            elevation: 0,
+            side: BorderSide(color: primaryColor.withOpacity(0.3)),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Botón Iniciar Conteo Físico
+        ElevatedButton.icon(
+          onPressed: !hasDownloadedCounts
+              ? null
+              : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ActiveCountScreen(),
+                    ),
+                  );
+                },
+          icon: const Icon(Icons.play_arrow),
+          label: const Text('Iniciar / Continuar Conteo'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: hasDownloadedCounts
+                ? Colors.green.shade600
+                : Colors.grey.shade300,
+            foregroundColor: hasDownloadedCounts
+                ? Colors.white
+                : Colors.grey.shade600,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+        ),
+
+        if (!hasDownloadedCounts)
+          const Padding(
+            padding: EdgeInsets.only(top: 10.0),
+            child: Text(
+              'Debes descargar asignaciones primero antes de iniciar.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.red,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 30),
+        const Divider(),
+        const SizedBox(height: 10),
+
+        // Botón Limpiar Datos Locales
+        OutlinedButton.icon(
+          onPressed: () async {
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Limpiar almacenamiento local'),
+                content: const Text(
+                  'Esta acción borrará todas las asignaciones y conteos descargados de este dispositivo local. ¿Deseas continuar?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('Cancelar'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const Text('Limpiar'),
+                  ),
                 ],
               ),
-            ),
+            );
+
+            if (confirm == true && context.mounted) {
+              await activeCountProvider.clearLocalDatabase();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Almacenamiento local limpiado con éxito.'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              }
+            }
+          },
+          icon: const Icon(Icons.delete_sweep, color: Colors.red),
+          label: const Text(
+            'Limpiar Datos Locales',
+            style: TextStyle(color: Colors.red),
           ),
-        ],
-      ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Colors.redAccent),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ],
     );
-  }
-  
-  Widget _buildConditionalAction(PersonModel person) {
-    if (person.accountExists && person.isActive) {
-      return const Center(child: Text('La persona ya tiene una cuenta activa.', style: TextStyle(color: Colors.green, fontStyle: FontStyle.italic)));
-    }
-    
-    if (!person.isActive) {
-      return const Center(child: Text('ERROR: La persona está INACTIVA en el sistema. No se puede generar cuenta.', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)));
-    }
-    
-    // 3. Si no tiene cuenta, permitir generarla automáticamente.
-    if (!person.accountExists && person.isActive) {
-      return Column(
-        children: [
-          Padding( 
-            padding: const EdgeInsets.only(bottom: 10),
-            child: const Text('La cuenta no ha sido generada. ¿Desea crearla ahora?'),
-          ),
-          ElevatedButton.icon(
-            // Corregido: Llamada a la función asíncrona
-            onPressed: () => _createAccount(person), 
-            icon: const Icon(Icons.add_circle, color: Colors.white),
-            label: const Text('Generar Cuenta Automáticamente', style: TextStyle(color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade600,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-          ),
-        ],
-      );
-    }
-    
-    return const SizedBox.shrink();
   }
 }
