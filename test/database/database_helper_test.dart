@@ -11,10 +11,8 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  setUp(() async {
+  setUp(() {
     dbHelper = DatabaseHelper.instance;
-    // Limpiar la BD antes de cada prueba
-    await dbHelper.clearDatabase();
   });
 
   test('Should insert an ActiveCountForm and its MasterItems', () async {

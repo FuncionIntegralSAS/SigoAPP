@@ -132,15 +132,6 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<void> clearDatabase() async {
-    final db = await instance.database;
-    await db.transaction((txn) async {
-      await txn.execute('DELETE FROM CountRecords');
-      await txn.execute('DELETE FROM CountMasterItems');
-      await txn.execute('DELETE FROM ActiveCountForms');
-    });
-  }
-
   Future<void> close() async {
     final db = await instance.database;
     db.close();

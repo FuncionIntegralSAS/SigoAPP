@@ -321,8 +321,7 @@ class ActiveCountProvider extends ChangeNotifier {
           'id': p.idArticulo,
           'physicalCountId': formId,
           'financialArticleId': p.idArticulo.toString(),
-          'descripcion':
-              p.nombreArticulo ?? '${p.idArticulo} - ${p.descripcion}',
+          'descripcion': p.descripcion ?? 'Artículo ${p.idArticulo}',
           'barcode': p.codigoQr ?? p.idArticulo.toString(),
         };
       }).toList();

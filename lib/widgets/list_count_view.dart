@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sigo_app/providers/active_count_provider.dart';
 
 class ListCountView extends StatelessWidget {
@@ -14,12 +15,13 @@ class ListCountView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Inventariar: $articleId - $descripcion'),
+        title: Text('Cantidad Física: $articleId - $descripcion'),
         content: TextField(
           controller: qtyController,
           keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: const InputDecoration(
-            labelText: 'Cantidad Física Real',
+            labelText: 'Cantidad Física',
             border: OutlineInputBorder(),
           ),
           autofocus: true,
@@ -31,12 +33,9 @@ class ListCountView extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              final val = double.tryParse(qtyController.text);
+              final val = int.tryParse(qtyController.text);
               if (val != null && val >= 0) {
-                // Al ingresar manual, sobreescribimos o sumamos? Dependerá de las reglas,
-                // Pero asumiendo registro limpio, guardamos lo que digita (como adición).
-                // En un app real, podríamos mostrar lo contabilizado y sobreescribir.
-                provider.recordCount(articleId, val);
+                provider.recordCount(articleId, val.toDouble());
                 Navigator.of(ctx).pop();
               }
             },
@@ -55,39 +54,33 @@ class ListCountView extends StatelessWidget {
       return const Center(child: Text('El maestro de artículos está vacío.'));
     }
 
-    return ListView.separated(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
-      itemCount: masterList.length,
-      separatorBuilder: (_, __) => const Divider(),
-      itemBuilder: (context, index) {
-        final articleId = masterList[index].key;
-        final data = masterList[index].value;
-        final name = data['descripcion'] as String;
-        final countedQty = provider.currentIterationRecords[articleId] ?? 0.0;
-
-        return ListTile(
-          leading: const Icon(Icons.inventory_2, color: Colors.blueGrey),
-          title: Text('$articleId - $name'),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: countedQty > 0
-                  ? Colors.green.shade100
-                  : Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '$countedQty',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: countedQty > 0 ? Colors.green.shade800 : Colors.black54,
-              ),
-            ),
-          ),
-          onTap: () => _showNumericKeyboard(context, articleId, name),
-        );
-      },
+      child: DataTable(
+        showCheckboxColumn: false,
+        columnSpacing: 24,
+        headingRowColor: WidgetStateProperty.all(Colors.blue.shade50),
+        columns: const [
+          DataColumn(label: Text('Código')),
+          DataColumn(label: Text('Descripción')),
+          DataColumn(label: Text('Cantidad')),
+        ],
+        rows: masterList.map((entry) {
+          final articleId = entry.key;
+          final data = entry.value;
+          final descripcion = data['descripcion'] as String;
+          final countedQty = provider.currentIterationRecords[articleId] ?? 0.0;
+          return DataRow(
+            cells: [
+              DataCell(Text(articleId)),
+              DataCell(Text(descripcion)),
+              DataCell(Text(countedQty.toStringAsFixed(0))),
+            ],
+            onSelectChanged: (_) =>
+                _showNumericKeyboard(context, articleId, descripcion),
+          );
+        }).toList(),
+      ),
     );
   }
 }

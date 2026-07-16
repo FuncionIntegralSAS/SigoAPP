@@ -20,14 +20,16 @@ El Módulo de Conteo Físico permite a las empresas gestionar la auditoría peri
 - Selección múltiple de estos responsables desde una lista interactiva de fácil borrado.
 - Informes claros al usuario en pantalla de errores 409 (Conflicto / Bodega Bloqueada) que garantizan que no haya cruce de conteos, y alertas de éxito de Creación.
 
-### 2.2 Fase 2: Autenticación de Asignados y Descarga Offline (Por Definir)
-*(Los contadores asignados reciben un código temporal por correo. Inician sesión mediante un login alterno, descargan la lista de artículos para disponibilidad offline y almacenan el código temporal en el dispositivo).*
+### 2.2 Fase 2: Autenticación de Asignados y Descarga Offline (Implementado Localmente)
+*(Los contadores asignados reciben un código temporal por correo. Inician sesión mediante un login alterno desde el `AccountScreen`. Se comunican con la API para descargar las asignaciones, basándose en la respuesta real de la base de datos (mapeando correctamente el campo `descripcion` proporcionado por el backend).*
 
-### 2.3 Fase 3: Escaneo y Conteo de Activos (Por Definir)
-*(Pantalla donde las personas asignadas puedan leer el código QR de los activos de la bodega).*
+### 2.3 Fase 3: Escaneo y Conteo de Activos (Implementado Parcialmente)
+Se introducen reglas estrictas respecto a cómo el empleado afronta el conteo:
+- **Conteo Ciego:** A nivel UI está prohibido el renderizado o transmisión de cantidades esperadas hacia el usuario auditor. El conteo es ciego para no sesgar sus auditorías físicas.
+- **Modalidad Grilla y Solo Enteros:** Para los *"Conteos por lista"*, la información se dispuso bajo una cuadricula (`DataTable`). Cuando la celda represente una adición o imputación de datos (la fila interactiva), se le debe presentar al contador el concepto visual de **'Cantidad Física'** requiriendo y bloqueando el teclado netamente a números `(Enteros)`. En adición siempre que se presenta al empleado el nombre de los ítems en su grilla, lo precede de código concatenado visualmente (`ID - Nombre/Descripción`).
 
-### 2.4 Fase 4: Conciliación y Cierre (Por Definir)
-*(Cierre lógico del proceso y generación de diferencias de inventario para ajuste automático o manual en Sistema).*
+### 2.4 Fase 4: Conciliación y Cierre (Flujo 3 Conteos)
+- Se manejan ciclos lógicos de conteo mediante comparativas iterativas. Una vez se comprueben diferencias hasta culminar el tercer conteo de activos, se debe emitir un bloqueo terminante y **realizar el cierre o finalización lógica del formulario completo del conteo**.
 
 ---
 

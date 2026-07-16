@@ -22,7 +22,9 @@ class _AccountScreenState extends State<AccountScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
       if (auth.isAuthenticated && auth.currentCedula != null) {
-        context.read<ActiveCountProvider>().loadLocalActiveCount(auth.currentCedula!);
+        context.read<ActiveCountProvider>().loadLocalActiveCount(
+          auth.currentCedula!,
+        );
       }
     });
   }
@@ -319,60 +321,6 @@ class _AccountScreenState extends State<AccountScreen> {
               ),
             ),
           ),
-
-        const SizedBox(height: 30),
-        const Divider(),
-        const SizedBox(height: 10),
-
-        // Botón Limpiar Datos Locales
-        OutlinedButton.icon(
-          onPressed: () async {
-            final confirm = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('Limpiar almacenamiento local'),
-                content: const Text(
-                  'Esta acción borrará todas las asignaciones y conteos descargados de este dispositivo local. ¿Deseas continuar?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const Text('Cancelar'),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const Text('Limpiar'),
-                  ),
-                ],
-              ),
-            );
-
-            if (confirm == true && context.mounted) {
-              await activeCountProvider.clearLocalDatabase();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Almacenamiento local limpiado con éxito.'),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
-              }
-            }
-          },
-          icon: const Icon(Icons.delete_sweep, color: Colors.red),
-          label: const Text(
-            'Limpiar Datos Locales',
-            style: TextStyle(color: Colors.red),
-          ),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Colors.redAccent),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
-        ),
       ],
     );
   }

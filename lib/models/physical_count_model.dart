@@ -95,8 +95,7 @@ class PendienteArticuloResponse extends Equatable {
   final int idArticulo;
   final int? idUsuario;
 
-  // Sugerencias de campos complementarios para el backend
-  final String? nombreArticulo;
+  final String? descripcion;
 
   const PendienteArticuloResponse({
     required this.numeroConteo,
@@ -106,7 +105,7 @@ class PendienteArticuloResponse extends Equatable {
     this.idBodega,
     required this.idArticulo,
     this.idUsuario,
-    this.nombreArticulo,
+    this.descripcion,
   });
 
   factory PendienteArticuloResponse.fromJson(Map<String, dynamic> json) {
@@ -118,7 +117,7 @@ class PendienteArticuloResponse extends Equatable {
       idBodega: json['idBodega'] as String?,
       idArticulo: json['idArticulo'] ?? 0,
       idUsuario: json['idUsuario'] as int?,
-      nombreArticulo: json['nombreArticulo'] as String?,
+      descripcion: (json['descripcion'] ?? json['nombreArticulo']) as String?,
     );
   }
 
@@ -131,8 +130,6 @@ class PendienteArticuloResponse extends Equatable {
     idBodega,
     idArticulo,
     idUsuario,
-    nombreArticulo,
+    descripcion,
   ];
-
-  get descripcion => null;
 }
