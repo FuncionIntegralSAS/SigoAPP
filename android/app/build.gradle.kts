@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.flutter_application_1"
+    namespace = "com.funcionintegralsas.sigoapp"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.flutter_application_1"
+        applicationId = "com.funcionintegralsas.sigoapp"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -32,8 +32,11 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // TODO: Configurar signing con keystore de producción.
+            // 1. Genera tu keystore: keytool -genkey -v -keystore sigoapp-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias sigoapp
+            // 2. Crea android/key.properties con las credenciales
+            // 3. Descomenta y configura signingConfigs.release apuntando al keystore
+            // Por ahora usa debug para pruebas locales:
             signingConfig = signingConfigs.getByName("debug")
         }
     }

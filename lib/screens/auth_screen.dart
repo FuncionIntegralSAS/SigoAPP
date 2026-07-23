@@ -10,8 +10,8 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final TextEditingController _emailController = TextEditingController(text: MockAuthService.validUser);
-  final TextEditingController _passwordController = TextEditingController(text: MockAuthService.validPass);
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -44,7 +44,8 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-      body: Center(
+      body: SafeArea(
+        child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(32.0),
           child: Container(
@@ -144,15 +145,6 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                 ),
                 const SizedBox(height: 10),
-                // Sugerencia para credenciales mock
-                const Padding(
-                  padding: EdgeInsets.only(top: 8.0, bottom: 20),
-                  child: Text(
-                    'Credenciales de prueba: operador@inventario.com / 123456',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ),
                 
                 const Divider(),
                 
@@ -176,6 +168,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

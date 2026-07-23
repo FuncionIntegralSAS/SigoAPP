@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../utils/app_logger.dart';
 import '../models/company_model.dart';
 import '../models/warehouse_model.dart';
 import '../models/article_model.dart';
@@ -131,5 +132,43 @@ class HttpPhysicalCountRepository implements PhysicalCountRepository {
       '/api/v1/conteo-fisico/asignar_articulos',
       data: request.toJson(),
     );
+  }
+
+  @override
+  Future<bool> checkHealth() async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/health',
+        options: Options(
+          receiveTimeout: const Duration(seconds: 3),
+          sendTimeout: const Duration(seconds: 3),
+        ),
+      );
+      return response.statusCode == 200 && response.data == 'OK';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> reportarConteo(
+    String token,
+    ReporteConteoRequest request,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/conteo-fisico/reportar',
+        data: request.toJson(),
+        options: Options(
+          headers: {'Authorization': token},
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
+      AppLogger.d('Respuesta de la iteración: ${response.data}');
+      return response.statusCode == 200;
+    } catch (e) {
+      AppLogger.e('Error en reportarConteo', e);
+      return false;
+    }
   }
 }

@@ -41,7 +41,10 @@ class _ActiveCountScreenState extends State<ActiveCountScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              provider.completeCurrentIteration();
+              final authProvider = context.read<AuthProvider>();
+              provider.completeCurrentIteration(
+                authProvider.currentToken ?? '',
+              );
             },
             child: const Text('Confirmar'),
           ),

@@ -2,11 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:sigo_app/database/database_helper.dart';
 import 'package:sigo_app/models/count_record_model.dart';
 import 'package:sigo_app/models/physical_count_model.dart';
+import 'package:sigo_app/repositories/physical_count_repository.dart';
 
 enum ActiveCountState { loading, idle, error, syncing }
 
 class ActiveCountProvider extends ChangeNotifier {
+  final PhysicalCountRepository repository;
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+
+  ActiveCountProvider(this.repository);
 
   ActiveCountState _state = ActiveCountState.idle;
   ActiveCountState get state => _state;
@@ -215,12 +219,15 @@ class ActiveCountProvider extends ChangeNotifier {
   }
 
   /// Acaba la iteración actual y avanza a la siguiente (o finaliza).
-  Future<void> completeCurrentIteration() async {
+  Future<void> completeCurrentIteration([String? token]) async {
     if (_currentIteration == 1) {
-      _currentIteration = 2;
-      _currentIterationRecords.clear();
-      // Guardar C1 memory
+      // Guardar C1 memory antes de limpiar
       _count1Records = Map.from(_currentIterationRecords);
+      _currentIterationRecords.clear();
+      _currentIteration = 2;
+
+      // Sincronizar C1
+      await syncWithBackend(token);
     } else if (_currentIteration == 2) {
       // Calcular discrepancias
       _articlesNeedingCount3.clear();
@@ -239,17 +246,19 @@ class ActiveCountProvider extends ChangeNotifier {
 
       if (_articlesNeedingCount3.isEmpty) {
         // No hay diferencias, podemos cerrar el formulario completo
-        await _finishEntireCount();
+        await _finishEntireCount(token);
       } else {
         _currentIteration = 3;
+        // Sincronizar C2
+        await syncWithBackend(token);
       }
     } else if (_currentIteration == 3) {
-      await _finishEntireCount();
+      await _finishEntireCount(token);
     }
     notifyListeners();
   }
 
-  Future<void> _finishEntireCount() async {
+  Future<void> _finishEntireCount([String? token]) async {
     // Marcar en SQlite como completado
     final db = await _dbHelper.database;
     await db.update(
@@ -261,11 +270,17 @@ class ActiveCountProvider extends ChangeNotifier {
     _activeCountId = null; // Quita de la UI activa
 
     // Aquí podríamos invocar syncWithBackend() para subir todos los registros.
-    syncWithBackend();
+    syncWithBackend(token);
   }
 
   /// Sincroniza los registros 'N' al backend.
-  Future<void> syncWithBackend() async {
+  Future<void> syncWithBackend([String? token]) async {
+    if (token == null || token.isEmpty) {
+      _errorMessage = 'Falta el token de sesión para sincronizar.';
+      _setState(ActiveCountState.error);
+      return;
+    }
+
     _setState(ActiveCountState.syncing);
     try {
       final db = await _dbHelper.database;
@@ -280,15 +295,38 @@ class ActiveCountProvider extends ChangeNotifier {
         return;
       }
 
-      // 1. Llamar a la API real: await networkClient.post('/api/v1/conteo-fisico/registrarBatch', data: listaJson);
-      // Simulación de latencia:
-      await Future.delayed(const Duration(seconds: 2));
+      // Agrupar registros por warehouseId y countNumber (o usar el ID del form)
+      // Para simplificar, reportaremos todos usando el primer registro como base.
+      final primerRegistro = pendingRecords.first;
+      final bodega = primerRegistro['warehouseId'] as String;
+      final numeroConteo = primerRegistro['countNumber'] as int;
 
-      // 2. Si es exitoso, marcarlos localmente como Sincronizados
-      final List<int> idsToMark = pendingRecords
-          .map((r) => r['localId'] as int)
-          .toList();
-      await _dbHelper.markRecordsAsSynced(idsToMark);
+      final articulos = pendingRecords.map((r) {
+        return ArticuloConteo(
+          idArticulo: int.parse(r['financialArticleId'] as String),
+          cantidadContada: (r['countedQuantity'] as num).toDouble(),
+        );
+      }).toList();
+
+      final request = ReporteConteoRequest(
+        bodega: bodega,
+        numeroConteo: numeroConteo,
+        articulos: articulos,
+      );
+
+      final success = await repository.reportarConteo(token, request);
+
+      if (success) {
+        // 2. Si es exitoso, marcarlos localmente como Sincronizados
+        final List<int> idsToMark = pendingRecords
+            .map((r) => r['localId'] as int)
+            .toList();
+        await _dbHelper.markRecordsAsSynced(idsToMark);
+      } else {
+        _errorMessage = 'Fallo en la respuesta del backend al sincronizar.';
+        _setState(ActiveCountState.error);
+        return;
+      }
 
       _setState(ActiveCountState.idle);
     } catch (e) {
@@ -302,6 +340,15 @@ class ActiveCountProvider extends ChangeNotifier {
     List<PendienteArticuloResponse> pendientes,
   ) async {
     if (pendientes.isEmpty) return;
+
+    // Validar si ya hay un conteo en memoria o base de datos activo
+    if (hasActiveCount) {
+      _errorMessage =
+          'Existe un conteo en curso. Finalízalo antes de guardar nuevos datos.';
+      notifyListeners();
+      return;
+    }
+
     _setState(ActiveCountState.syncing);
     try {
       // Tomamos el primer elemento como referencia para la cabecera (Form)

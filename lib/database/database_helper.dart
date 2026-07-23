@@ -75,9 +75,11 @@ class DatabaseHelper {
       } catch (e) {
         // En caso de que se haya modificado la v3 manualmente y la tabla ya tuviera descripion pero el esquema
         // estuviera corrupto, evitamos crasheo de la migración si la columna ya existía.
-        debugPrint(
-          'Nota: La columna descripcion podría ya existir o renombrarse. \$e',
-        );
+        if (kDebugMode) {
+          debugPrint(
+            'Nota: La columna descripcion podría ya existir o renombrarse. \$e',
+          );
+        }
       }
     }
   }

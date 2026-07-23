@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'app_logger.dart';
 
 /// Un interceptor para Dio que intercepta las respuestas de red.
 /// Si el backend retorna un string JSON pero con un Content-Type incorrecto 
@@ -21,7 +22,7 @@ class JsonInterceptor extends Interceptor {
           response.data = jsonDecode(trimmed);
         } catch (e) {
           // Si falla, dejamos la data original
-          print('JsonInterceptor falló al decodificar: $e');
+          AppLogger.w('JsonInterceptor falló al decodificar: $e');
         }
       }
     }
@@ -29,3 +30,4 @@ class JsonInterceptor extends Interceptor {
     super.onResponse(response, handler);
   }
 }
+

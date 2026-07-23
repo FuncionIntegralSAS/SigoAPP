@@ -133,3 +133,43 @@ class PendienteArticuloResponse extends Equatable {
     descripcion,
   ];
 }
+
+class ReporteConteoRequest extends Equatable {
+  final String bodega;
+  final int numeroConteo;
+  final List<ArticuloConteo> articulos;
+
+  const ReporteConteoRequest({
+    required this.bodega,
+    required this.numeroConteo,
+    required this.articulos,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'bodega': bodega,
+      'numeroConteo': numeroConteo,
+      'articulos': articulos.map((a) => a.toJson()).toList(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [bodega, numeroConteo, articulos];
+}
+
+class ArticuloConteo extends Equatable {
+  final int idArticulo;
+  final double cantidadContada;
+
+  const ArticuloConteo({
+    required this.idArticulo,
+    required this.cantidadContada,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {'idArticulo': idArticulo, 'cantidad': cantidadContada};
+  }
+
+  @override
+  List<Object?> get props => [idArticulo, cantidadContada];
+}

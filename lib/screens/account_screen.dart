@@ -67,6 +67,16 @@ class _AccountScreenState extends State<AccountScreen> {
     AuthProvider auth,
     ActiveCountProvider activeCount,
   ) async {
+    if (activeCount.hasActiveCount) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ya tienes un conteo activo, debes finalizarlo antes de descargar nuevos datos.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     try {
       final pendientes = await auth.descargarPendientes();
       if (!context.mounted) return;

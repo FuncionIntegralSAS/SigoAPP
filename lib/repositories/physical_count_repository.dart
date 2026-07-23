@@ -30,4 +30,10 @@ abstract class PhysicalCountRepository {
 
   /// Realiza la asignación de participantes a un conteo físico.
   Future<void> assignArticles(AsignacionConteoRequest request);
+
+  /// Verifica el estado de conexión con el backend (Health Check).
+  Future<bool> checkHealth();
+
+  /// Reporta las cantidades contadas en la iteración actual.
+  Future<bool> reportarConteo(String token, ReporteConteoRequest request);
 }

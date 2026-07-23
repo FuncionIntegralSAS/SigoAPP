@@ -12,106 +12,133 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('SigoAPP - Panel Principal'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          children: [
-            _DashboardItem(
-              icon: Icons.fact_check,
-              title: 'Verificación de Activos',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const AssetVerificationScreen(),
-                  ),
-                );
-              },
-            ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('¿Salir de la aplicación?'),
+            content: const Text('¿Estás seguro de que deseas salir de SigoAPP?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Salir'),
+              ),
+            ],
+          ),
+        );
+        if (shouldExit == true && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('SigoAPP - Panel Principal'),
+          automaticallyImplyLeading: false,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            children: [
+              _DashboardItem(
+                icon: Icons.fact_check,
+                title: 'Verificación de Activos',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AssetVerificationScreen(),
+                    ),
+                  );
+                },
+              ),
 
-            // OPCIÓN 2: Solicitud de traspaso de activos
-            _DashboardItem(
-              icon: Icons.inventory,
-              title: 'Generar solicitud de traspaso',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const InventoryScreen(),
-                  ),
-                );
-              },
-            ),
+              // OPCIÓN 2: Solicitud de traspaso de activos
+              _DashboardItem(
+                icon: Icons.inventory,
+                title: 'Generar solicitud de traspaso',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const InventoryScreen(),
+                    ),
+                  );
+                },
+              ),
 
-            // OPCIÓN 3: Aprobación de trámites
-            _DashboardItem(
-              icon: Icons.approval,
-              title: 'Aprobación de Traspasos',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const TransferApprovalScreen(),
-                  ),
-                );
-              },
-            ),
-            _DashboardItem(
-              icon: Icons.apps,
-              title: 'Módulo Principal',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const HomeScreen(),
-                  ),
-                );
-              },
-            ),
-            _DashboardItem(
-              icon: Icons.apps,
-              title: 'Requisiciones',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const RequisitionsScreen(),
-                  ),
-                );
-              },
-            ),
-            _DashboardItem(
-              icon: Icons.playlist_add_check_circle,
-              title: 'Conteo Físico',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const PhysicalCountScreen(),
-                  ),
-                );
-              },
-            ),
-            _DashboardItem(
-              icon: Icons.qr_code_scanner,
-              title: 'Ejecutar Conteo',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ActiveCountScreen(),
-                  ),
-                );
-              },
-            ),
-          ],
+              // OPCIÓN 3: Aprobación de trámites
+              _DashboardItem(
+                icon: Icons.approval,
+                title: 'Aprobación de Traspasos',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TransferApprovalScreen(),
+                    ),
+                  );
+                },
+              ),
+              _DashboardItem(
+                icon: Icons.apps,
+                title: 'Módulo Principal',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const HomeScreen(),
+                    ),
+                  );
+                },
+              ),
+              _DashboardItem(
+                icon: Icons.apps,
+                title: 'Requisiciones',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RequisitionsScreen(),
+                    ),
+                  );
+                },
+              ),
+              _DashboardItem(
+                icon: Icons.playlist_add_check_circle,
+                title: 'Conteo Físico',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PhysicalCountScreen(),
+                    ),
+                  );
+                },
+              ),
+              _DashboardItem(
+                icon: Icons.qr_code_scanner,
+                title: 'Ejecutar Conteo',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ActiveCountScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

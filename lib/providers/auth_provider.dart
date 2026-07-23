@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../repositories/auth_repository.dart';
 import '../models/auth_model.dart';
@@ -48,14 +48,16 @@ class AuthProvider extends ChangeNotifier {
       _cedula = cedula;
       _username = response.username;
 
-      // Imprimir el token obtenido en consola para propósitos de prueba en Swagger/Postman
-      debugPrint('==================================================');
-      debugPrint('🔑 TOKEN OBTENIDO (POST /login/contador):');
-      debugPrint(_token);
-      if (response.refreshToken != null) {
-        debugPrint('🔄 REFRESH TOKEN: ${response.refreshToken}');
+      // Log del token solo en modo debug (nunca en producción)
+      if (kDebugMode) {
+        debugPrint('==================================================');
+        debugPrint('🔑 TOKEN OBTENIDO (POST /login/contador):');
+        debugPrint(_token);
+        if (response.refreshToken != null) {
+          debugPrint('🔄 REFRESH TOKEN: ${response.refreshToken}');
+        }
+        debugPrint('==================================================');
       }
-      debugPrint('==================================================');
 
       await _storage.write(key: 'auth_token', value: _token);
       await _storage.write(key: 'auth_cedula', value: _cedula);

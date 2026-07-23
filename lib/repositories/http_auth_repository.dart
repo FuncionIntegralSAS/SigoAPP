@@ -2,22 +2,12 @@ import 'package:dio/dio.dart';
 import '../models/auth_model.dart';
 import '../models/physical_count_model.dart';
 import 'auth_repository.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class HttpAuthRepository implements AuthRepository {
-  late final Dio _dio;
+  final Dio _dio;
 
-  HttpAuthRepository() {
-    final baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:8080/api/v1';
-    _dio = Dio(
-      BaseOptions(
-        baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-        headers: {'Content-Type': 'application/json'},
-      ),
-    );
-  }
+  HttpAuthRepository(this._dio);
+
 
   @override
   Future<AuthResponse> loginContador(LoginContadorRequest request) async {

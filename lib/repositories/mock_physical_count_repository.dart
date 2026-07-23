@@ -98,4 +98,18 @@ class MockPhysicalCountRepository implements PhysicalCountRepository {
     }
     await Future.delayed(const Duration(milliseconds: 50));
   }
+
+  @override
+  Future<bool> checkHealth() async {
+    if (simulateError) return false;
+    await Future.delayed(const Duration(milliseconds: 50));
+    return true;
+  }
+
+  @override
+  Future<bool> reportarConteo(String token, ReporteConteoRequest request) async {
+    if (simulateError) return false;
+    await Future.delayed(const Duration(milliseconds: 500));
+    return true;
+  }
 }
