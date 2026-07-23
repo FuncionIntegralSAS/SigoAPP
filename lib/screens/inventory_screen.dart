@@ -3,7 +3,8 @@ import 'package:geolocator/geolocator.dart';
 import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
 import '../services/mock_inventory_service.dart';
-import '../services/mock_auth_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/transfer_form_widget.dart'; // Importamos el widget del formulario
 
 const WarehouseModel _allWarehousesFilter = WarehouseModel(
@@ -752,7 +753,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = MockAuthService.instance.currentUser.value;
+    final authProvider = context.read<AuthProvider>();
+    final currentUser = authProvider.currentUsername ?? 'Usuario';
     return Scaffold(
       appBar: AppBar(
         title: const Text('Inventario de Activos'),
@@ -761,13 +763,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
         actions: [
           Center(
             child: Text(
-              'Hola, ${currentUser?.name ?? '...'}  ',
+              'Hola, $currentUser  ',
               style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => MockAuthService.instance.signOut(),
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () => authProvider.logout(),
           ),
         ],
       ),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../services/mock_auth_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+
 import 'account_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -10,34 +13,51 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  // Mock login controllers
+  final TextEditingController _mockEmailController = TextEditingController(
+    text: 'operador@inventario.com',
+  );
+  final TextEditingController _mockPasswordController = TextEditingController(
+    text: '123456',
+  );
+
+  // Real login controllers
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _isLoading = false;
-  String? _errorMessage;
 
   final Color primaryColor = Colors.orange.shade700;
+  final Color mockColor = Colors.blueGrey.shade700;
 
-  void _handleLogin() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
+  void _handleRealLogin() async {
+    final authProvider = context.read<AuthProvider>();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    final success = await MockAuthService.instance.signIn(email, password);
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (!success) {
-      setState(() {
-        _errorMessage = 'Credenciales inválidas. Por favor, intenta de nuevo.';
-      });
+    final success = await authProvider.login(email, password);
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.errorMessage ?? 'Credenciales inválidas.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-    // Si tiene éxito, el AuthWrapper se encargará de navegar
+  }
+
+  void _handleMockLogin() async {
+    final authProvider = context.read<AuthProvider>();
+    final email = _mockEmailController.text.trim();
+    final password = _mockPasswordController.text;
+
+    final success = await authProvider.mockLogin(email, password);
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.errorMessage ?? 'Credenciales inválidas.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -46,131 +66,224 @@ class _AuthScreenState extends State<AuthScreen> {
       backgroundColor: Colors.grey.shade100,
       body: SafeArea(
         child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32.0),
-          child: Container(
-            padding: const EdgeInsets.all(24.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Icon(
-                  Icons.lock_open,
-                  size: 80,
-                  color: primaryColor,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Bienvenido al Sistema',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: primaryColor,
-                  ),
-                ),
-                const SizedBox(height: 30),
-                
-                // Campo de Correo Electrónico
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Correo Electrónico',
-                    prefixIcon: const Icon(Icons.email),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  enabled: !_isLoading,
-                ),
-                const SizedBox(height: 20),
-                
-                // Campo de Contraseña
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    prefixIcon: const Icon(Icons.lock),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  enabled: !_isLoading,
-                ),
-                const SizedBox(height: 30),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(32.0),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 800;
+                final mockForm = _buildMockLoginForm();
+                final realForm = _buildRealLoginForm();
 
-                if (_errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Text(
-                      _errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-
-                // Botón de Iniciar Sesión
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _handleLogin,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 3,
-                          ),
-                        )
-                      : const Text(
-                          'INICIAR SESIÓN',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                ),
-                const SizedBox(height: 10),
-                
-                const Divider(),
-                
-                // Botón Login de Contador (Alternativo)
-                TextButton.icon(
-                  onPressed: () {
-                    // Navegamos al nuevo AccountScreen
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AccountScreen(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Acceso para Contadores (Conteo Físico)'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.blue.shade700,
-                  ),
-                ),
-              ],
+                if (isWide) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!kReleaseMode) ...[
+                        _buildCard(mockForm),
+                        const SizedBox(width: 32),
+                      ],
+                      _buildCard(realForm),
+                    ],
+                  );
+                } else {
+                  return Column(
+                    children: [
+                      if (!kReleaseMode) ...[
+                        _buildCard(mockForm),
+                        const SizedBox(height: 32),
+                      ],
+                      _buildCard(realForm),
+                    ],
+                  );
+                }
+              },
             ),
           ),
         ),
-        ),
       ),
+    );
+  }
+
+  Widget _buildCard(Widget child) {
+    return Container(
+      padding: const EdgeInsets.all(24.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      constraints: const BoxConstraints(maxWidth: 400),
+      child: child,
+    );
+  }
+
+  Widget _buildRealLoginForm() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Icon(Icons.lock_open, size: 80, color: primaryColor),
+        const SizedBox(height: 10),
+        Text(
+          'Bienvenido a SIGAPP',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: primaryColor,
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Conexión directa al API',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey),
+        ),
+        const SizedBox(height: 30),
+        TextField(
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: InputDecoration(
+            labelText: 'Usuario',
+            prefixIcon: const Icon(Icons.person),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          enabled: !context.watch<AuthProvider>().isLoading,
+        ),
+        const SizedBox(height: 20),
+        TextField(
+          controller: _passwordController,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: 'Contraseña',
+            prefixIcon: const Icon(Icons.lock),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          enabled: !context.watch<AuthProvider>().isLoading,
+        ),
+        const SizedBox(height: 30),
+        ElevatedButton(
+          onPressed: context.watch<AuthProvider>().isLoading
+              ? null
+              : _handleRealLogin,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: context.watch<AuthProvider>().isLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+              : const Text(
+                  'INICIAR SESIÓN',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+        ),
+        const SizedBox(height: 10),
+        const Divider(),
+        TextButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AccountScreen()),
+            );
+          },
+          icon: const Icon(Icons.qr_code_scanner),
+          label: const Text('Acceso para Contadores (Conteo Físico)'),
+          style: TextButton.styleFrom(foregroundColor: Colors.blue.shade700),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMockLoginForm() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Icon(Icons.build_circle, size: 80, color: mockColor),
+        const SizedBox(height: 10),
+        Text(
+          'Entorno de Pruebas (Mock)',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: mockColor,
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Simulación local (sin backend)',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey),
+        ),
+        const SizedBox(height: 30),
+        TextField(
+          controller: _mockEmailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: InputDecoration(
+            labelText: 'Usuario Mock',
+            prefixIcon: const Icon(Icons.person),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          enabled: !context.watch<AuthProvider>().isLoading,
+        ),
+        const SizedBox(height: 20),
+        TextField(
+          controller: _mockPasswordController,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: 'Contraseña Mock',
+            prefixIcon: const Icon(Icons.lock),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          enabled: !context.watch<AuthProvider>().isLoading,
+        ),
+        const SizedBox(height: 30),
+        ElevatedButton(
+          onPressed: context.watch<AuthProvider>().isLoading
+              ? null
+              : _handleMockLogin,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: mockColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: context.watch<AuthProvider>().isLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+              : const Text(
+                  'INICIAR SESIÓN MOCK',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+        ),
+      ],
     );
   }
 }

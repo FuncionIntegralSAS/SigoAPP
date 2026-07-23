@@ -32,6 +32,70 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> login(String username, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final request = LoginRequest(
+        username: username,
+        password: password,
+      );
+      final response = await _repository.login(request);
+
+      _token = "Bearer ${response.token}";
+      _username = response.username ?? username; // Si no viene en la respuesta, usamos el enviado
+      _cedula = null; // No es un contador
+
+      await _storage.write(key: 'auth_token', value: _token);
+      if (_username != null) {
+        await _storage.write(key: 'auth_username', value: _username);
+      }
+      if (response.refreshToken != null) {
+        await _storage.write(
+          key: 'auth_refresh_token',
+          value: response.refreshToken,
+        );
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> mockLogin(String username, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    await Future.delayed(const Duration(milliseconds: 800));
+
+    if (username == 'operador@inventario.com' && password == '123456') {
+      _token = "Bearer mock-token-operator";
+      _username = "operador";
+      _cedula = null;
+      
+      await _storage.write(key: 'auth_token', value: _token);
+      await _storage.write(key: 'auth_username', value: _username);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } else {
+      _isLoading = false;
+      _errorMessage = 'Credenciales inválidas. (Usa operador@inventario.com / 123456)';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> loginContador(String cedula, String codigoTemporal) async {
     _isLoading = true;
     _errorMessage = null;

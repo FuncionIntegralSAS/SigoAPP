@@ -7,6 +7,16 @@ El Módulo de Conteo Físico permite a las empresas gestionar la auditoría peri
 
 ## 2. Historias de Usuario Principales
 
+### 2.0 Fase Previa: Autenticación Administrativa y Entorno de Pruebas
+**Rol:** Administrador o Jefe de Inventario.
+**Descripción:** Como líder de inventarios, quiero poder iniciar sesión de manera segura con mis credenciales administrativas conectadas directamente a
+
+**Criterios de Aceptación Desarrollados (App Frontend):**
+- Pantalla inicial dual que presenta simultáneamente el acceso al "Servidor Real" y al "Entorno de Pruebas (Mock)".
+- Diseño responsivo que adapta ambos formularios uno al lado del otro en pantallas anchas (escritorio/tableta), y apilados verticalmente en dispositivos móviles.
+- Inyección de estados de sesión de forma global y unificada (`AuthProvider`), prescindiendo de servicios de simulación heredados (`MockAuthService`).
+- Acceso secundario integrado en la misma pantalla para redirigir a los contadores de inventario a su ventana específica de conteo físico.
+
 ### 2.1 Fase 1: Apertura de Conteo (Desarrollo Avanzado UI)
 **Rol:** Administrador o Jefe de Inventario.
 **Descripción:** Como líder de inventarios, quiero programar la apertura de un conteo físico para una bodega designada, indicando qué artículos se contarán y escogiendo las personas que apoyarán el conteo físico, para luego ordenar al sistema el bloqueo temporal de la bodega o artículos.

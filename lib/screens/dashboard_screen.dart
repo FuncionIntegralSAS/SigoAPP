@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import 'package:sigo_app/screens/home_screen.dart';
 import 'package:sigo_app/screens/asset_verification_screen.dart';
 import '../screens/inventory_screen.dart';
@@ -41,6 +44,15 @@ class DashboardScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text('SigoAPP - Panel Principal'),
           automaticallyImplyLeading: false,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Cerrar Sesión',
+              onPressed: () {
+                context.read<AuthProvider>().logout();
+              },
+            ),
+          ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -89,18 +101,19 @@ class DashboardScreen extends StatelessWidget {
                   );
                 },
               ),
-              _DashboardItem(
-                icon: Icons.apps,
-                title: 'Módulo Principal',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const HomeScreen(),
-                    ),
-                  );
-                },
-              ),
+              if (!kReleaseMode)
+                _DashboardItem(
+                  icon: Icons.apps,
+                  title: 'Módulo Principal',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const HomeScreen(),
+                      ),
+                    );
+                  },
+                ),
               _DashboardItem(
                 icon: Icons.apps,
                 title: 'Requisiciones',

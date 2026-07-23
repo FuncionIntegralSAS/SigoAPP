@@ -3,11 +3,41 @@ import '../models/auth_model.dart';
 import '../models/physical_count_model.dart';
 import 'auth_repository.dart';
 
+import 'package:flutter/foundation.dart';
+
 class HttpAuthRepository implements AuthRepository {
   final Dio _dio;
 
   HttpAuthRepository(this._dio);
 
+  @override
+  Future<AuthResponse> login(LoginRequest request) async {
+    try {
+      final payload = request.toJson();
+      if (kDebugMode) {
+        debugPrint('==================================================');
+        debugPrint('📤 ENVIANDO PAYLOAD AL BACKEND (POST /login):');
+        debugPrint(payload.toString());
+        debugPrint('==================================================');
+      }
+
+      final response = await _dio.post(
+        '/login',
+        data: payload,
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        return AuthResponse.fromJson(response.data);
+      }
+      throw Exception('Respuesta inesperada al iniciar sesión');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        throw Exception('Credenciales incorrectas');
+      }
+      throw Exception('Error de red al intentar iniciar sesión: ${e.message}');
+    } catch (e) {
+      throw Exception('Error desconocido: $e');
+    }
+  }
 
   @override
   Future<AuthResponse> loginContador(LoginContadorRequest request) async {

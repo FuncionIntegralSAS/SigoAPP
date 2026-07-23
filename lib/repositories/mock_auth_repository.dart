@@ -4,6 +4,21 @@ import 'auth_repository.dart';
 
 class MockAuthRepository implements AuthRepository {
   @override
+  Future<AuthResponse> login(LoginRequest request) async {
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (request.username == 'admin' && request.password == 'admin') {
+      return const AuthResponse(
+        token: 'mock-admin-token-123',
+        refreshToken: 'mock-admin-refresh-456',
+        type: 'Bearer',
+        username: 'admin',
+        expiresIn: 3600,
+      );
+    }
+    throw Exception('Credenciales mock incorrectas');
+  }
+
+  @override
   Future<AuthResponse> loginContador(LoginContadorRequest request) async {
     await Future.delayed(const Duration(milliseconds: 800));
     // Mock login success logic

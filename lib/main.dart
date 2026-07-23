@@ -26,7 +26,7 @@ import 'package:sigo_app/utils/app_config.dart';
 
 // Services
 import 'services/mock_inventory_service.dart';
-import 'services/mock_auth_service.dart';
+
 
 // Screens
 import 'screens/auth_screen.dart';
@@ -115,10 +115,10 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: MockAuthService.instance.currentUser,
-      builder: (context, user, child) {
-        if (user != null) {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        if (authProvider.isAuthenticated && authProvider.currentCedula == null) {
+          // Si está autenticado y no es un contador (no tiene cédula), va al dashboard
           return const DashboardScreen();
         } else {
           return const AuthScreen();

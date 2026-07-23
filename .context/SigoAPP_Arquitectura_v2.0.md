@@ -221,7 +221,7 @@ Pantalla para la ejecución del conteo físico en piso (modo offline).
 ### 9.5 Pantallas Complementarias
 * `AuthScreen`: Pantalla de autenticación/login.
 * `DashboardScreen`: Dashboard principal post-login con navegación a módulos.
-* `HomeScreen`: Pantalla de navegación con acceso a inventario, scanner, generador QR y aprobación de traspasos.
+* `HomeScreen`: Pantalla principal de navegación (denominada "Módulo Principal" en la UI), utilizada de forma exclusiva por los desarrolladores para testear accesos directos al inventario, scanner, generador QR y aprobación de traspasos. No está destinada para el paso a Producción.
 * `AccountScreen`: Gestión de cuentas de personas.
 * `ScannerScreen`: Escaneo de códigos QR con `MobileScanner`.
 * `GeneratorScreen`: Generación de códigos QR con `QrImageView`.
@@ -278,3 +278,6 @@ A continuación, se evidencian las modificaciones arquitectónicas introducidas 
 4. **`assignPhysicalCount()` en el Provider**: El `PhysicalCountProvider` incorpora la lógica de negocio para validar y construir la petición de asignación a partir del estado compartido (empresa, bodega, fecha y personas seleccionadas), permitiendo que la pestaña de Asignación consuma datos capturados en la pestaña de Apertura sin acoplamiento directo entre vistas.
 5. **Mejoras de UI en dropdowns**: Los ítems de los selectores Empresa, Bodega y Artículo ahora muestran formato `"código - descripción"` para facilitar la identificación visual. `WarehouseModel` extendido con `Equatable` para resolver el error de aserción de `DropdownButton` al comparar elementos por valor.
 6. **Integración `dropdown_button2` con barras de búsqueda**: Migración completa de los tres selectores de apertura a `dropdown_button2` v3.x con `ValueNotifier` y `valueListenable` por selector. Se configuraron `onMenuStateChange` para limpiar el filtro de búsqueda al cerrar cada dropdown.
+7. **Rediseño de AuthScreen (Dual Login Responsivo)**: Se implementó un `LayoutBuilder` en la pantalla inicial de autenticación que expone simultáneamente el inicio de sesión contra el Servidor Real (`HttpAuthRepository`) y el Entorno de Pruebas Mock. Se apilan verticalmente en pantallas pequeñas y se ubican uno al lado del otro en escritorio.
+8. **Eliminación Total de `MockAuthService`**: Se eliminó el uso de servicios mock independientes para sesión. El `AuthWrapper` en `main.dart` ahora observa unificadamente el `AuthProvider`. Se introdujo el método `mockLogin` directamente en el Provider para inyectar credenciales simuladas localmente cuando el usuario usa el panel Mock, centralizando el estado de autenticación.
+9. **Refactorización del Botón Logout**: Todas las vistas de la app (`HomeScreen`, `InventoryScreen`) fueron migradas para ejecutar `context.read<AuthProvider>().logout()` finalizando exitosamente la transición global al estado manejado por Provider.

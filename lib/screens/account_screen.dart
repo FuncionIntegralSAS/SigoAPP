@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/active_count_provider.dart';
@@ -12,8 +13,10 @@ class AccountScreen extends StatefulWidget {
 }
 
 class _AccountScreenState extends State<AccountScreen> {
+  // Contador Login Controllers
   final TextEditingController _cedulaController = TextEditingController();
   final TextEditingController _codigoController = TextEditingController();
+  
   final Color primaryColor = Colors.blue.shade800;
 
   @override
@@ -36,7 +39,7 @@ class _AccountScreenState extends State<AccountScreen> {
     super.dispose();
   }
 
-  void _handleLogin(BuildContext context, AuthProvider authProvider) async {
+  void _handleContadorLogin(BuildContext context, AuthProvider authProvider) async {
     final cedula = _cedulaController.text.trim();
     final codigo = _codigoController.text.trim();
 
@@ -118,7 +121,7 @@ class _AccountScreenState extends State<AccountScreen> {
           backgroundColor: Colors.grey.shade50,
           appBar: AppBar(
             title: const Text(
-              'Módulo de Contadores',
+              'Gestión Administrativa',
               style: TextStyle(color: Colors.white),
             ),
             backgroundColor: primaryColor,
@@ -137,32 +140,36 @@ class _AccountScreenState extends State<AccountScreen> {
           body: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 400),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(32.0),
-                child: authProvider.isAuthenticated
-                    ? _buildAuthenticatedMenu(
+              child: authProvider.isAuthenticated
+                  ? Container(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      decoration: _cardDecoration(),
+                      padding: const EdgeInsets.all(32.0),
+                      child: _buildAuthenticatedMenu(
                         context,
                         authProvider,
                         activeCountProvider,
-                      )
-                    : _buildLoginForm(context, authProvider),
-              ),
+                      ),
+                    )
+                  : _buildLoginForm(context, authProvider),
             ),
           ),
         );
       },
+    );
+  }
+
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(15),
+      boxShadow: const [
+        BoxShadow(
+          color: Colors.black12,
+          blurRadius: 10,
+          offset: Offset(0, 5),
+        ),
+      ],
     );
   }
 
@@ -214,7 +221,7 @@ class _AccountScreenState extends State<AccountScreen> {
         ElevatedButton(
           onPressed: authProvider.isLoading
               ? null
-              : () => _handleLogin(context, authProvider),
+              : () => _handleContadorLogin(context, authProvider),
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
