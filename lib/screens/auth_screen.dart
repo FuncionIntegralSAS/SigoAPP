@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../utils/app_config.dart';
 
 import 'account_screen.dart';
 
@@ -202,6 +203,15 @@ class _AuthScreenState extends State<AuthScreen> {
           icon: const Icon(Icons.qr_code_scanner),
           label: const Text('Acceso para Contadores (Conteo Físico)'),
           style: TextButton.styleFrom(foregroundColor: Colors.blue.shade700),
+        ),
+        const SizedBox(height: 10),
+        TextButton.icon(
+          onPressed: () {
+            AppConfig.clearBaseUrl();
+          },
+          icon: const Icon(Icons.domain_verification),
+          label: const Text('Cambiar Dominio'),
+          style: TextButton.styleFrom(foregroundColor: Colors.red.shade700),
         ),
       ],
     );
