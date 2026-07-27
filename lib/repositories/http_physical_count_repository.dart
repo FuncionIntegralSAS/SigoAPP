@@ -171,4 +171,19 @@ class HttpPhysicalCountRepository implements PhysicalCountRepository {
       return false;
     }
   }
+
+  @override
+  Future<ConteoFisicoResponse> closePhysicalCount(
+    String token,
+    CierreConteoRequest request,
+  ) async {
+    final response = await _dio.post(
+      '/api/v1/conteo-fisico/cerrar',
+      data: request.toJson(),
+      options: Options(
+        headers: {'Authorization': token},
+      ),
+    );
+    return ConteoFisicoResponse.fromJson(response.data);
+  }
 }

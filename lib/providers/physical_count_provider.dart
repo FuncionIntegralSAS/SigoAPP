@@ -18,6 +18,16 @@ class PhysicalCountProvider extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  // --- Estado independiente para Cierre de Conteo ---
+  PhysicalCountState _closeState = PhysicalCountState.initial;
+  PhysicalCountState get closeState => _closeState;
+
+  String? _closeErrorMessage;
+  String? get closeErrorMessage => _closeErrorMessage;
+
+  String? _closeSuccessMessage;
+  String? get closeSuccessMessage => _closeSuccessMessage;
+
   // Listas de datos para selectores
   List<CompanyModel> companies = [];
   List<WarehouseModel> warehouses = [];
@@ -352,6 +362,69 @@ class PhysicalCountProvider extends ChangeNotifier {
     _errorMessage = null;
     _state = PhysicalCountState.initial;
     notifyListeners();
+  }
+
+  // --- Cierre de Conteo Físico ---
+  Future<void> closePhysicalCount(
+      String token, String companyCode, String warehouseCode) async {
+    if (companyCode.trim().isEmpty) {
+      _setCloseError('Debe ingresar el código de la empresa.');
+      return;
+    }
+    if (warehouseCode.trim().isEmpty) {
+      _setCloseError('Debe ingresar el código de la bodega.');
+      return;
+    }
+
+    _setCloseState(PhysicalCountState.enProceso);
+
+    final request = CierreConteoRequest(
+      empresa: companyCode.trim(),
+      bodega: warehouseCode.trim(),
+    );
+
+    try {
+      final response = await _repository.closePhysicalCount(token, request);
+      _closeSuccessMessage = response.message;
+      _setCloseState(PhysicalCountState.creada);
+    } catch (e) {
+      String msg = 'Error inesperado al cerrar el conteo.';
+      if (e is DioException) {
+        if (e.response?.statusCode == 400) {
+          msg = 'Error en la solicitud (400). Verifique el código de bodega.';
+        } else if (e.response?.statusCode == 403) {
+          msg = 'No tiene autorización para cerrar este conteo (403).';
+        } else {
+          msg = 'Error de red: ${e.message}';
+        }
+      }
+      _setCloseError(msg);
+    }
+  }
+
+  void _setCloseState(PhysicalCountState newState) {
+    _closeState = newState;
+    if (newState != PhysicalCountState.error) {
+      _closeErrorMessage = null;
+    }
+    notifyListeners();
+  }
+
+  void _setCloseError(String message) {
+    _closeErrorMessage = message;
+    _closeState = PhysicalCountState.error;
+    notifyListeners();
+  }
+
+  void clearCloseError() {
+    _closeErrorMessage = null;
+    _closeState = PhysicalCountState.initial;
+    notifyListeners();
+  }
+
+  void resetCloseForm() {
+    _closeSuccessMessage = null;
+    _setCloseState(PhysicalCountState.initial);
   }
 
   void resetForm() {

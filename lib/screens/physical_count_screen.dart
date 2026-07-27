@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sigo_app/screens/tabs/physical_count_opening_tab.dart';
 import 'package:sigo_app/screens/tabs/physical_count_assignment_tab.dart';
+import 'package:sigo_app/screens/tabs/physical_count_closing_tab.dart';
 
 class PhysicalCountScreen extends StatelessWidget {
   const PhysicalCountScreen({super.key});
@@ -8,7 +9,7 @@ class PhysicalCountScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Conteo Físico'),
@@ -16,6 +17,7 @@ class PhysicalCountScreen extends StatelessWidget {
             tabs: [
               Tab(icon: Icon(Icons.group_add), text: 'Asignar Personal'),
               Tab(icon: Icon(Icons.inventory), text: 'Apertura'),
+              Tab(icon: Icon(Icons.lock), text: 'Cierre'),
             ],
             labelColor: Colors.blue,
             unselectedLabelColor: Colors.grey,
@@ -26,6 +28,7 @@ class PhysicalCountScreen extends StatelessWidget {
           children: [
             PhysicalCountAssignmentTab(),
             PhysicalCountOpeningTab(),
+            PhysicalCountClosingTab(),
           ],
         ),
       ),

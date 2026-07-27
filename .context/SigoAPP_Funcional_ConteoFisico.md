@@ -17,17 +17,19 @@ El Módulo de Conteo Físico permite a las empresas gestionar la auditoría peri
 - Inyección de estados de sesión de forma global y unificada (`AuthProvider`), prescindiendo de servicios de simulación heredados (`MockAuthService`).
 - Acceso secundario integrado en la misma pantalla para redirigir a los contadores de inventario a su ventana específica de conteo físico.
 
-### 2.1 Fase 1: Apertura de Conteo (Desarrollo Avanzado UI)
+### 2.1 Fase 1: Apertura y Asignación de Conteo (Desarrollo Avanzado UI)
 **Rol:** Administrador o Jefe de Inventario.
 **Descripción:** Como líder de inventarios, quiero programar la apertura de un conteo físico para una bodega designada, indicando qué artículos se contarán y escogiendo las personas que apoyarán el conteo físico, para luego ordenar al sistema el bloqueo temporal de la bodega o artículos.
 
 **Criterios de Aceptación Desarrollados (App Frontend):**
+- **Flujo invertido de pestañas**: La pestaña de Selección de Personal es la primera (Tab 1), y la pestaña de Apertura (Empresa, Bodega, Fecha, Artículos) es la segunda (Tab 2), reflejando el orden natural del proceso.
 - Selección dependiente en cascada de la Empresa hacia la Bodega y finalmente los Artículos.
 - Soporte para incluir subconjuntos holísticos masivos (Opción: "Todos/Todas" enviando constante `"All"`).
 - Selección de la Fecha esperada de la labor.
 - Bandera de control para priorizar verificación estricta de existencias de sistema o contar desde 0.
 - Búsqueda Avanzada de personal por coincidencias de Nombre, Apellido y/o Cédula a nivel servidor.
 - Selección múltiple de estos responsables desde una lista interactiva de fácil borrado.
+- **Acción unificada**: Un único botón "Generar Apertura y Asignar Personal" en la pestaña de Apertura ejecuta ambas operaciones HTTP en secuencia (POST creación → POST asignación). Si la creación falla, la asignación no se ejecuta.
 - Informes claros al usuario en pantalla de errores 409 (Conflicto / Bodega Bloqueada) que garantizan que no haya cruce de conteos, y alertas de éxito de Creación.
 
 ### 2.2 Fase 2: Autenticación de Asignados y Descarga Offline (Implementado Localmente)
@@ -40,6 +42,18 @@ Se introducen reglas estrictas respecto a cómo el empleado afronta el conteo:
 
 ### 2.4 Fase 4: Conciliación y Cierre (Flujo 3 Conteos)
 - Se manejan ciclos lógicos de conteo mediante comparativas iterativas. Una vez se comprueben diferencias hasta culminar el tercer conteo de activos, se debe emitir un bloqueo terminante y **realizar el cierre o finalización lógica del formulario completo del conteo**.
+
+### 2.5 Fase 5: Cierre Administrativo del Conteo (Implementado)
+**Rol:** Administrador o Jefe de Inventario.
+**Descripción:** Como líder de inventarios, quiero poder cerrar formalmente un conteo físico activo para una bodega, liberando su bloqueo lógico y notificando al sistema que el proceso ha concluido.
+
+**Criterios de Aceptación Desarrollados (App Frontend):**
+- Pestaña independiente "Cierre" en `PhysicalCountScreen` (Tab 3), completamente desacoplada del estado de Apertura/Asignación.
+- Campo de texto para ingresar el código de la bodega a cerrar (campo provisional; se reemplazará por selector de lista de valores en iteración futura).
+- **Diálogo de confirmación** antes de ejecutar la acción: muestra el código de bodega interpolado y requiere confirmación explícita del usuario mediante botones horizontales (`StadiumBorder`) con jerarquía visual clara (Cancelar: contorno deepPurple / Confirmar: rojo sólido).
+- Manejo diferenciado de errores 400 (solicitud incorrecta) y 403 (no autorizado).
+- **Diálogo de resultado** que muestra el `message` retornado por el backend (`ConteoFisicoResponse`) con título en mayúsculas. Al aceptar, limpia el formulario y resetea el estado de cierre.
+- Endpoint consumido: `POST /api/v1/conteo-fisico/cerrar` con header `Authorization` y body `{ "bodega": "..." }`.
 
 ---
 

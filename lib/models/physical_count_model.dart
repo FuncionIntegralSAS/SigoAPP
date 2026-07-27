@@ -173,3 +173,43 @@ class ArticuloConteo extends Equatable {
   @override
   List<Object?> get props => [idArticulo, cantidadContada];
 }
+
+class CierreConteoRequest extends Equatable {
+  final String bodega;
+  final String empresa;
+
+  const CierreConteoRequest({
+    required this.bodega,
+    required this.empresa,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'bodega': bodega,
+      'empresa': empresa,
+    };
+  }
+
+  @override
+  List<Object?> get props => [bodega, empresa];
+}
+
+class ConteoFisicoResponse extends Equatable {
+  final bool success;
+  final String message;
+
+  const ConteoFisicoResponse({
+    required this.success,
+    required this.message,
+  });
+
+  factory ConteoFisicoResponse.fromJson(Map<String, dynamic> json) {
+    return ConteoFisicoResponse(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+    );
+  }
+
+  @override
+  List<Object?> get props => [success, message];
+}

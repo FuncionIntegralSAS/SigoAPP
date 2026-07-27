@@ -1,6 +1,6 @@
 # Documentación de Arquitectura de Software
 Proyecto: SigoAPP
-Versión: 2.2
+Versión: 2.3
 Fecha de actualización: Julio 2026
 
 ## 1. Estructura de Directorios (Mapping)
@@ -51,10 +51,12 @@ Modelos diseñados para la operación offline del conteo físico en piso (SQLite
 * `user_model.dart`: Modelo básico de usuario autenticado (id, name, email).
 * `warehouse_model.dart`: Bodega o centro de costos con deserialización desde API. Extiende `Equatable` con `bodeCodi`, `bodeDesc` y `bodeEsta` como `props`, permitiendo la comparación por valor requerida por `DropdownButton`.
 
-### 2.8 Modelos de Asignación de Conteo Físico (physical_count_model.dart)
-Además de `PhysicalCountRequest`, este archivo contiene los modelos para el flujo de asignación de personal:
+### 2.8 Modelos de Asignación y Cierre de Conteo Físico (physical_count_model.dart)
+Además de `PhysicalCountRequest`, este archivo contiene los modelos para el flujo de asignación y cierre:
 * `AsignacionConteoRequest`: Encapsula los datos requeridos por el endpoint `POST /api/v1/conteo-fisico/asignar_articulos`: `empresa`, `bodega`, `fechaConteo` (ISO 8601 UTC) y la lista de `UsuarioAsignacion`.
 * `UsuarioAsignacion`: Representa a cada contador asignado con `documento` (cédula), `nombre` (nombre + apellido concatenados) y `email`. Ambas clases implementan `Equatable` y exponen `toJson()` con la estructura exacta del schema Swagger.
+* `CierreConteoRequest`: Modelo de petición para el cierre de un conteo activo. Encapsula únicamente el campo `bodega` (String), mapeado directamente al campo `@NotBlank` del backend Spring Boot.
+* `ConteoFisicoResponse`: Modelo de respuesta de los endpoints de conteo (particularmente `/cerrar`). Contiene `success` (bool) y `message` (String). Implementa `Equatable` y `fromJson` con valores por defecto defensivos.
 
 ## 3. Capa de Repositorios (lib/repositories/)
 ### 3.1 TransferRepository (Contrato Único)
@@ -112,6 +114,7 @@ Servicio HTTP real para el módulo de Conteo Físico. Conecta con el backend Spr
 * `searchPersons({nombre, apellido, cedula})` → `GET /api/v1/personal/buscar`: Búsqueda de personal por coincidencia. Envía los query params con las llaves exactas del backend (`nombre`, `apellido`, `cedula`). Lanza `DioException` 400 de forma local si no se provee ningún parámetro, sin consumir recursos de red.
 * `createPhysicalCount(request)` → `POST /api/v1/conteo-fisico/registrar`: Crea la apertura del conteo físico.
 * `assignArticles(request)` → `POST /api/v1/conteo-fisico/asignar_articulos`: Asigna los contadores seleccionados al conteo abierto.
+* `closePhysicalCount(token, request)` → `POST /api/v1/conteo-fisico/cerrar`: Cierra un conteo físico activo para una bodega. Requiere envío explícito del header `Authorization` (mismo patrón que `reportarConteo`). Retorna `ConteoFisicoResponse` con los campos `success` y `message` del backend.
 
 ## 5. Persistencia Local (lib/database/)
 ### 5.1 database_helper.dart
@@ -178,13 +181,15 @@ Gestor de estado centralizado para el flujo de requisiciones administrativas.
 * Dispara el método processBatchSelection() hacia el repositorio.
 
 ### 8.6 PhysicalCountProvider
-Orquestador de estado para el submódulo de Conteo Físico (Apertura y Asignación).
+Orquestador de estado para el submódulo de Conteo Físico (Apertura, Asignación y Cierre).
 * Administra las listas maestras de selectores (dropdowns) con carga en cascada: Empresa → Bodega → Artículos.
-* Maneja los estados del submódulo de forma reaccionaria a eventos del usuario (`INITIAL`, `EN_PROCESO`, `CREADA`, `ERROR`).
-* Implementa las validaciones estrictas de campos de la UI antes de derivar responsabilidades al service.
+* Mantiene **dos grupos de estado independientes** para evitar interferencias entre las pestañas:
+  - Estado global (`_state`, `_errorMessage`): para los flujos de Apertura y Asignación.
+  - Estado de cierre (`_closeState`, `_closeErrorMessage`, `_closeSuccessMessage`): exclusivo de la pestaña de Cierre, completamente desacoplado.
+* `createAndAssignPhysicalCount()`: Método unificado que realiza las dos peticiones HTTP en secuencia (creación → asignación). Valida en cliente todos los campos de ambas pestañas (empresa, bodega, artículo y al menos un participante seleccionado). Si la creación falla, detiene el flujo y notifica el error; si pasa, ejecuta la asignación. Permite que el usuario complete el flujo completo desde un único botón en la segunda pestaña.
 * `searchPersons({nombre, apellido, cedula})`: Valida en cliente que al menos un campo tenga valor, delega al servicio y actualiza `foundPersons`. Maneja errores 400 y de red con mensajes diferenciados.
 * `togglePersonSelection(person)` / `removePerson(person)`: Gestionan la lista `selectedPersons` comparando personas por `perscodi` (sin dependencia de referencia de objeto).
-* `assignPhysicalCount()`: Valida que haya empresa, bodega y al menos un participante seleccionados; construye el objeto `AsignacionConteoRequest` mapeando `selectedPersons` a `UsuarioAsignacion` y delega al servicio. Tras éxito, transita al estado `CREADA`.
+* `closePhysicalCount(token, warehouseCode)`: Valida en cliente que `warehouseCode` no esté vacío, construye `CierreConteoRequest` y delega al repositorio. Almacena el `message` de `ConteoFisicoResponse` en `closeSuccessMessage` para mostrarlo en el diálogo de éxito. Maneja errores HTTP 400 y 403 con mensajes diferenciados. Expone `clearCloseError()` y `resetCloseForm()` para que la UI limpie el estado tras interacciones.
 
 ### 8.7 ActiveCountProvider
 Orquestador de estado para la ejecución offline del conteo físico en piso.
@@ -205,13 +210,21 @@ Componente visual tipo tarjeta expandible para iterar sobre listas de requisicio
 ### 9.3 PhysicalCountScreen y Tabs
 Pantalla que implementa el formulario principal para generar y asignar un conteo físico, organizada en pestañas.
 * `PhysicalCountOpeningTab`: Formulario de apertura con selectores en cascada (Empresa, Bodega, Artículo) implementados con `dropdown_button2` v3.x. Incluye barras de búsqueda dinámicas en cada dropdown usando `DropdownTemplates.searchData` y `ValueNotifier` por selector para sincronizar estado con el Provider. Los ítems se muestran en formato `"código - descripción"`.
-* `PhysicalCountAssignmentTab`: Asignación de contadores al conteo. Incluye:
+* `PhysicalCountAssignmentTab`: Asignación de contadores al conteo (primera pestaña). Incluye:
   - Panel `ExpansionTile` de búsqueda avanzada con campos Nombre, Apellido y Cédula.
   - `ListView` de resultados con `CircleAvatar`, nombre completo y cédula por entrada; selección múltiple mediante `Checkbox`.
   - Sección de participantes seleccionados como `Chip` eliminables.
-  - Botón **"Asignar Participantes al Conteo"** (ancho completo) que dispara `provider.assignPhysicalCount()`, muestra `SnackBar` verde en éxito y resetea el formulario para prevenir duplicados.
+  - **No contiene botón de acción propio**; la acción final se delega al botón de la pestaña de Apertura.
   - Overlay de `CircularProgressIndicator` durante operaciones asíncronas.
   - Manejo de errores vía `SnackBar` rojo usando `addPostFrameCallback` para evitar llamadas a `setState` durante el build.
+* `PhysicalCountOpeningTab`: Formulario de apertura con selectores en cascada (Empresa, Bodega, Artículo) implementados con `dropdown_button2` v3.x (segunda pestaña). Incluye barras de búsqueda dinámicas en cada dropdown usando `DropdownTemplates.searchData` y `ValueNotifier` por selector para sincronizar estado con el Provider. Los ítems se muestran en formato `"código - descripción"`. Contiene el **único botón de acción** del flujo: "Generar Apertura y Asignar Personal", que dispara `provider.createAndAssignPhysicalCount()` ejecutando las dos peticiones HTTP en secuencia. El diálogo de éxito indica que tanto la apertura como la asignación se completaron.
+* `PhysicalCountClosingTab`: Pestaña independiente de Cierre de Conteo (tercera pestaña). Incluye:
+  - `TextField` para ingresar el código de la bodega a cerrar (campo de texto libre; se reemplazará por lista de valores en iteración futura).
+  - Botón rojo "Cerrar Conteo" que primero muestra un **diálogo de confirmación** antes de ejecutar la petición.
+  - **Diálogo de confirmación** con título `"CONFIRMAR CIERRE"` en mayúsculas, texto explicativo con el código de bodega interpolado, y fila de botones horizontales forzada mediante `Row` + `Expanded`: `OutlinedButton` (Cancelar, color deepPurple, forma `StadiumBorder`) y `ElevatedButton` (Confirmar, color rojo, forma `StadiumBorder`).
+  - **Diálogo de resultado** con título `"CONTEO CERRADO"` en mayúsculas, mensaje proveniente del backend (`provider.closeSuccessMessage`) con fallback, y botón verde "Aceptar" alineado a la derecha.
+  - Consume exclusivamente `closeState` / `closeErrorMessage` / `closeSuccessMessage` del provider, sin afectar el estado de las otras pestañas.
+  - Obtiene el token JWT de `AuthProvider` en el momento del envío y lo pasa como parámetro al provider.
 
 ### 9.4 ActiveCountScreen
 Pantalla para la ejecución del conteo físico en piso (modo offline).
@@ -331,3 +344,23 @@ Resumen de los aspectos cubiertos:
 
 11. **Configuración de Ícono Adaptativo y Ejecutable**: Se incorporó la dependencia `flutter_launcher_icons` (^0.14.3) en `pubspec.yaml` apuntando a `assets/images/LOGO_SIN_FONDO.png`. Se generaron exitosamente los íconos nativos para Android, iOS y ejecutable de Windows.
 
+
+## 18. Control de Cambios e Histórico (v2.2 a v2.3)
+
+1. **Inversión del orden de pestañas en `PhysicalCountScreen`**: La pestaña de Asignación de Personal pasa a ser la primera, y la de Apertura pasa a ser la segunda, reflejando el flujo natural del usuario (primero selecciona el equipo, luego configura el conteo).
+
+2. **Método unificado `createAndAssignPhysicalCount()`**: Se eliminaron los botones de acción individuales de cada pestaña. Se creó un único método en `PhysicalCountProvider` que valida todos los campos de ambas pestañas, ejecuta el POST de creación (`/registrar`) y, solo si es exitoso, ejecuta el POST de asignación (`/asignar_articulos`). Si la creación falla, el flujo se detiene y se muestra el error sin ejecutar la asignación.
+
+3. **Nueva pestaña `PhysicalCountClosingTab` (Cierre de Conteo)**: Se creó el archivo `lib/screens/tabs/physical_count_closing_tab.dart` como la tercera pestaña de `PhysicalCountScreen`. Permite ingresar el código de una bodega y ejecutar el cierre del conteo físico activo.
+
+4. **Nuevos modelos en `physical_count_model.dart`**:
+   - `CierreConteoRequest`: Encapsula el campo `bodega` requerido por `POST /api/v1/conteo-fisico/cerrar`.
+   - `ConteoFisicoResponse`: Parsea la respuesta del backend con campos `success` (bool) y `message` (String).
+
+5. **Nuevo contrato y implementación de `closePhysicalCount`**: Método agregado a `PhysicalCountRepository` (contrato abstracto) e implementado en `HttpPhysicalCountRepository`. Retorna `ConteoFisicoResponse` para exponer el mensaje del backend a la UI. El header `Authorization` se inyecta vía `Options.headers` (igual que `reportarConteo`).
+
+6. **Estado independiente para Cierre en `PhysicalCountProvider`**: Se añadieron los campos `_closeState`, `_closeErrorMessage` y `_closeSuccessMessage` con sus respectivos getters y métodos helper (`_setCloseState`, `_setCloseError`, `clearCloseError`, `resetCloseForm`). Esto garantiza que el estado de la operación de cierre no interfiera con el de apertura/asignación.
+
+7. **Diálogo de confirmación con diseño Material profesional**: Antes de ejecutar el cierre, se muestra un `AlertDialog` con título en mayúsculas (`"CONFIRMAR CIERRE"`), padding explícito, botones en fila horizontal forzada con `Row` + `Expanded` + `StadiumBorder`, acción secundaria como `OutlinedButton` (color deepPurple) y acción primaria como `ElevatedButton` (color rojo). Si el usuario cancela, la petición no se ejecuta (`confirmed == true && mounted` como guardia).
+
+8. **Diálogo de resultado con diseño consistente**: El diálogo de éxito del cierre usa título en mayúsculas (`"CONTEO CERRADO"`), muestra el `message` del backend (`closeSuccessMessage`) con fallback local, botón verde "Aceptar" alineado a la derecha, y padding explícito. Al aceptar, limpia el `TextField` y resetea el estado de cierre.

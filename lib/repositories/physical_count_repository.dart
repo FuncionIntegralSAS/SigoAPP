@@ -36,4 +36,7 @@ abstract class PhysicalCountRepository {
 
   /// Reporta las cantidades contadas en la iteración actual.
   Future<bool> reportarConteo(String token, ReporteConteoRequest request);
+
+  /// Cierra un conteo físico para una bodega específica.
+  Future<ConteoFisicoResponse> closePhysicalCount(String token, CierreConteoRequest request);
 }

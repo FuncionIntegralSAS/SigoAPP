@@ -112,4 +112,20 @@ class MockPhysicalCountRepository implements PhysicalCountRepository {
     await Future.delayed(const Duration(milliseconds: 500));
     return true;
   }
+
+  @override
+  Future<ConteoFisicoResponse> closePhysicalCount(
+    String token,
+    CierreConteoRequest request,
+  ) async {
+    if (simulateError) {
+      throw Exception('Error al cerrar el conteo físico (Mock)');
+    }
+    await Future.delayed(const Duration(milliseconds: 500));
+    return const ConteoFisicoResponse(
+      success: true,
+      message: 'Conteo físico cerrado exitosamente (Mock)',
+    );
+  }
 }
+
