@@ -1,6 +1,6 @@
 # Documentación de Arquitectura de Software
 Proyecto: SigoAPP
-Versión: 2.1
+Versión: 2.2
 Fecha de actualización: Julio 2026
 
 ## 1. Estructura de Directorios (Mapping)
@@ -281,3 +281,53 @@ A continuación, se evidencian las modificaciones arquitectónicas introducidas 
 7. **Rediseño de AuthScreen (Dual Login Responsivo)**: Se implementó un `LayoutBuilder` en la pantalla inicial de autenticación que expone simultáneamente el inicio de sesión contra el Servidor Real (`HttpAuthRepository`) y el Entorno de Pruebas Mock. Se apilan verticalmente en pantallas pequeñas y se ubican uno al lado del otro en escritorio.
 8. **Eliminación Total de `MockAuthService`**: Se eliminó el uso de servicios mock independientes para sesión. El `AuthWrapper` en `main.dart` ahora observa unificadamente el `AuthProvider`. Se introdujo el método `mockLogin` directamente en el Provider para inyectar credenciales simuladas localmente cuando el usuario usa el panel Mock, centralizando el estado de autenticación.
 9. **Refactorización del Botón Logout**: Todas las vistas de la app (`HomeScreen`, `InventoryScreen`) fueron migradas para ejecutar `context.read<AuthProvider>().logout()` finalizando exitosamente la transición global al estado manejado por Provider.
+
+## 16. Preparación para Producción
+
+Todo lo relacionado con el despliegue en Google Play Store y entornos de producción está documentado en el archivo dedicado:
+
+📄 **[SigoAPP_Produccion.md](./SigoAPP_Produccion.md)**
+
+Resumen de los aspectos cubiertos:
+
+| Área | Estado | Referencia |
+|------|--------|------------|
+| Variables de entorno (`AppConfig`, `flutter_dotenv`) | ✅ | Sección 2 |
+| Application ID (`com.funcionintegralsas.sigoapp`) | ✅ | Sección 3.1 |
+| Permiso INTERNET en release | ✅ | Sección 3.2 |
+| Nombre de la app (`SIGAPP`) en todas las plataformas | ✅ | Sección 5 |
+| Logger centralizado (`AppLogger` + `avoid_print`) | ✅ | Sección 4 |
+| Protección de tokens JWT en logs | ✅ | Sección 4.2 |
+| Credenciales mock eliminadas de UI de producción | ✅ | Sección 4.4 |
+| SafeArea en pantalla de login | ✅ | Sección 6.1 |
+| Confirmación de salida (`PopScope`) en Dashboard | ✅ | Sección 6.2 |
+| Signing config (keystore de producción) | ⏳ | Sección 3.4 |
+| Ícono adaptativo (`flutter_launcher_icons`) | ✅ | Sección 6.3 |
+| URL de producción | ⏳ | Sección 2 |
+
+---
+
+## 17. Control de Cambios e Histórico (v2.1 a v2.2)
+
+1. **Infraestructura de Configuración Centralizada**: Se creó `lib/utils/app_config.dart` (`AppConfig`) como única fuente de configuración del cliente HTTP. Valida la presencia de `API_URL` en dotenv y provee `AppConfig.createDio()` con timeouts, cabeceras y `JsonInterceptor` precargados. Se eliminaron los fallbacks silenciosos (`'https://api.tu-servidor.com'`, `'http://10.0.2.2:8080'`).
+
+2. **Logger centralizado (`AppLogger`)**: Se creó `lib/utils/app_logger.dart` con métodos estáticos (`d`, `i`, `w`, `e`) que verifican `kDebugMode` antes de imprimir. La regla `avoid_print: true` fue habilitada en `analysis_options.yaml` para que el linter detecte cualquier `print()` residual.
+
+3. **Inyección de Dio unificada**: `HttpAuthRepository` fue refactorizado para recibir `Dio` por constructor (igual que `HttpPhysicalCountRepository`). `main.dart` crea una única instancia de `Dio` vía `AppConfig.createDio()` e inyecta la misma a ambos repositorios.
+
+4. **Corrección de Application ID**: El `namespace` y `applicationId` en `android/app/build.gradle.kts` fueron cambiados de `com.example.flutter_application_1` a `com.funcionintegralsas.sigoapp`. Google Play rechaza cualquier app con `com.example.*`.
+
+5. **Permiso INTERNET en release**: Se agregó `<uses-permission android:name="android.permission.INTERNET"/>` al `AndroidManifest.xml` principal (antes solo estaba en los manifests de `debug/` y `profile/`).
+
+6. **Nombre de la app unificado a `"SIGAPP"`**: El nombre genérico `flutter_application_1` fue reemplazado por `"SIGAPP"` en todos los archivos nativos de cada plataforma soportada (Windows, Android, iOS, Web, Linux, macOS).
+
+7. **UX Nativa**: Se agregó `SafeArea` en `AuthScreen` (protección contra notch/punch-hole) y `PopScope` con diálogo de confirmación en `DashboardScreen` (previene cierre accidental con botón atrás de Android).
+
+8. **Protección de datos sensibles en logs**: Los bloques `debugPrint` que exponían el token JWT y el refresh token en `auth_provider.dart` fueron envueltos con `if (kDebugMode)`. Las llamadas `print()` en `http_physical_count_repository.dart` y `json_interceptor.dart` fueron migradas a `AppLogger`. El `debugPrint` de migración de SQLite en `database_helper.dart` también fue protegido con `kDebugMode`.
+
+9. **Credenciales mock eliminadas de UI**: `AuthScreen` ya no precarga los controladores con las credenciales de prueba ni muestra el texto `'Credenciales de prueba: operador@inventario.com / 123456'` en la interfaz de producción. El panel Mock (con credenciales visibles) solo se renderiza con `!kReleaseMode`.
+
+10. **Documentación de producción**: Se creó el archivo `.context/SigoAPP_Produccion.md` como documento dedicado con checklist de release, guía de keystore, estado de cada módulo mock vs. real, y registro de todos los cambios de esta fase.
+
+11. **Configuración de Ícono Adaptativo y Ejecutable**: Se incorporó la dependencia `flutter_launcher_icons` (^0.14.3) en `pubspec.yaml` apuntando a `assets/images/LOGO_SIN_FONDO.png`. Se generaron exitosamente los íconos nativos para Android, iOS y ejecutable de Windows.
+

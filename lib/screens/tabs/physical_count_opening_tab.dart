@@ -62,9 +62,9 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        title: const Text('Conteo Creado'),
+        title: const Text('Conteo Creado y Asignado'),
         content: const Text(
-          'Se ha generado la apertura de conteo físico exitosamente para la bodega seleccionada.',
+          'Se ha generado la apertura de conteo físico y se ha asignado el personal exitosamente.',
         ),
         actions: [
           TextButton(
@@ -269,9 +269,9 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                       ),
                       onPressed: isLoading
                           ? null
-                          : () => provider.submitPhysicalCount(),
+                          : () => provider.createAndAssignPhysicalCount(),
                       child: const Text(
-                        'Generar Apertura de Conteo',
+                        'Generar Apertura y Asignar Personal',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

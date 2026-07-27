@@ -14,8 +14,8 @@ class PhysicalCountScreen extends StatelessWidget {
           title: const Text('Conteo Físico'),
           bottom: const TabBar(
             tabs: [
-              Tab(icon: Icon(Icons.inventory), text: 'Apertura'),
               Tab(icon: Icon(Icons.group_add), text: 'Asignar Personal'),
+              Tab(icon: Icon(Icons.inventory), text: 'Apertura'),
             ],
             labelColor: Colors.blue,
             unselectedLabelColor: Colors.grey,
@@ -24,8 +24,8 @@ class PhysicalCountScreen extends StatelessWidget {
         ),
         body: const TabBarView(
           children: [
-            PhysicalCountOpeningTab(),
             PhysicalCountAssignmentTab(),
+            PhysicalCountOpeningTab(),
           ],
         ),
       ),

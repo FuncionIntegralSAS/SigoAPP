@@ -38,14 +38,13 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final request = LoginRequest(
-        username: username,
-        password: password,
-      );
+      final request = LoginRequest(username: username, password: password);
       final response = await _repository.login(request);
 
       _token = "Bearer ${response.token}";
-      _username = response.username ?? username; // Si no viene en la respuesta, usamos el enviado
+      _username =
+          response.username ??
+          username; // Si no viene en la respuesta, usamos el enviado
       _cedula = null; // No es un contador
 
       await _storage.write(key: 'auth_token', value: _token);
@@ -81,7 +80,7 @@ class AuthProvider extends ChangeNotifier {
       _token = "Bearer mock-token-operator";
       _username = "operador";
       _cedula = null;
-      
+
       await _storage.write(key: 'auth_token', value: _token);
       await _storage.write(key: 'auth_username', value: _username);
 
@@ -90,7 +89,8 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } else {
       _isLoading = false;
-      _errorMessage = 'Credenciales inválidas. (Usa operador@inventario.com / 123456)';
+      _errorMessage =
+          'Credenciales inválidas. (Usa operador@inventario.com / 123456)';
       notifyListeners();
       return false;
     }
@@ -111,17 +111,6 @@ class AuthProvider extends ChangeNotifier {
       _token = "Bearer ${response.token}";
       _cedula = cedula;
       _username = response.username;
-
-      // Log del token solo en modo debug (nunca en producción)
-      if (kDebugMode) {
-        debugPrint('==================================================');
-        debugPrint('🔑 TOKEN OBTENIDO (POST /login/contador):');
-        debugPrint(_token);
-        if (response.refreshToken != null) {
-          debugPrint('🔄 REFRESH TOKEN: ${response.refreshToken}');
-        }
-        debugPrint('==================================================');
-      }
 
       await _storage.write(key: 'auth_token', value: _token);
       await _storage.write(key: 'auth_cedula', value: _cedula);

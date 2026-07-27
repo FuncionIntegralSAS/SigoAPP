@@ -27,7 +27,6 @@ import 'package:sigo_app/utils/app_config.dart';
 // Services
 import 'services/mock_inventory_service.dart';
 
-
 // Screens
 import 'screens/auth_screen.dart';
 import 'package:sigo_app/screens/dashboard_screen.dart';
@@ -82,7 +81,9 @@ Future<void> main() async {
         ),
 
         // Provider local offline para la Ejecución del Conteo Físico (Piso)
-        ChangeNotifierProvider(create: (_) => ActiveCountProvider(physicalCountRepository)),
+        ChangeNotifierProvider(
+          create: (_) => ActiveCountProvider(physicalCountRepository),
+        ),
 
         // Provider para el login alterno y descarga offline de contadores
         ChangeNotifierProvider(create: (_) => AuthProvider(authRepository)),
@@ -117,7 +118,8 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        if (authProvider.isAuthenticated && authProvider.currentCedula == null) {
+        if (authProvider.isAuthenticated &&
+            authProvider.currentCedula == null) {
           // Si está autenticado y no es un contador (no tiene cédula), va al dashboard
           return const DashboardScreen();
         } else {

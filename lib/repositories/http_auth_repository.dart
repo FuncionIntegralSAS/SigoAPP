@@ -3,8 +3,6 @@ import '../models/auth_model.dart';
 import '../models/physical_count_model.dart';
 import 'auth_repository.dart';
 
-import 'package:flutter/foundation.dart';
-
 class HttpAuthRepository implements AuthRepository {
   final Dio _dio;
 
@@ -14,17 +12,8 @@ class HttpAuthRepository implements AuthRepository {
   Future<AuthResponse> login(LoginRequest request) async {
     try {
       final payload = request.toJson();
-      if (kDebugMode) {
-        debugPrint('==================================================');
-        debugPrint('📤 ENVIANDO PAYLOAD AL BACKEND (POST /login):');
-        debugPrint(payload.toString());
-        debugPrint('==================================================');
-      }
 
-      final response = await _dio.post(
-        '/login',
-        data: payload,
-      );
+      final response = await _dio.post('/login', data: payload);
       if (response.statusCode == 200 && response.data != null) {
         return AuthResponse.fromJson(response.data);
       }

@@ -141,11 +141,6 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        const Text(
-          'Conexión directa al API',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey),
-        ),
         const SizedBox(height: 30),
         TextField(
           controller: _emailController,

@@ -251,6 +251,72 @@ class PhysicalCountProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> createAndAssignPhysicalCount() async {
+    if (!_validateFields()) return;
+
+    if (selectedPersons.isEmpty) {
+      _setError('Debe seleccionar al menos un participante para la asignación.');
+      return;
+    }
+
+    _setState(PhysicalCountState.enProceso);
+
+    final createRequest = PhysicalCountRequest(
+      empresa: selectedCompany!.codigo,
+      bodega: selectedWarehouse!.bodeCodi,
+      fecha: selectedDate,
+      articulo: selectedArticle!.id,
+      verificarExistencia: verifyExistence,
+    );
+
+    try {
+      await _repository.createPhysicalCount(createRequest);
+    } catch (e) {
+      String msg = 'Un error inesperado ha ocurrido al crear el conteo.';
+      if (e is DioException) {
+        if (e.response?.statusCode == 400) {
+          msg = 'Solicitud incorrecta (Error 400). Verifique los datos enviados.';
+        } else if (e.response?.statusCode == 409) {
+          msg = 'Conflicto (Error 409). Es posible que la bodega ya esté bloqueada.';
+        } else if (e.response?.statusCode == 500) {
+          msg = 'Error del servidor (Error 500). Inténtalo más tarde.';
+        } else {
+          msg = 'Error de red: ${e.message}';
+        }
+      }
+      _setError(msg);
+      return; // Stop here if creation fails
+    }
+
+    final assignRequest = AsignacionConteoRequest(
+      empresa: selectedCompany!.codigo,
+      bodega: selectedWarehouse!.bodeCodi,
+      fechaConteo: selectedDate,
+      usuarios: selectedPersons
+          .map((p) => UsuarioAsignacion(
+                documento: p.perscodi,
+                nombre: '${p.persnomb} ${p.persapel}'.trim(),
+                email: p.perscoel,
+              ))
+          .toList(),
+    );
+
+    try {
+      await _repository.assignArticles(assignRequest);
+      _setState(PhysicalCountState.creada); 
+    } catch (e) {
+      String msg = 'Conteo creado, pero error al asignar personal.';
+      if (e is DioException) {
+        if (e.response?.statusCode == 400) {
+          msg = 'Error de validación (400) en asignación.';
+        } else {
+          msg = 'Error de red al asignar: ${e.message}';
+        }
+      }
+      _setError(msg);
+    }
+  }
+
   bool _validateFields() {
     if (selectedCompany == null) {
       _setError('Debe seleccionar una Empresa.');
