@@ -4,6 +4,11 @@ import 'package:sigo_app/models/count_record_model.dart';
 import 'package:sigo_app/models/physical_count_model.dart';
 import 'package:sigo_app/repositories/physical_count_repository.dart';
 
+/// Mapa tipado de datos de un artículo maestro de conteo.
+/// Clave `descripcion`: nombre descriptivo del artículo.
+/// Clave `barcode`: código de barras para la lectura en piso.
+typedef MasterItemData = Map<String, String>;
+
 enum ActiveCountState { loading, idle, error, syncing }
 
 class ActiveCountProvider extends ChangeNotifier {
@@ -31,8 +36,8 @@ class ActiveCountProvider extends ChangeNotifier {
   int _currentIteration = 1;
   int get currentIteration => _currentIteration;
 
-  Map<String, Map<String, dynamic>> _masterItems = {};
-  Map<String, Map<String, dynamic>> get masterItems => _masterItems;
+  Map<String, MasterItemData> _masterItems = {};
+  Map<String, MasterItemData> get masterItems => _masterItems;
 
   // Records counted in the current iteration: { 'financialArticleId': totalCounted }
   Map<String, double> _currentIterationRecords = {};
@@ -98,8 +103,8 @@ class ActiveCountProvider extends ChangeNotifier {
       _masterItems.clear();
       for (var item in items) {
         _masterItems[item['financialArticleId'] as String] = {
-          'descripcion': item['descripcion'],
-          'barcode': item['barcode'],
+          'descripcion': (item['descripcion'] as String?) ?? '',
+          'barcode': (item['barcode'] as String?) ?? '',
         };
       }
 
@@ -363,10 +368,10 @@ class ActiveCountProvider extends ChangeNotifier {
         'isCompleted': 0,
       };
 
-      final List<Map<String, dynamic>> masterItems = pendientes.map((p) {
-        return {
-          'id': p.idArticulo,
-          'physicalCountId': formId,
+      final List<MasterItemData> masterItems = pendientes.map((p) {
+        return <String, String>{
+          'id': p.idArticulo.toString(),
+          'physicalCountId': formId.toString(),
           'financialArticleId': p.idArticulo.toString(),
           'descripcion': p.descripcion ?? 'Artículo ${p.idArticulo}',
           'barcode': p.codigoQr ?? p.idArticulo.toString(),

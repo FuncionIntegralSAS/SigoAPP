@@ -9,20 +9,16 @@ import '../repositories/transfer_repository.dart';
 /// Lanza [TransferBusinessException] cuando ocurren errores de red o
 /// respuestas no exitosas del servidor.
 class HttpTransferRepository implements TransferRepository {
-  final String baseUrl;
   final Dio dio;
 
-  HttpTransferRepository({
-    required this.baseUrl,
-    Dio? dio,
-  }) : dio = dio ?? Dio();
+  HttpTransferRepository(this.dio);
 
   // --- 1. CREAR
   @override
   Future<void> create(TransferRequest request) async {
     try {
       await dio.post(
-        '$baseUrl/api/v1/traspasos',
+        '/api/v1/traspasos',
         data: request.toJson(),
         options: Options(headers: {
           'Content-Type': 'application/json',
@@ -41,7 +37,7 @@ class HttpTransferRepository implements TransferRepository {
   Future<List<TransferRequest>> getAllTransfers() async {
     try {
       final response = await dio.get(
-        '$baseUrl/api/v1/traspasos',
+        '/api/v1/traspasos',
         options: Options(headers: {'Accept': 'application/json'}),
       );
 
@@ -59,7 +55,7 @@ class HttpTransferRepository implements TransferRepository {
   Future<void> approveTransfer(String transferId) async {
     try {
       await dio.put(
-        '$baseUrl/api/v1/traspasos/$transferId/procesar',
+        '/api/v1/traspasos/$transferId/procesar',
         data: {
           'decision': 'ap', // Decisión 'ap' según backend
           'observacion': 'Aprobado vía App'
@@ -78,7 +74,7 @@ class HttpTransferRepository implements TransferRepository {
   Future<void> rejectTransfer({required String requestId, required String rejectionReason}) async {
     try {
       final response = await dio.put(
-        '$baseUrl/api/v1/traspasos/$requestId/procesar',
+        '/api/v1/traspasos/$requestId/procesar',
         data: {
           'decision': 'na', // Decisión 'na' según backend
           'observacion': rejectionReason // La observación es obligatoria en el rechazo

@@ -20,7 +20,9 @@ import 'package:sigo_app/services/mock_requisition_service.dart';
 import 'package:sigo_app/providers/physical_count_provider.dart';
 import 'package:sigo_app/providers/active_count_provider.dart';
 import 'package:sigo_app/repositories/http_physical_count_repository.dart';
+import 'package:sigo_app/repositories/http_catalog_repository.dart';
 import 'package:sigo_app/providers/auth_provider.dart';
+import 'package:sigo_app/providers/transfer_form_provider.dart';
 import 'package:sigo_app/repositories/http_auth_repository.dart';
 import 'package:sigo_app/utils/app_config.dart';
 
@@ -50,6 +52,9 @@ Future<void> main() async {
 
   final physicalCountRepository = HttpPhysicalCountRepository(backendDio);
 
+  // Repositorio de catálogos para el formulario de traspasos
+  final catalogRepository = HttpCatalogRepository(backendDio);
+
   // Inyectamos el mismo Dio al repositorio de autenticación
   final authRepository = HttpAuthRepository(backendDio);
 
@@ -74,6 +79,11 @@ Future<void> main() async {
           create: (_) => TransferApprovalProvider(transferRepository),
         ),
         ChangeNotifierProvider(create: (_) => AssetVerificationProvider()),
+
+        // Provider del formulario de creación de traspasos (carga en cascada)
+        ChangeNotifierProvider(
+          create: (_) => TransferFormProvider(catalogRepository),
+        ),
 
         // Registramos el nuevo Provider de Requisiciones
         ChangeNotifierProvider(

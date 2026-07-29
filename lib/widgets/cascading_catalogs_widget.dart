@@ -59,8 +59,8 @@ class CascadingCatalogsWidget extends StatelessWidget {
               value: provider.selectedWarehouseId,
               items: provider.warehouses.map((bodega) {
                 return DropdownMenuItem<String>(
-                  value: bodega['id'],
-                  child: Text(bodega['name']),
+                  value: bodega.bodeCodi,
+                  child: Text('${bodega.bodeCodi} - ${bodega.bodeDesc}'),
                 );
               }).toList(),
               onChanged: provider.warehouses.isEmpty || provider.isLoadingWarehouses

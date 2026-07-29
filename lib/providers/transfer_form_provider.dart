@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-// Asume que tienes un servicio HTTP o Repositorio para catálogos
-// import '../repositories/catalog_repository.dart'; 
+import '../models/warehouse_model.dart';
+import '../repositories/catalog_repository.dart'; 
 
 class TransferFormProvider extends ChangeNotifier {
-  // Aquí inyectarías tu repositorio real (ej. CatalogRepository)
-  // final CatalogRepository catalogRepository;
-  // TransferFormProvider(this.catalogRepository);
+  final CatalogRepository catalogRepository;
+  TransferFormProvider(this.catalogRepository);
 
   // --- ESTADO DEL EMPLEADO ---
   bool _isSearchingEmployee = false;
@@ -15,7 +14,7 @@ class TransferFormProvider extends ChangeNotifier {
 
   // --- ESTADO DE BODEGAS ---
   bool _isLoadingWarehouses = false;
-  List<Map<String, dynamic>> _warehouses = [];
+  List<WarehouseModel> _warehouses = [];
   String? _selectedWarehouseId;
   String? _warehouseError;
 
@@ -24,7 +23,7 @@ class TransferFormProvider extends ChangeNotifier {
   String? get employeeName => _employeeName;
   String? get employeeError => _employeeError;
   bool get isLoadingWarehouses => _isLoadingWarehouses;
-  List<Map<String, dynamic>> get warehouses => _warehouses;
+  List<WarehouseModel> get warehouses => _warehouses;
   String? get selectedWarehouseId => _selectedWarehouseId;
   String? get warehouseError => _warehouseError;
 
@@ -41,16 +40,9 @@ class TransferFormProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // final employee = await catalogRepository.findEmployee(query);
-      
-      // --- SIMULACIÓN DEL BACKEND ---
-      await Future.delayed(const Duration(seconds: 1)); 
-      if (query == '123') { // Simulamos un ID exitoso
-        _employeeName = 'Juan Pérez';
-        _divisionId = 'DIV-SUR'; // El dato clave
-      } else {
-        throw Exception('Empleado no encontrado');
-      }
+      final employee = await catalogRepository.findEmployee(query);
+      _employeeName = employee.name;
+      _divisionId = employee.divisionId;
 
       notifyListeners();
 
@@ -71,15 +63,7 @@ class TransferFormProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // _warehouses = await catalogRepository.getWarehousesByDivision(divisionId);
-
-      // --- SIMULACIÓN DEL BACKEND ---
-      await Future.delayed(const Duration(seconds: 1));
-      _warehouses = [
-        {'id': 'BOD-01', 'name': 'Bodega Principal Sur'},
-        {'id': 'BOD-02', 'name': 'Bodega Herramientas Sur'},
-      ];
-      // ------------------------------
+      _warehouses = await catalogRepository.getWarehousesByDivision(divisionId);
     } catch (e) {
       _warehouseError = 'Error al cargar bodegas: $e';
     } finally {
