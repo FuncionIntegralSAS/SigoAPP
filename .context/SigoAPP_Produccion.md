@@ -307,3 +307,4 @@ Completar antes de subir a Google Play:
 - [ ] Probado en dispositivo físico Android (no solo emulador)
 - [ ] Probado sin conexión a internet (mensajes de error amigables)
 - [ ] Probado el botón atrás en todas las pantallas del árbol de navegación
+- [ ] **REMOVER**: Salvedad temporal de permisos inyectados para el usuario `FPLPNACUA` y el usuario mock en `AuthProvider`.

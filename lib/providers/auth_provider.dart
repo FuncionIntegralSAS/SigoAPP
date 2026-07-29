@@ -53,6 +53,11 @@ class AuthProvider extends ChangeNotifier {
       _cedula = null; // No es un contador
       _permisos = response.permisos ?? [];
 
+      // TODO: Remover esta salvedad antes del paso a producción
+      if (_username == 'FPLPNACUA') {
+        _permisos = AppPermission.values.map((e) => Permiso(forma: e.code)).toList();
+      }
+
       await _storage.write(key: 'auth_token', value: _token);
       if (_username != null) {
         await _storage.write(key: 'auth_username', value: _username);
@@ -86,19 +91,8 @@ class AuthProvider extends ChangeNotifier {
       _token = "Bearer mock-token-operator";
       _username = "operador";
       _cedula = null;
-      _permisos = [
-        const Permiso(forma: 'avac'),
-        const Permiso(forma: 'agqr'),
-        const Permiso(forma: 'agst'),
-        const Permiso(forma: 'aatr'),
-        const Permiso(forma: 'aacf'),
-        const Permiso(forma: 'aacu'),
-        const Permiso(forma: 'arcf'),
-        const Permiso(forma: 'asin'),
-        const Permiso(forma: 'accf'),
-        const Permiso(forma: 'areq'),
-        const Permiso(forma: 'aein'),
-      ];
+      // TODO: Remover o revisar esta salvedad antes del paso a producción
+      _permisos = AppPermission.values.map((e) => Permiso(forma: e.code)).toList();
 
       await _storage.write(key: 'auth_token', value: _token);
       await _storage.write(key: 'auth_username', value: _username);
@@ -129,6 +123,11 @@ class AuthProvider extends ChangeNotifier {
       _cedula = cedula;
       _username = response.username;
       _permisos = response.permisos ?? [];
+
+      // TODO: Remover esta salvedad antes del paso a producción
+      if (_username == 'FPLPNACUA') {
+        _permisos = AppPermission.values.map((e) => Permiso(forma: e.code)).toList();
+      }
 
       await _storage.write(key: 'auth_token', value: _token);
       await _storage.write(key: 'auth_cedula', value: _cedula);
