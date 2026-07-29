@@ -21,10 +21,13 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
   final TextEditingController _warehouseCodeController =
       TextEditingController();
   final TextEditingController _companySearchController = TextEditingController();
+  final TextEditingController _warehouseSearchController = TextEditingController();
   final ValueNotifier<CompanyModel?> _companyNotifier = ValueNotifier(null);
-  
+  final ValueNotifier<PendingCountWarehouseModel?> _warehouseNotifier =
+      ValueNotifier(null);
+
   PhysicalCountState? _lastHandledCloseState;
-  
+
   Timer? _debounce;
   PendingCountWarehouseModel? _selectedWarehouse;
 
@@ -33,7 +36,9 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
     _debounce?.cancel();
     _warehouseCodeController.dispose();
     _companySearchController.dispose();
+    _warehouseSearchController.dispose();
     _companyNotifier.dispose();
+    _warehouseNotifier.dispose();
     super.dispose();
   }
 
@@ -77,6 +82,7 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
               Navigator.of(context).pop();
               _warehouseCodeController.clear();
               _companyNotifier.value = null;
+              _warehouseNotifier.value = null;
               setState(() {
                 _selectedWarehouse = null;
               });
@@ -180,6 +186,7 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
 
   void _onCompanySelected(CompanyModel? value, PhysicalCountProvider provider) async {
     _companyNotifier.value = value;
+    _warehouseNotifier.value = null;
     setState(() {
       _selectedWarehouse = null;
     });
@@ -257,6 +264,7 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
                   ),
                   const SizedBox(height: 24),
                   DropdownButtonFormField2<CompanyModel>(
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Empresa',
                       border: OutlineInputBorder(),
@@ -267,6 +275,8 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
                         value: company,
                         child: Text(
                           '${company.codigo} - ${company.descripcion}',
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       );
                     }).toList(),
@@ -287,46 +297,74 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  DropdownButtonFormField<PendingCountWarehouseModel>(
-                    value: _selectedWarehouse,
+                  DropdownButtonFormField2<PendingCountWarehouseModel>(
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Bodega con Conteo Pendiente',
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.warehouse),
                     ),
-                    isExpanded: true,
+                    valueListenable: _warehouseNotifier,
                     hint: provider.isLoadingPendingWarehouses
                         ? const Text('Cargando...')
                         : provider.pendingWarehouses.isEmpty
                             ? const Text('No hay bodegas pendientes')
                             : const Text('Seleccione una bodega'),
                     items: provider.pendingWarehouses.map((warehouse) {
-                      return DropdownMenuItem<PendingCountWarehouseModel>(
+                      return DropdownItem(
                         value: warehouse,
-                        child: Text('${warehouse.bodega} - ${warehouse.descripcion}'),
+                        child: Text(
+                          '${warehouse.bodega} - ${warehouse.descripcion}',
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                       );
                     }).toList(),
-                    onChanged: isLoading || provider.isLoadingPendingWarehouses || provider.pendingWarehouses.isEmpty
+                    onChanged: isLoading ||
+                            provider.isLoadingPendingWarehouses ||
+                            provider.pendingWarehouses.isEmpty
                         ? null
                         : (val) {
                             setState(() {
                               _selectedWarehouse = val;
+                              _warehouseNotifier.value = val;
                               _warehouseCodeController.text = val?.bodega ?? '';
                             });
                           },
+                    dropdownSearchData: DropdownTemplates.searchData(
+                      controller: _warehouseSearchController,
+                      hintText: 'Buscar bodega...',
+                      searchMatchFn: (item, searchValue) {
+                        return item.value!.descripcion.toLowerCase().contains(
+                                  searchValue.toLowerCase(),
+                                ) ||
+                            item.value!.bodega.toLowerCase().contains(
+                                  searchValue.toLowerCase(),
+                                );
+                      },
+                    ),
+                    onMenuStateChange: (isOpen) {
+                      if (!isOpen) _warehouseSearchController.clear();
+                    },
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 24,
+                      ),
                       backgroundColor: Colors.red.shade700,
                       foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     onPressed: isLoading
                         ? null
                         : () => _confirmAndClose(provider),
                     child: const Text(
                       'Cerrar Conteo',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

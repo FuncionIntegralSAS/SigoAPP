@@ -137,6 +137,7 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     DropdownButtonFormField2<CompanyModel>(
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Empresa',
                         border: OutlineInputBorder(),
@@ -147,6 +148,8 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                           value: company,
                           child: Text(
                             '${company.codigo} - ${company.descripcion}',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         );
                       }).toList(),
@@ -168,6 +171,7 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField2<WarehouseModel>(
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Bodega',
                         border: OutlineInputBorder(),
@@ -176,7 +180,11 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                       items: provider.warehouses.map((wh) {
                         return DropdownItem(
                           value: wh,
-                          child: Text('${wh.bodeCodi}-${wh.bodeDesc}'),
+                          child: Text(
+                            '${wh.bodeCodi}-${wh.bodeDesc}',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         );
                       }).toList(),
                       onChanged: isLoading || provider.warehouses.isEmpty
@@ -217,6 +225,7 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField2<ArticleModel>(
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Artículos',
                         border: OutlineInputBorder(),
@@ -225,7 +234,11 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                       items: provider.articles.map((art) {
                         return DropdownItem(
                           value: art,
-                          child: Text('${art.id} - ${art.name}'),
+                          child: Text(
+                            '${art.id} - ${art.name}',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         );
                       }).toList(),
                       onChanged: isLoading || provider.articles.isEmpty
@@ -263,15 +276,22 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                     const SizedBox(height: 32),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 24,
+                        ),
                         backgroundColor: Colors.blue.shade700,
                         foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: isLoading
                           ? null
                           : () => provider.createAndAssignPhysicalCount(),
                       child: const Text(
                         'Generar Apertura y Asignar Personal',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

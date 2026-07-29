@@ -6,7 +6,6 @@ import 'package:sigo_app/models/article_model.dart';
 import 'package:sigo_app/models/physical_count_model.dart';
 import 'package:sigo_app/repositories/physical_count_repository.dart';
 import 'package:dio/dio.dart';
-import 'package:sigo_app/utils/app_logger.dart';
 
 enum PhysicalCountState { initial, enProceso, creada, error }
 
