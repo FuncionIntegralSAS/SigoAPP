@@ -186,4 +186,22 @@ class HttpPhysicalCountRepository implements PhysicalCountRepository {
     );
     return ConteoFisicoResponse.fromJson(response.data);
   }
+
+  @override
+  Future<List<PendingCountWarehouseModel>> getPendingWarehouses(
+    String empresa,
+  ) async {
+    final response = await _dio.get(
+      '/api/v1/bodegas/conteo-pendientes/$empresa',
+    );
+
+    if (response.statusCode == 204) {
+      return [];
+    }
+
+    final data = response.data as List;
+    return data
+        .map((json) => PendingCountWarehouseModel.fromJson(json))
+        .toList();
+  }
 }

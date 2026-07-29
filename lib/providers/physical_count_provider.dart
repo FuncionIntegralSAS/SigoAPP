@@ -6,6 +6,7 @@ import 'package:sigo_app/models/article_model.dart';
 import 'package:sigo_app/models/physical_count_model.dart';
 import 'package:sigo_app/repositories/physical_count_repository.dart';
 import 'package:dio/dio.dart';
+import 'package:sigo_app/utils/app_logger.dart';
 
 enum PhysicalCountState { initial, enProceso, creada, error }
 
@@ -33,6 +34,9 @@ class PhysicalCountProvider extends ChangeNotifier {
   List<WarehouseModel> warehouses = [];
   List<ArticleModel> articles = [];
   List<PersonalModel> foundPersons = [];
+
+  List<PendingCountWarehouseModel> pendingWarehouses = [];
+  bool isLoadingPendingWarehouses = false;
 
   // Múltiples personas seleccionadas
   List<PersonalModel> selectedPersons = [];
@@ -222,7 +226,9 @@ class PhysicalCountProvider extends ChangeNotifier {
     }
 
     if (selectedPersons.isEmpty) {
-      _setError('Debe seleccionar al menos un participante para la asignación.');
+      _setError(
+        'Debe seleccionar al menos un participante para la asignación.',
+      );
       return;
     }
 
@@ -232,16 +238,15 @@ class PhysicalCountProvider extends ChangeNotifier {
       empresa: selectedCompany!.codigo,
       bodega: selectedWarehouse!.bodeCodi,
       fechaConteo: selectedDate,
-      usuarios:
-          selectedPersons
-              .map(
-                (p) => UsuarioAsignacion(
-                  documento: p.perscodi,
-                  nombre: '${p.persnomb} ${p.persapel}'.trim(),
-                  email: p.perscoel,
-                ),
-              )
-              .toList(),
+      usuarios: selectedPersons
+          .map(
+            (p) => UsuarioAsignacion(
+              documento: p.perscodi,
+              nombre: '${p.persnomb} ${p.persapel}'.trim(),
+              email: p.perscoel,
+            ),
+          )
+          .toList(),
     );
 
     try {
@@ -265,7 +270,9 @@ class PhysicalCountProvider extends ChangeNotifier {
     if (!_validateFields()) return;
 
     if (selectedPersons.isEmpty) {
-      _setError('Debe seleccionar al menos un participante para la asignación.');
+      _setError(
+        'Debe seleccionar al menos un participante para la asignación.',
+      );
       return;
     }
 
@@ -285,9 +292,11 @@ class PhysicalCountProvider extends ChangeNotifier {
       String msg = 'Un error inesperado ha ocurrido al crear el conteo.';
       if (e is DioException) {
         if (e.response?.statusCode == 400) {
-          msg = 'Solicitud incorrecta (Error 400). Verifique los datos enviados.';
+          msg =
+              'Solicitud incorrecta (Error 400). Verifique los datos enviados.';
         } else if (e.response?.statusCode == 409) {
-          msg = 'Conflicto (Error 409). Es posible que la bodega ya esté bloqueada.';
+          msg =
+              'Conflicto (Error 409). Es posible que la bodega ya esté bloqueada.';
         } else if (e.response?.statusCode == 500) {
           msg = 'Error del servidor (Error 500). Inténtalo más tarde.';
         } else {
@@ -303,17 +312,19 @@ class PhysicalCountProvider extends ChangeNotifier {
       bodega: selectedWarehouse!.bodeCodi,
       fechaConteo: selectedDate,
       usuarios: selectedPersons
-          .map((p) => UsuarioAsignacion(
-                documento: p.perscodi,
-                nombre: '${p.persnomb} ${p.persapel}'.trim(),
-                email: p.perscoel,
-              ))
+          .map(
+            (p) => UsuarioAsignacion(
+              documento: p.perscodi,
+              nombre: '${p.persnomb} ${p.persapel}'.trim(),
+              email: p.perscoel,
+            ),
+          )
           .toList(),
     );
 
     try {
       await _repository.assignArticles(assignRequest);
-      _setState(PhysicalCountState.creada); 
+      _setState(PhysicalCountState.creada);
     } catch (e) {
       String msg = 'Conteo creado, pero error al asignar personal.';
       if (e is DioException) {
@@ -366,7 +377,10 @@ class PhysicalCountProvider extends ChangeNotifier {
 
   // --- Cierre de Conteo Físico ---
   Future<void> closePhysicalCount(
-      String token, String companyCode, String warehouseCode) async {
+    String token,
+    String companyCode,
+    String warehouseCode,
+  ) async {
     if (companyCode.trim().isEmpty) {
       _setCloseError('Debe ingresar el código de la empresa.');
       return;
@@ -425,6 +439,61 @@ class PhysicalCountProvider extends ChangeNotifier {
   void resetCloseForm() {
     _closeSuccessMessage = null;
     _setCloseState(PhysicalCountState.initial);
+    pendingWarehouses = [];
+  }
+
+  String? _pendingWarehousesErrorMessage;
+  String? get pendingWarehousesErrorMessage => _pendingWarehousesErrorMessage;
+
+  void clearPendingWarehousesError() {
+    _pendingWarehousesErrorMessage = null;
+    notifyListeners();
+  }
+
+  // --- Obtener bodegas pendientes para cierre ---
+  Future<void> fetchPendingWarehouses(String companyCode) async {
+    if (companyCode.trim().isEmpty) {
+      pendingWarehouses = [];
+      _pendingWarehousesErrorMessage = null;
+      notifyListeners();
+      return;
+    }
+
+    isLoadingPendingWarehouses = true;
+    _pendingWarehousesErrorMessage = null;
+    notifyListeners();
+
+    try {
+      pendingWarehouses = await _repository.getPendingWarehouses(
+        companyCode.trim(),
+      );
+    } catch (e) {
+      pendingWarehouses = [];
+      if (e is DioException) {
+        if (e.response?.statusCode == 400) {
+          _pendingWarehousesErrorMessage =
+              'Solicitud incorrecta. Verifique la empresa seleccionada.';
+        } else if (e.response?.statusCode == 403) {
+          _pendingWarehousesErrorMessage =
+              'No tiene autorización para consultar bodegas pendientes.';
+        } else if (e.response?.statusCode == 404) {
+          _pendingWarehousesErrorMessage =
+              'No se encontraron bodegas pendientes para la empresa seleccionada.';
+        } else if (e.response?.statusCode == 500) {
+          _pendingWarehousesErrorMessage =
+              'Error interno del servidor al consultar bodegas pendientes.';
+        } else {
+          _pendingWarehousesErrorMessage =
+              'Error de comunicación con el servidor: ${e.message}';
+        }
+      } else {
+        _pendingWarehousesErrorMessage =
+            'Ocurrió un error inesperado al obtener las bodegas pendientes.';
+      }
+    } finally {
+      isLoadingPendingWarehouses = false;
+      notifyListeners();
+    }
   }
 
   void resetForm() {

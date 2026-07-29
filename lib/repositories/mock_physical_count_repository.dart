@@ -127,5 +127,25 @@ class MockPhysicalCountRepository implements PhysicalCountRepository {
       message: 'Conteo físico cerrado exitosamente (Mock)',
     );
   }
+
+  @override
+  Future<List<PendingCountWarehouseModel>> getPendingWarehouses(
+    String empresa,
+  ) async {
+    if (simulateError) throw Exception('Error al obtener bodegas (Mock)');
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    // Devolver datos simulados basados en la empresa
+    return [
+      PendingCountWarehouseModel(
+        bodega: '${empresa}_B1',
+        descripcion: 'Bodega Principal (Pendiente)',
+      ),
+      PendingCountWarehouseModel(
+        bodega: '${empresa}_B2',
+        descripcion: 'Bodega Secundaria (Pendiente)',
+      ),
+    ];
+  }
 }
 

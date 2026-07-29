@@ -213,3 +213,23 @@ class ConteoFisicoResponse extends Equatable {
   @override
   List<Object?> get props => [success, message];
 }
+
+class PendingCountWarehouseModel extends Equatable {
+  final String bodega;
+  final String descripcion;
+
+  const PendingCountWarehouseModel({
+    required this.bodega,
+    required this.descripcion,
+  });
+
+  factory PendingCountWarehouseModel.fromJson(Map<String, dynamic> json) {
+    return PendingCountWarehouseModel(
+      bodega: json['bodega']?.toString() ?? '',
+      descripcion: json['descripcion']?.toString() ?? '',
+    );
+  }
+
+  @override
+  List<Object?> get props => [bodega, descripcion];
+}

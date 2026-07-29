@@ -1,7 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sigo_app/providers/physical_count_provider.dart';
 import 'package:sigo_app/providers/auth_provider.dart';
+import 'package:sigo_app/models/physical_count_model.dart';
+import 'package:sigo_app/models/company_model.dart';
+import 'package:sigo_app/utils/dropdown_template.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 
 class PhysicalCountClosingTab extends StatefulWidget {
   const PhysicalCountClosingTab({super.key});
@@ -14,13 +20,20 @@ class PhysicalCountClosingTab extends StatefulWidget {
 class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
   final TextEditingController _warehouseCodeController =
       TextEditingController();
-  final TextEditingController _companyCodeController = TextEditingController();
+  final TextEditingController _companySearchController = TextEditingController();
+  final ValueNotifier<CompanyModel?> _companyNotifier = ValueNotifier(null);
+  
   PhysicalCountState? _lastHandledCloseState;
+  
+  Timer? _debounce;
+  PendingCountWarehouseModel? _selectedWarehouse;
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _warehouseCodeController.dispose();
-    _companyCodeController.dispose();
+    _companySearchController.dispose();
+    _companyNotifier.dispose();
     super.dispose();
   }
 
@@ -32,7 +45,7 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
 
   void _showSuccessDialog(PhysicalCountProvider provider) {
     final message = provider.closeSuccessMessage ??
-        'Se ha cerrado exitosamente el conteo físico para la bodega "${_warehouseCodeController.text.trim()}" de la empresa "${_companyCodeController.text.trim()}".';
+        'Se ha cerrado exitosamente el conteo físico para la bodega "${_warehouseCodeController.text.trim()}" de la empresa "${_companySearchController.text.trim()}".';
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -63,7 +76,10 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
             onPressed: () {
               Navigator.of(context).pop();
               _warehouseCodeController.clear();
-              _companyCodeController.clear();
+              _companyNotifier.value = null;
+              setState(() {
+                _selectedWarehouse = null;
+              });
               provider.resetCloseForm();
             },
             child: const Text(
@@ -77,7 +93,7 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
   }
 
   Future<void> _confirmAndClose(PhysicalCountProvider provider) async {
-    final empresa = _companyCodeController.text.trim();
+    final empresa = _companyNotifier.value?.codigo.trim() ?? '';
     final bodega = _warehouseCodeController.text.trim();
 
     if (empresa.isEmpty) {
@@ -162,10 +178,46 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
     }
   }
 
+  void _onCompanySelected(CompanyModel? value, PhysicalCountProvider provider) async {
+    _companyNotifier.value = value;
+    setState(() {
+      _selectedWarehouse = null;
+    });
+    _warehouseCodeController.clear();
+    
+    if (value != null) {
+      await provider.fetchPendingWarehouses(value.codigo);
+      if (mounted &&
+          provider.pendingWarehousesErrorMessage == null &&
+          provider.pendingWarehouses.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No se encontraron bodegas pendientes para la empresa ${value.descripcion}.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } else {
+      await provider.fetchPendingWarehouses('');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<PhysicalCountProvider>(
       builder: (context, provider, child) {
+        // Manejo de error al cargar bodegas pendientes
+        if (provider.pendingWarehousesErrorMessage != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (provider.pendingWarehousesErrorMessage != null && mounted) {
+              DialogUtils.showPendingWarehousesErrorDialog(context, provider);
+            }
+          });
+        }
+
         // Manejo de estados del cierre (independiente de apertura/asignación)
         if (provider.closeState != _lastHandledCloseState) {
           if (provider.closeState == PhysicalCountState.error &&
@@ -204,28 +256,64 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
                     style: TextStyle(color: Colors.grey, fontSize: 14),
                   ),
                   const SizedBox(height: 24),
-                  TextField(
-                    controller: _companyCodeController,
-                    enabled: !isLoading,
+                  DropdownButtonFormField2<CompanyModel>(
                     decoration: const InputDecoration(
-                      labelText: 'Código de Empresa',
-                      hintText: 'Ej: 01',
+                      labelText: 'Empresa',
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.business),
                     ),
-                    textInputAction: TextInputAction.next,
+                    valueListenable: _companyNotifier,
+                    items: provider.companies.map((company) {
+                      return DropdownItem(
+                        value: company,
+                        child: Text(
+                          '${company.codigo} - ${company.descripcion}',
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: isLoading
+                        ? null
+                        : (val) => _onCompanySelected(val, provider),
+                    dropdownSearchData: DropdownTemplates.searchData(
+                      controller: _companySearchController,
+                      hintText: 'Buscar empresa...',
+                      searchMatchFn: (item, searchValue) {
+                        return item.value!.descripcion.toLowerCase().contains(
+                          searchValue.toLowerCase(),
+                        );
+                      },
+                    ),
+                    onMenuStateChange: (isOpen) {
+                      if (!isOpen) _companySearchController.clear();
+                    },
                   ),
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: _warehouseCodeController,
-                    enabled: !isLoading,
+                  DropdownButtonFormField<PendingCountWarehouseModel>(
+                    value: _selectedWarehouse,
                     decoration: const InputDecoration(
-                      labelText: 'Código de Bodega',
-                      hintText: 'Ej: BOD001',
+                      labelText: 'Bodega con Conteo Pendiente',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.warehouse),
                     ),
-                    textInputAction: TextInputAction.done,
+                    isExpanded: true,
+                    hint: provider.isLoadingPendingWarehouses
+                        ? const Text('Cargando...')
+                        : provider.pendingWarehouses.isEmpty
+                            ? const Text('No hay bodegas pendientes')
+                            : const Text('Seleccione una bodega'),
+                    items: provider.pendingWarehouses.map((warehouse) {
+                      return DropdownMenuItem<PendingCountWarehouseModel>(
+                        value: warehouse,
+                        child: Text('${warehouse.bodega} - ${warehouse.descripcion}'),
+                      );
+                    }).toList(),
+                    onChanged: isLoading || provider.isLoadingPendingWarehouses || provider.pendingWarehouses.isEmpty
+                        ? null
+                        : (val) {
+                            setState(() {
+                              _selectedWarehouse = val;
+                              _warehouseCodeController.text = val?.bodega ?? '';
+                            });
+                          },
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(

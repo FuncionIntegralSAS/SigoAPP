@@ -39,4 +39,7 @@ abstract class PhysicalCountRepository {
 
   /// Cierra un conteo físico para una bodega específica.
   Future<ConteoFisicoResponse> closePhysicalCount(String token, CierreConteoRequest request);
+
+  /// Obtiene bodegas con conteo pendiente por empresa
+  Future<List<PendingCountWarehouseModel>> getPendingWarehouses(String empresa);
 }
