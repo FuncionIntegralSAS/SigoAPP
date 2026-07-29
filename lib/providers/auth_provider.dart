@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../repositories/auth_repository.dart';
 import '../models/auth_model.dart';
 import '../models/physical_count_model.dart';
+import '../utils/permission_utils.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _repository;
@@ -13,6 +14,7 @@ class AuthProvider extends ChangeNotifier {
   String? _token;
   String? _cedula; // Para saber qué contador inició sesión
   String? _username;
+  List<Permiso> _permisos = [];
 
   AuthProvider(this._repository) {
     _checkSavedSession();
@@ -24,11 +26,16 @@ class AuthProvider extends ChangeNotifier {
   String? get currentCedula => _cedula;
   String? get currentToken => _token;
   String? get currentUsername => _username;
+  List<Permiso> get permisos => _permisos;
 
   Future<void> _checkSavedSession() async {
     _token = await _storage.read(key: 'auth_token');
     _cedula = await _storage.read(key: 'auth_cedula');
     _username = await _storage.read(key: 'auth_username');
+    
+    final permisosStr = await _storage.read(key: 'auth_permissions');
+    _permisos = PermissionUtils.parsePermissions(permisosStr);
+
     notifyListeners();
   }
 
@@ -42,21 +49,20 @@ class AuthProvider extends ChangeNotifier {
       final response = await _repository.login(request);
 
       _token = "Bearer ${response.token}";
-      _username =
-          response.username ??
-          username; // Si no viene en la respuesta, usamos el enviado
+      _username = response.username ?? username; // Si no viene en la respuesta, usamos el enviado
       _cedula = null; // No es un contador
+      _permisos = response.permisos ?? [];
 
       await _storage.write(key: 'auth_token', value: _token);
       if (_username != null) {
         await _storage.write(key: 'auth_username', value: _username);
       }
       if (response.refreshToken != null) {
-        await _storage.write(
-          key: 'auth_refresh_token',
-          value: response.refreshToken,
-        );
+        await _storage.write(key: 'auth_refresh_token', value: response.refreshToken);
       }
+      
+      final permisosJson = PermissionUtils.encodePermissions(_permisos);
+      await _storage.write(key: 'auth_permissions', value: permisosJson);
 
       _isLoading = false;
       notifyListeners();
@@ -80,17 +86,31 @@ class AuthProvider extends ChangeNotifier {
       _token = "Bearer mock-token-operator";
       _username = "operador";
       _cedula = null;
+      _permisos = [
+        const Permiso(forma: 'avac'),
+        const Permiso(forma: 'agqr'),
+        const Permiso(forma: 'agst'),
+        const Permiso(forma: 'aatr'),
+        const Permiso(forma: 'aacf'),
+        const Permiso(forma: 'aacu'),
+        const Permiso(forma: 'arcf'),
+        const Permiso(forma: 'asin'),
+        const Permiso(forma: 'accf'),
+        const Permiso(forma: 'areq'),
+        const Permiso(forma: 'aein'),
+      ];
 
       await _storage.write(key: 'auth_token', value: _token);
       await _storage.write(key: 'auth_username', value: _username);
+      final permisosJson = PermissionUtils.encodePermissions(_permisos);
+      await _storage.write(key: 'auth_permissions', value: permisosJson);
 
       _isLoading = false;
       notifyListeners();
       return true;
     } else {
       _isLoading = false;
-      _errorMessage =
-          'Credenciales inválidas. (Usa operador@inventario.com / 123456)';
+      _errorMessage = 'Credenciales inválidas. (Usa operador@inventario.com / 123456)';
       notifyListeners();
       return false;
     }
@@ -102,15 +122,13 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final request = LoginContadorRequest(
-        documento: cedula,
-        codigoTemporal: codigoTemporal,
-      );
+      final request = LoginContadorRequest(documento: cedula, codigoTemporal: codigoTemporal);
       final response = await _repository.loginContador(request);
 
       _token = "Bearer ${response.token}";
       _cedula = cedula;
       _username = response.username;
+      _permisos = response.permisos ?? [];
 
       await _storage.write(key: 'auth_token', value: _token);
       await _storage.write(key: 'auth_cedula', value: _cedula);
@@ -118,11 +136,11 @@ class AuthProvider extends ChangeNotifier {
         await _storage.write(key: 'auth_username', value: _username);
       }
       if (response.refreshToken != null) {
-        await _storage.write(
-          key: 'auth_refresh_token',
-          value: response.refreshToken,
-        );
+        await _storage.write(key: 'auth_refresh_token', value: response.refreshToken);
       }
+      
+      final permisosJson = PermissionUtils.encodePermissions(_permisos);
+      await _storage.write(key: 'auth_permissions', value: permisosJson);
 
       _isLoading = false;
       notifyListeners();
@@ -159,10 +177,12 @@ class AuthProvider extends ChangeNotifier {
     _token = null;
     _cedula = null;
     _username = null;
+    _permisos = [];
     await _storage.delete(key: 'auth_token');
     await _storage.delete(key: 'auth_cedula');
     await _storage.delete(key: 'auth_username');
     await _storage.delete(key: 'auth_refresh_token');
+    await _storage.delete(key: 'auth_permissions');
     notifyListeners();
   }
 }

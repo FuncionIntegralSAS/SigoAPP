@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../models/auth_model.dart';
 import 'package:sigo_app/screens/home_screen.dart';
 import 'package:sigo_app/screens/asset_verification_screen.dart';
 import '../screens/inventory_screen.dart';
@@ -9,12 +10,15 @@ import '../screens/transfer_approval_screen.dart';
 import '../screens/requisitions_screen.dart';
 import '../screens/physical_count_screen.dart';
 import '../screens/active_count_screen.dart';
+import '../utils/permission_utils.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -61,46 +65,48 @@ class DashboardScreen extends StatelessWidget {
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
             children: [
-              _DashboardItem(
-                icon: Icons.fact_check,
-                title: 'Verificación de Activos',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AssetVerificationScreen(),
-                    ),
-                  );
-                },
-              ),
+              if (auth.permisos.hasPermission(AppPermission.verificacionActivos))
+                _DashboardItem(
+                  icon: Icons.fact_check,
+                  title: 'Verificación de Activos',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AssetVerificationScreen(),
+                      ),
+                    );
+                  },
+                ),
 
-              // OPCIÓN 2: Solicitud de traspaso de activos
-              _DashboardItem(
-                icon: Icons.inventory,
-                title: 'Generar solicitud de traspaso',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const InventoryScreen(),
-                    ),
-                  );
-                },
-              ),
+              if (auth.permisos.hasPermission(AppPermission.generarTraspaso))
+                _DashboardItem(
+                  icon: Icons.inventory,
+                  title: 'Generar solicitud de traspaso',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const InventoryScreen(),
+                      ),
+                    );
+                  },
+                ),
 
-              // OPCIÓN 3: Aprobación de trámites
-              _DashboardItem(
-                icon: Icons.approval,
-                title: 'Aprobación de Traspasos',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const TransferApprovalScreen(),
-                    ),
-                  );
-                },
-              ),
+              if (auth.permisos.hasPermission(AppPermission.aprobacionTraspaso))
+                _DashboardItem(
+                  icon: Icons.approval,
+                  title: 'Aprobación de Traspasos',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TransferApprovalScreen(),
+                      ),
+                    );
+                  },
+                ),
+
               if (!kReleaseMode)
                 _DashboardItem(
                   icon: Icons.apps,
@@ -114,42 +120,52 @@ class DashboardScreen extends StatelessWidget {
                     );
                   },
                 ),
-              _DashboardItem(
-                icon: Icons.apps,
-                title: 'Requisiciones',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const RequisitionsScreen(),
-                    ),
-                  );
-                },
-              ),
-              _DashboardItem(
-                icon: Icons.playlist_add_check_circle,
-                title: 'Conteo Físico',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PhysicalCountScreen(),
-                    ),
-                  );
-                },
-              ),
-              _DashboardItem(
-                icon: Icons.qr_code_scanner,
-                title: 'Ejecutar Conteo',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ActiveCountScreen(),
-                    ),
-                  );
-                },
-              ),
+
+              if (auth.permisos.hasPermission(AppPermission.requisiciones))
+                _DashboardItem(
+                  icon: Icons.apps,
+                  title: 'Requisiciones',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RequisitionsScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+              if (auth.permisos.hasAnyPermission([
+                AppPermission.aperturaConteo,
+                AppPermission.asignacionConteo,
+                AppPermission.cerrarConteo,
+              ]))
+                _DashboardItem(
+                  icon: Icons.playlist_add_check_circle,
+                  title: 'Conteo Físico',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PhysicalCountScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+              if (auth.permisos.hasPermission(AppPermission.realizarConteo))
+                _DashboardItem(
+                  icon: Icons.qr_code_scanner,
+                  title: 'Ejecutar Conteo',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ActiveCountScreen(),
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
