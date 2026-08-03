@@ -6,9 +6,26 @@ import 'package:sigo_app/screens/tabs/physical_count_opening_tab.dart';
 import 'package:sigo_app/screens/tabs/physical_count_assignment_tab.dart';
 import 'package:sigo_app/screens/tabs/physical_count_closing_tab.dart';
 import '../utils/permission_utils.dart';
+import '../providers/physical_count_provider.dart';
 
-class PhysicalCountScreen extends StatelessWidget {
+class PhysicalCountScreen extends StatefulWidget {
   const PhysicalCountScreen({super.key});
+
+  @override
+  State<PhysicalCountScreen> createState() => _PhysicalCountScreenState();
+}
+
+class _PhysicalCountScreenState extends State<PhysicalCountScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<PhysicalCountProvider>();
+      if (provider.companies.isEmpty || provider.state == PhysicalCountState.error) {
+        provider.loadInitialData();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

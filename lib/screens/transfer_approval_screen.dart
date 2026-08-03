@@ -5,8 +5,24 @@ import '../providers/transfer_approval_provider.dart';
 import '../widgets/transfer_filter_panel.dart';
 import '../models/transfer_request.dart';
 
-class TransferApprovalScreen extends StatelessWidget {
+class TransferApprovalScreen extends StatefulWidget {
   const TransferApprovalScreen({super.key});
+
+  @override
+  State<TransferApprovalScreen> createState() => _TransferApprovalScreenState();
+}
+
+class _TransferApprovalScreenState extends State<TransferApprovalScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<TransferApprovalProvider>();
+      if (provider.allTransfers.isEmpty || provider.error != null) {
+        provider.loadTransfers();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

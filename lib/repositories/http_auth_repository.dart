@@ -22,7 +22,9 @@ class HttpAuthRepository implements AuthRepository {
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
         throw Exception('Credenciales incorrectas');
       }
-      throw Exception('Error de red al intentar iniciar sesión: ${e.message ?? 'sin detalle'}');
+      throw Exception(
+        'Error de red al intentar iniciar sesión: ${e.message ?? 'sin detalle'}',
+      );
     } catch (e) {
       throw Exception('Error desconocido: $e');
     }
@@ -43,7 +45,9 @@ class HttpAuthRepository implements AuthRepository {
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
         throw Exception('Credenciales incorrectas');
       }
-      throw Exception('Error de red al intentar iniciar sesión: ${e.message ?? 'sin detalle'}');
+      throw Exception(
+        'Error de red al intentar iniciar sesión: ${e.message ?? 'sin detalle'}',
+      );
     } catch (e) {
       throw Exception('Error desconocido: $e');
     }
@@ -67,7 +71,9 @@ class HttpAuthRepository implements AuthRepository {
       }
       return [];
     } on DioException catch (e) {
-      throw Exception('Error al descargar pendientes: ${e.message ?? 'sin detalle'}');
+      throw Exception(
+        'Error al descargar pendientes: ${e.message ?? 'sin detalle'}',
+      );
     } catch (e) {
       throw Exception('Error procesando respuesta: $e');
     }

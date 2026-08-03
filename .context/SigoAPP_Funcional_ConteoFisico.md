@@ -35,6 +35,20 @@ El Módulo de Conteo Físico permite a las empresas gestionar la auditoría peri
 ### 2.2 Fase 2: Autenticación de Asignados y Descarga Offline (Implementado Localmente)
 *(Los contadores asignados reciben un código temporal por correo. Inician sesión mediante un login alterno desde el `AccountScreen`. Se comunican con la API para descargar las asignaciones, basándose en la respuesta real de la base de datos (mapeando correctamente el campo `descripcion` proporcionado por el backend).*
 
+**Regla de Acceso al Conteo (Doble Vía):**
+La opción **"Ejecutar Conteo"** en la aplicación es accesible a través de dos perfiles diferenciados, pero bajo una condición común: **tener una descarga activa de artículos en la base de datos local (SQLite).**
+
+| Perfil | Autenticación | Condición de Acceso |
+|---|---|---|
+| **Contador Externo** | Login alterno (cédula + código temporal) en `AccountScreen`. Puede NO ser usuario del sistema ERP. | Debe haber descargado previamente la lista de asignaciones mediante "Descargar Asignaciones". |
+| **Usuario del Sistema (con permiso `arcf`)** | Login normal en `AuthScreen`. Es un usuario del ERP con permiso `realizarConteo`. | Debe haber descargado previamente la lista de asignaciones. |
+
+**Estado Vacío:** Si cualquiera de los dos perfiles accede al módulo **sin** haber descargado el listado activo, la pantalla de ejecución del conteo muestra el mensaje:
+
+> *"No tienes ningún formulario de conteo descargado y activo."*
+
+La acción "Continuar Conteo" o equivalente debe permanecer deshabilitada hasta que exista una descarga local válida.
+
 ### 2.3 Fase 3: Escaneo y Conteo de Activos (Implementado Parcialmente)
 Se introducen reglas estrictas respecto a cómo el empleado afronta el conteo:
 - **Conteo Ciego:** A nivel UI está prohibido el renderizado o transmisión de cantidades esperadas hacia el usuario auditor. El conteo es ciego para no sesgar sus auditorías físicas.

@@ -48,16 +48,20 @@ class PhysicalCountProvider extends ChangeNotifier {
   bool verifyExistence = false;
 
   PhysicalCountProvider(this._repository) {
-    _loadInitialData();
+    loadInitialData();
   }
 
-  Future<void> _loadInitialData() async {
+  Future<void> loadInitialData() async {
     _setState(PhysicalCountState.enProceso);
     try {
       companies = await _repository.getCompanies();
       _setState(PhysicalCountState.initial);
     } catch (e) {
-      _setError('Error al cargar datos iniciales. $e');
+      if (e is DioException && e.response?.statusCode == 401) {
+        _setError('Su sesión ha expirado o no es válida. Por favor, vuelva a iniciar sesión.');
+      } else {
+        _setError('Error al cargar datos iniciales. $e');
+      }
     }
   }
 
@@ -80,7 +84,11 @@ class PhysicalCountProvider extends ChangeNotifier {
       warehouses = await _repository.getWarehouses(companyId);
       _setState(PhysicalCountState.initial);
     } catch (e) {
-      _setError('Error al cargar bodegas.');
+      if (e is DioException && e.response?.statusCode == 401) {
+        _setError('Su sesión ha expirado o no es válida. Por favor, vuelva a iniciar sesión.');
+      } else {
+        _setError('Error al cargar bodegas.');
+      }
     }
   }
 
@@ -101,7 +109,11 @@ class PhysicalCountProvider extends ChangeNotifier {
       articles = await _repository.getArticles(warehouseId, companyId);
       _setState(PhysicalCountState.initial);
     } catch (e) {
-      _setError('Error al cargar artículos.');
+      if (e is DioException && e.response?.statusCode == 401) {
+        _setError('Su sesión ha expirado o no es válida. Por favor, vuelva a iniciar sesión.');
+      } else {
+        _setError('Error al cargar artículos.');
+      }
     }
   }
 
@@ -153,10 +165,16 @@ class PhysicalCountProvider extends ChangeNotifier {
       );
       _setState(PhysicalCountState.initial);
     } catch (e) {
-      if (e is DioException && e.response?.statusCode == 400) {
-        _setError(
-          e.response?.data['message'] ?? 'Falta parámetro de búsqueda.',
-        );
+      if (e is DioException) {
+        if (e.response?.statusCode == 400) {
+          _setError(
+            e.response?.data['message'] ?? 'Falta parámetro de búsqueda.',
+          );
+        } else if (e.response?.statusCode == 401) {
+          _setError('Su sesión ha expirado o no es válida. Por favor, vuelva a iniciar sesión.');
+        } else {
+          _setError('Error en la búsqueda de personal.');
+        }
       } else {
         _setError('Error en la búsqueda de personal.');
       }
@@ -203,6 +221,8 @@ class PhysicalCountProvider extends ChangeNotifier {
         if (e.response?.statusCode == 400) {
           msg =
               'Solicitud incorrecta (Error 400). Verifique los datos enviados.';
+        } else if (e.response?.statusCode == 401) {
+          msg = 'Su sesión ha expirado o no es válida. Por favor, vuelva a iniciar sesión.';
         } else if (e.response?.statusCode == 409) {
           msg =
               'Conflicto (Error 409). Es posible que la bodega ya esté bloqueada.';
@@ -257,6 +277,8 @@ class PhysicalCountProvider extends ChangeNotifier {
         if (e.response?.statusCode == 400) {
           msg =
               'Error de validación (400). Verifique los datos de la asignación.';
+        } else if (e.response?.statusCode == 401) {
+          msg = 'Su sesión ha expirado o no es válida. Por favor, vuelva a iniciar sesión.';
         } else {
           msg = 'Error de red al asignar: ${e.message}';
         }
@@ -293,6 +315,8 @@ class PhysicalCountProvider extends ChangeNotifier {
         if (e.response?.statusCode == 400) {
           msg =
               'Solicitud incorrecta (Error 400). Verifique los datos enviados.';
+        } else if (e.response?.statusCode == 401) {
+          msg = 'Su sesión ha expirado o no es válida. Por favor, vuelva a iniciar sesión.';
         } else if (e.response?.statusCode == 409) {
           msg =
               'Conflicto (Error 409). Es posible que la bodega ya esté bloqueada.';
@@ -329,6 +353,8 @@ class PhysicalCountProvider extends ChangeNotifier {
       if (e is DioException) {
         if (e.response?.statusCode == 400) {
           msg = 'Error de validación (400) en asignación.';
+        } else if (e.response?.statusCode == 401) {
+          msg = 'Su sesión ha expirado o no es válida. Por favor, vuelva a iniciar sesión.';
         } else {
           msg = 'Error de red al asignar: ${e.message}';
         }
@@ -404,7 +430,9 @@ class PhysicalCountProvider extends ChangeNotifier {
       String msg = 'Error inesperado al cerrar el conteo.';
       if (e is DioException) {
         if (e.response?.statusCode == 400) {
-          msg = 'Error en la solicitud (400). Verifique el código de bodega.';
+          msg = 'Error en la solicitud (400). Verifique los datos de la bodega y empresa.';
+        } else if (e.response?.statusCode == 401) {
+          msg = 'Su sesión ha expirado o no es válida. Por favor, vuelva a iniciar sesión.';
         } else if (e.response?.statusCode == 403) {
           msg = 'No tiene autorización para cerrar este conteo (403).';
         } else {
@@ -472,6 +500,9 @@ class PhysicalCountProvider extends ChangeNotifier {
         if (e.response?.statusCode == 400) {
           _pendingWarehousesErrorMessage =
               'Solicitud incorrecta. Verifique la empresa seleccionada.';
+        } else if (e.response?.statusCode == 401) {
+          _pendingWarehousesErrorMessage =
+              'Su sesión ha expirado o no es válida. Por favor, vuelva a iniciar sesión.';
         } else if (e.response?.statusCode == 403) {
           _pendingWarehousesErrorMessage =
               'No tiene autorización para consultar bodegas pendientes.';

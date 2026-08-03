@@ -250,6 +250,7 @@ El sistema opera bajo una premisa de desacoplamiento de interfaz y negocio. La U
 * Excepciones de dominio tipadas para diferenciación de errores.
 * Persistencia local offline con sincronización diferida (SQLite + Backend).
 * Cliente HTTP estandarizado (`Dio`) como única librería de red.
+* **Recuperación de Estado en Providers Globales:** Las pantallas principales que consumen Providers instanciados de manera global (ej. en `main.dart`) deben estar implementadas preferentemente como `StatefulWidget`. En su ciclo de vida (`initState`), deben verificar si el proveedor mantiene un estado de error previo (ej. por expiración de token 401 o falla de red) o si sus listas maestras están vacías, para invocar automáticamente la recarga de datos iniciales. Esto garantiza la resiliencia en la navegación del usuario sin requerir reinicios de la aplicación.
 
 ---
 
