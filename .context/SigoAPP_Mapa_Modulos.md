@@ -240,6 +240,9 @@ Fecha de actualización: Agosto 2026
 | **Screen** | `AccountScreen` | `lib/screens/account_screen.dart` |
 | **Screen** | `InventoryScreen` (reutilizada del módulo Inventario §3.2) | `lib/screens/inventory_screen.dart` |
 | **Screen** | `TransferApprovalScreen` (reutilizada del módulo Inventario §3.3) | `lib/screens/transfer_approval_screen.dart` |
+| **Widget** | `PrinterConnectionDialog` | `lib/widgets/printer_connection_dialog.dart` |
+| **Provider** | `PrinterProvider` | `lib/providers/printer_provider.dart` |
+| **Servicio** | `BluetoothPrinterService` | `lib/services/bluetooth_printer_service.dart` |
 | **Servicio** | `MockAuthService` | `lib/services/mock_auth_service.dart` |
 | **Servicio** | `MockAccountService` | `lib/services/mock_account_service.dart` |
 | **Servicio** | `NetworkClient` (singleton mock) | `lib/services/network_client.dart` |
@@ -284,7 +287,8 @@ main.dart
  │   ├── PhysicalCountProvider            ← HttpPhysicalCountRepository(backendDio)
  │   └── ActiveCountProvider              ← HttpPhysicalCountRepository(backendDio)
  │
- └── AuthProvider                         ← HttpAuthRepository(backendDio)
+ ├── AuthProvider                         ← HttpAuthRepository(backendDio)
+ └── PrinterProvider                      ← BluetoothPrinterService
 ```
 
 > [!WARNING]

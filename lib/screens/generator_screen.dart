@@ -4,6 +4,14 @@ import 'package:geolocator/geolocator.dart';
 import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
 import '../services/mock_inventory_service.dart';
+import 'dart:io';
+import 'package:provider/provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
+import '../providers/printer_provider.dart';
+import '../widgets/printer_connection_dialog.dart';
 
 // El StatefulWidget para la pantalla de Generación de QR
 class GeneratorScreen extends StatefulWidget {
@@ -120,31 +128,102 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       // 3. Reemplazamos la instancia en el estado y en la lista mock
       _service.updateArticle(updatedArticle);
 
-      setState(() {
-        // Aseguramos que el selectedArticle se actualice
-        _selectedArticle = updatedArticle;
+      final newQrData = updatedArticle.qrData;
 
-        // 4. Asignamos el dato del QR (que ahora incluye la ubicación)
-        _dataToEncodeForQR = _selectedArticle!.qrData;
-        _message = '✅ Ubicación obtenida y registrada en el activo.';
+      setState(() {
+        _selectedArticle = updatedArticle;
+        _dataToEncodeForQR = newQrData;
+        _message = 'Generando PDF e imprimiendo...';
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'QR generado con ubicación para ${_selectedArticle!.name}',
-          ),
-        ),
-      );
+      // 4. Generar PDF (en paralelo)
+      final pdfFile = await _generatePdfDocument(updatedArticle, newQrData);
+
+      // 5. Enviar a impresión Bluetooth (si hay impresora conectada)
+      // ignore: use_build_context_synchronously
+      if (!context.mounted) return;
+      final printerProvider = Provider.of<PrinterProvider>(context, listen: false);
+      if (printerProvider.isConnected) {
+        final printSuccess = await printerProvider.printQrTicket(
+          newQrData, 
+          updatedArticle.name, 
+          updatedArticle.licensePlate
+        );
+        if (!printSuccess) {
+           // ignore: use_build_context_synchronously
+           if (context.mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error de impresión térmica: ${printerProvider.errorMessage}')),
+            );
+           }
+        }
+      } else {
+        // ignore: use_build_context_synchronously
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('PDF generado. No hay impresora conectada para impresión térmica.')),
+          );
+        }
+      }
+
+      setState(() {
+        _message = '✅ QR y PDF generados con éxito.';
+      });
+
+      // (Opcional) Abrir el PDF generado
+      OpenFilex.open(pdfFile.path);
+
     } catch (e) {
       setState(() {
         _isGenerating = false;
-        _message = 'Error de Ubicación: $e';
+        _message = 'Error: $e';
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error al obtener ubicación: $e')));
+      // ignore: use_build_context_synchronously
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error en el proceso: $e'))
+        );
+      }
     }
+  }
+
+  // --- Método para generar PDF ---
+  Future<File> _generatePdfDocument(ArticleModel article, String qrData) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Center(
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              children: [
+                pw.Text('SIGO APP - Activo', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 20),
+                pw.Text('Nombre: ${article.name}', style: const pw.TextStyle(fontSize: 18)),
+                pw.Text('Placa: ${article.licensePlate}', style: const pw.TextStyle(fontSize: 18)),
+                pw.SizedBox(height: 30),
+                pw.BarcodeWidget(
+                  barcode: pw.Barcode.qrCode(),
+                  data: qrData,
+                  width: 200,
+                  height: 200,
+                ),
+                pw.SizedBox(height: 20),
+                pw.Text('Latitud: ${article.latitude}'),
+                pw.Text('Longitud: ${article.longitude}'),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    final output = await getApplicationDocumentsDirectory();
+    final file = File('${output.path}/qr_${article.licensePlate}.pdf');
+    await file.writeAsBytes(await pdf.save());
+    return file;
   }
 
   // --- Estructura Visual (build) ---
@@ -152,9 +231,21 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Generador de Código QR de Activo'),
+        title: const Text('Generador de Código QR'),
         backgroundColor: primaryColor,
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.print, color: Colors.white),
+            tooltip: 'Impresora Bluetooth',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => const PrinterConnectionDialog(),
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../exceptions/auth_business_exception.dart';
 import '../models/auth_model.dart';
 import '../models/physical_count_model.dart';
 import 'auth_repository.dart';
@@ -13,14 +14,14 @@ class HttpAuthRepository implements AuthRepository {
     try {
       final payload = request.toJson();
 
-      final response = await _dio.post('/login', data: payload);
+      final response = await _dio.post('/api/v1/auth/login', data: payload);
       if (response.statusCode == 200 && response.data != null) {
         return AuthResponse.fromJson(response.data);
       }
       throw Exception('Respuesta inesperada al iniciar sesión');
     } on DioException catch (e) {
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        throw Exception('Credenciales incorrectas');
+        throw const AuthBusinessException('Credenciales incorrectas');
       }
       throw Exception(
         'Error de red al intentar iniciar sesión: ${e.message ?? 'sin detalle'}',
@@ -34,7 +35,7 @@ class HttpAuthRepository implements AuthRepository {
   Future<AuthResponse> loginContador(LoginContadorRequest request) async {
     try {
       final response = await _dio.post(
-        '/login/contador',
+        '/api/v1/auth/login/contador',
         data: request.toJson(),
       );
       if (response.statusCode == 200 && response.data != null) {
@@ -43,7 +44,7 @@ class HttpAuthRepository implements AuthRepository {
       throw Exception('Respuesta inesperada al iniciar sesión');
     } on DioException catch (e) {
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        throw Exception('Credenciales incorrectas');
+        throw const AuthBusinessException('Credenciales incorrectas');
       }
       throw Exception(
         'Error de red al intentar iniciar sesión: ${e.message ?? 'sin detalle'}',
@@ -71,10 +72,18 @@ class HttpAuthRepository implements AuthRepository {
       }
       return [];
     } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+
+      if (statusCode == 401 || statusCode == 402 || statusCode == 403) {
+        throw const AuthBusinessException(
+          'Tu sesión ha expirado o el token es inválido. Por favor, vuelve a iniciar sesión.',
+        );
+      }
       throw Exception(
         'Error al descargar pendientes: ${e.message ?? 'sin detalle'}',
       );
     } catch (e) {
+      if (e is AuthBusinessException) rethrow;
       throw Exception('Error procesando respuesta: $e');
     }
   }

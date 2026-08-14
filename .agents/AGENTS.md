@@ -9,8 +9,12 @@ Antes de proponer soluciones técnicas, escribir código o planificar modificaci
 2. `.context/Rules_Networking.md`
 3. `.context/utils_documentation.md`
 
+**Excepción — Prompt Pre-Contextualizado:** Si el primer mensaje del usuario contiene el encabezado `<!-- MODULE-ROUTER-CONTEXT -->`, significa que el prompt fue generado por el skill *module-router* y ya incluye el contexto arquitectónico, reglas y archivos relevantes pre-digeridos. En ese caso, **omite** la lectura obligatoria de los documentos listados arriba y trabaja directamente con el contexto proporcionado en el prompt. Las reglas de §Sincronización de Documentación siguen aplicando normalmente.
+
 ## Modificación de Módulos Existentes
 Si el usuario te solicita realizar modificaciones, correcciones o mejoras sobre un **módulo ya existente**, debes preguntarle proactivamente si existe algún archivo de **documentación funcional** (por ejemplo: `.context/SigoAPP_Funcional_ConteoFisico.md`) que debas revisar antes de iniciar el trabajo. No asumas la lógica de negocio sin verificar si existe documentación funcional.
+
+**Excepción:** Si el prompt fue generado por el skill *module-router* (marcador `<!-- MODULE-ROUTER-CONTEXT -->`), la documentación funcional relevante ya fue incorporada. No es necesario preguntar al usuario.
 
 ## Lectura Direccional (Mapa de Módulos)
 Antes de realizar cualquier modificación sobre un módulo existente, **además** de los documentos obligatorios iniciales (§Contexto Obligatorio Inicial), lee:

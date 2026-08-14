@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
+import '../exceptions/auth_business_exception.dart';
 import '../providers/auth_provider.dart';
 import '../providers/active_count_provider.dart';
 import 'active_count_screen.dart';
@@ -16,7 +17,7 @@ class _AccountScreenState extends State<AccountScreen> {
   // Contador Login Controllers
   final TextEditingController _cedulaController = TextEditingController();
   final TextEditingController _codigoController = TextEditingController();
-  
+
   final Color primaryColor = Colors.blue.shade800;
 
   @override
@@ -39,7 +40,10 @@ class _AccountScreenState extends State<AccountScreen> {
     super.dispose();
   }
 
-  void _handleContadorLogin(BuildContext context, AuthProvider authProvider) async {
+  void _handleContadorLogin(
+    BuildContext context,
+    AuthProvider authProvider,
+  ) async {
     final cedula = _cedulaController.text.trim();
     final codigo = _codigoController.text.trim();
 
@@ -73,7 +77,9 @@ class _AccountScreenState extends State<AccountScreen> {
     if (activeCount.hasActiveCount) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Ya tienes un conteo activo, debes finalizarlo antes de descargar nuevos datos.'),
+          content: Text(
+            'Ya tienes un conteo activo, debes finalizarlo antes de descargar nuevos datos.',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -107,9 +113,71 @@ class _AccountScreenState extends State<AccountScreen> {
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
+      final isAuthError =
+          e is AuthBusinessException ||
+          errorMsg.contains('401') ||
+          errorMsg.contains('402') ||
+          errorMsg.contains('403');
+
+      if (isAuthError) {
+        await auth.logout();
+
+        if (!context.mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+            title: const Text(
+              'SESIÓN EXPIRADA',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            content: const Text(
+              'Tu sesión ha expirado o el token no es correcto. Por favor, vuelve a iniciar sesión.',
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.5,
+              ),
+            ),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: const StadiumBorder(),
+                  elevation: 2,
+                ),
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text(
+                  'Aceptar',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al descargar pendientes: $errorMsg'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -164,11 +232,7 @@ class _AccountScreenState extends State<AccountScreen> {
       color: Colors.white,
       borderRadius: BorderRadius.circular(15),
       boxShadow: const [
-        BoxShadow(
-          color: Colors.black12,
-          blurRadius: 10,
-          offset: Offset(0, 5),
-        ),
+        BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
       ],
     );
   }

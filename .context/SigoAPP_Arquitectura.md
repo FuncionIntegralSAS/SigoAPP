@@ -113,6 +113,9 @@ Servicio HTTP real para el módulo de Conteo Físico. Conecta con el backend Spr
 * `assignArticles(request)` → `POST /api/v1/conteo-fisico/asignar_articulos`: Asigna los contadores seleccionados al conteo abierto.
 * `closePhysicalCount(token, request)` → `POST /api/v1/conteo-fisico/cerrar`: Cierra un conteo físico activo para una bodega. Requiere envío explícito del header `Authorization` (mismo patrón que `reportarConteo`). Retorna `ConteoFisicoResponse` con los campos `success` y `message` del backend.
 
+### 4.7 bluetooth_printer_service.dart
+Servicio de comunicación directa con hardware de impresoras Bluetooth (SPP / clásicas). Utiliza `flutter_pos_printer_platform_image_3` para descubrimiento y conexión de dispositivos. Implementado para enviar tramas de bytes sin necesidad de drivers en el SO.
+
 ## 5. Persistencia Local (lib/database/)
 ### 5.1 database_helper.dart
 Singleton que administra la base de datos SQLite para la operación offline del módulo de Conteo Físico.
@@ -192,6 +195,12 @@ Orquestador de estado para el submódulo de Conteo Físico (Apertura, Asignació
 Orquestador de estado para la ejecución offline del conteo físico en piso.
 * Consume `DatabaseHelper` directamente para operaciones CRUD sobre SQLite.
 * Administra registros de lecturas de códigos de barras y artículos pendientes de conteo.
+
+### 8.8 PrinterProvider
+Gestor de conexión e impresión Bluetooth global.
+* Mantiene la lista de dispositivos emparejados y el estado de la conexión.
+* Delega en `BluetoothPrinterService` para los comandos de red.
+* Contiene la lógica de transformación usando `esc_pos_utils_plus` para generar los tickets QR de manera nativa (comando directo) en paralelo a la generación de archivos PDF.
 
 ## 9. Componentes de UI y Navegación
 ### 9.1 RequisitionsScreen y Tabs

@@ -44,6 +44,7 @@ Usa `view_file` para leer las secciones relevantes de los archivos de código id
 El prompt generado debe seguir **estrictamente** esta estructura:
 
 ```
+<!-- MODULE-ROUTER-CONTEXT -->
 ## Contexto del Proyecto
 SigoAPP es una aplicación Flutter de gestión administrativa empresarial.
 - **Arquitectura**: Clean Architecture (Provider + Repository)

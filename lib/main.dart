@@ -23,6 +23,7 @@ import 'package:sigo_app/repositories/http_physical_count_repository.dart';
 import 'package:sigo_app/repositories/http_catalog_repository.dart';
 import 'package:sigo_app/providers/auth_provider.dart';
 import 'package:sigo_app/providers/transfer_form_provider.dart';
+import 'package:sigo_app/providers/printer_provider.dart';
 import 'package:sigo_app/repositories/http_auth_repository.dart';
 import 'package:sigo_app/utils/app_config.dart';
 
@@ -102,6 +103,9 @@ Future<void> main() async {
 
         // Provider para el login alterno y descarga offline de contadores
         ChangeNotifierProvider(create: (_) => AuthProvider(authRepository)),
+
+        // Provider para impresión por Bluetooth
+        ChangeNotifierProvider(create: (_) => PrinterProvider()),
       ],
       child: MyApp(messengerKey),
     ),

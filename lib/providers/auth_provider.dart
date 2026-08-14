@@ -153,7 +153,9 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<List<PendienteArticuloResponse>> descargarPendientes() async {
-    if (_token == null) throw Exception('No hay sesión iniciada');
+    if (_token == null) {
+      throw Exception('No hay sesión iniciada');
+    }
 
     _isLoading = true;
     _errorMessage = null;
@@ -168,7 +170,7 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
-      return [];
+      rethrow;
     }
   }
 

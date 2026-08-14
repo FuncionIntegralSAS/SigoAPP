@@ -69,11 +69,34 @@ class ListCountView extends StatelessWidget {
           final articleId = entry.key;
           final data = entry.value;
           final descripcion = data['descripcion'] as String;
+          final isCounted =
+              provider.currentIterationRecords.containsKey(articleId);
           final countedQty = provider.currentIterationRecords[articleId] ?? 0.0;
           return DataRow(
             cells: [
               DataCell(Text(articleId)),
-              DataCell(Text(descripcion)),
+              DataCell(
+                isCounted
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.green.shade600,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Registrado',
+                            style: TextStyle(
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(descripcion),
+              ),
               DataCell(Text(countedQty.toStringAsFixed(0))),
             ],
             onSelectChanged: (_) =>
