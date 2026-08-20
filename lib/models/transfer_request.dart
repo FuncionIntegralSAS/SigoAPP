@@ -25,6 +25,8 @@ class TransferRequest {
   final DateTime? appliedDate;
   final TransferStatus status;
   final String? rejectionReason;
+  final String? dispatcherSignatureBase64;
+  final String? receiverSignatureBase64;
 
   TransferRequest({
     required this.id,
@@ -39,6 +41,8 @@ class TransferRequest {
     this.status = TransferStatus.pending,
     this.rejectionReason,
     this.appliedDate,
+    this.dispatcherSignatureBase64,
+    this.receiverSignatureBase64,
   });
 
   // Mantenemos tu método copyWith intacto. Es una excelente práctica para inmutabilidad.
@@ -46,6 +50,8 @@ class TransferRequest {
   TransferStatus? status,
   String? rejectionReason,
   DateTime? appliedDate,
+  String? dispatcherSignatureBase64,
+  String? receiverSignatureBase64,
   }) {
     return TransferRequest(
       id: id,
@@ -60,6 +66,8 @@ class TransferRequest {
       status: status ?? this.status,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       appliedDate: appliedDate ?? this.appliedDate,
+      dispatcherSignatureBase64: dispatcherSignatureBase64 ?? this.dispatcherSignatureBase64,
+      receiverSignatureBase64: receiverSignatureBase64 ?? this.receiverSignatureBase64,
     );
   }
 

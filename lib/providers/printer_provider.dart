@@ -88,11 +88,10 @@ class PrinterProvider extends ChangeNotifier {
       final generator = Generator(PaperSize.mm58, profile);
       List<int> bytes = [];
 
-      bytes += generator.text('SIGO APP', styles: const PosStyles(align: PosAlign.center, bold: true));
       bytes += generator.text(name, styles: const PosStyles(align: PosAlign.center));
       bytes += generator.text('Placa: $licensePlate', styles: const PosStyles(align: PosAlign.center));
       bytes += generator.feed(1);
-      bytes += generator.qrcode(qrData, size: QRSize.size6);
+      bytes += generator.qrcode(qrData, size: QRSize.size4);
       bytes += generator.feed(2);
 
       return await _service.printBytes(bytes);

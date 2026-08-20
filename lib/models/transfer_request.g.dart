@@ -24,6 +24,8 @@ TransferRequest _$TransferRequestFromJson(Map<String, dynamic> json) =>
       appliedDate: json['appliedDate'] == null
           ? null
           : DateTime.parse(json['appliedDate'] as String),
+      dispatcherSignatureBase64: json['dispatcherSignatureBase64'] as String?,
+      receiverSignatureBase64: json['receiverSignatureBase64'] as String?,
     );
 
 Map<String, dynamic> _$TransferRequestToJson(TransferRequest instance) =>
@@ -40,6 +42,8 @@ Map<String, dynamic> _$TransferRequestToJson(TransferRequest instance) =>
       'appliedDate': instance.appliedDate?.toIso8601String(),
       'status': _$TransferStatusEnumMap[instance.status]!,
       'rejectionReason': instance.rejectionReason,
+      'dispatcherSignatureBase64': instance.dispatcherSignatureBase64,
+      'receiverSignatureBase64': instance.receiverSignatureBase64,
     };
 
 const _$TransferStatusEnumMap = {

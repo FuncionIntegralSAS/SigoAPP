@@ -99,3 +99,12 @@ A continuación, se evidencian las modificaciones arquitectónicas introducidas 
      - `DashboardScreen`: Filtra dinámicamente cada tarjeta del `GridView` plano según los permisos del usuario logueado.
      - `PhysicalCountScreen`: Construye dinámicamente sus pestañas (*Asignar Personal*, *Apertura*, *Cierre*) filtrando aquellas no autorizadas.
    - Documentación técnica dedicada disponible en `/.context/visualizacion_dinamica_dashboard.md`.
+
+## Control de Cambios e Histórico (v2.4 a v2.5)
+
+1. **Flujo de Entrega / Recepción de Traspasos con Firmas Digitales**:
+   - **Modelo de Firmas Asíncronas**: Se actualizaron `TransferRequest` y `TransferDeliveryRequest` con los campos opcionales `dispatcherSignatureBase64` y `receiverSignatureBase64` para admitir firmas en tiempos y dispositivos independientes. El estado transiciona a `pr` (completado) únicamente cuando ambas firmas son registradas.
+   - **Canvas de Firma Digital**: Se incorporó el paquete `signature` para capturar firmas vectoriales fluidas y convertirlas a PNG/Base64.
+   - **Validación de Roles y Precedencia**: La pantalla `SignatureCaptureScreen` identifica si el usuario actual es despachador o receptor según su cédula de sesión (`AuthProvider.currentCedula`), bloqueando la firma del receptor hasta que el despachador haya firmado el envío.
+   - **Provider y Repositorios**: Se creó `TransferDeliveryProvider` inyectado globalmente en `main.dart`, extendiendo `TransferRepository`, `MockTransferRepository` y `HttpTransferRepository` con el método `applyTransferDelivery`.
+   - **Navegación en Dashboard**: Se incorporó la tarjeta `Entrega / Recepción` en `DashboardScreen` accesible a usuarios autenticados con traspasos asignados.

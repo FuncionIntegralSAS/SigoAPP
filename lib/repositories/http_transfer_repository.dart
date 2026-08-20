@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../exceptions/transfer_business_exception.dart';
 import '../models/transfer_request.dart';
+import '../models/transfer_delivery_request.dart';
 import '../repositories/transfer_repository.dart';
 
 /// Implementación HTTP real del [TransferRepository].
@@ -102,5 +103,27 @@ class HttpTransferRepository implements TransferRepository {
     // Solo retornamos un Future exitoso para no romper el contrato/UI actual.
     // En el futuro, podríamos eliminar este método del abstract class.
     return Future.value(); 
+  }
+
+  // --- 6. APLICAR ENTREGA/RECEPCIÓN ---
+  @override
+  Future<void> applyTransferDelivery(TransferDeliveryRequest request) async {
+    try {
+      final response = await dio.post(
+        '/api/v1/traspasos/${request.transferId}/entregar',
+        data: request.toJson(),
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw TransferBusinessException(
+          'Error del servidor al registrar entrega: ${response.statusCode}',
+        );
+      }
+    } on DioException catch (e) {
+      throw TransferBusinessException(
+        'Error de red al registrar entrega: ${e.response?.statusCode ?? e.message}',
+      );
+    }
   }
 }

@@ -75,6 +75,7 @@ bool hasPermission(AppPermission permission) {
 
 ### Configuración del `DashboardScreen`
 Se mantiene un `GridView` plano. Cada acceso principal comprueba si el usuario tiene permiso consultando la lista a través de la extensión: `auth.permisos.hasPermission(AppPermission.x)` (o `hasAnyPermission` para módulos con submódulos agrupados) antes de renderizar el `_DashboardItem`.
+- **Entrega / Recepción:** Opción disponible para todo usuario autenticado sin requerir un permiso RBAC específico. Su vista interna filtra los traspasos pendientes según la cédula/identificador del usuario asignado.
 - **Módulo Principal:** Es independiente del backend. Solo se muestra a desarrolladores cuando `!kReleaseMode`.
 
 ### Configuración de Sub-Módulos (`PhysicalCountScreen`)

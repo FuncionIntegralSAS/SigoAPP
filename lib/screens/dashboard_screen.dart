@@ -11,6 +11,7 @@ import '../screens/requisitions_screen.dart';
 import '../screens/physical_count_screen.dart';
 import '../screens/active_count_screen.dart';
 import '../utils/permission_utils.dart';
+import '../screens/transfer_delivery_screen.dart' as transfer_delivery;
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -27,7 +28,9 @@ class DashboardScreen extends StatelessWidget {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('¿Salir de la aplicación?'),
-            content: const Text('¿Estás seguro de que deseas salir de SigoAPP?'),
+            content: const Text(
+              '¿Estás seguro de que deseas salir de SigoAPP?',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
@@ -65,7 +68,9 @@ class DashboardScreen extends StatelessWidget {
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
             children: [
-              if (auth.permisos.hasPermission(AppPermission.verificacionActivos))
+              if (auth.permisos.hasPermission(
+                AppPermission.verificacionActivos,
+              ))
                 _DashboardItem(
                   icon: Icons.fact_check,
                   title: 'Verificación de Activos',
@@ -106,6 +111,19 @@ class DashboardScreen extends StatelessWidget {
                     );
                   },
                 ),
+              _DashboardItem(
+                icon: Icons.handshake,
+                title: 'Entrega / Recepción',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const transfer_delivery.TransferDeliveryScreen(),
+                    ),
+                  );
+                },
+              ),
 
               if (!kReleaseMode)
                 _DashboardItem(
@@ -114,9 +132,7 @@ class DashboardScreen extends StatelessWidget {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const HomeScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const HomeScreen()),
                     );
                   },
                 ),
@@ -192,9 +208,7 @@ class _DashboardItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Card(
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

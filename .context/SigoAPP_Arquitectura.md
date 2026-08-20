@@ -24,34 +24,40 @@ Representa un activo físico del inventario. Incluye identidad, responsable asig
 
 ### 2.2 transfer_request.dart
 Modelo central para el traslado físico de activos. Mantiene el estado del flujo y garantiza la trazabilidad entre bodegas y responsables. Soporta serialización JSON automática mediante `json_annotation` / `json_serializable` (archivo generado: `transfer_request.g.dart`).
+* Campos de firma asíncrona: `dispatcherSignatureBase64` y `receiverSignatureBase64` (ambos `String?`), permitiendo rastrear si el emisor o el receptor ya plasmaron su firma antes de culminar el traspaso a estado `pr` (procesado/completado).
 
 ### 2.3 transfer_filter.dart
 Filtro inmutable para consultas de traspasos. Permite acotar búsquedas por estado, bodega propuesta, responsable y rango de fechas. Implementa `copyWith` para actualizaciones parciales sin mutación.
 
-### 2.4 requisition_model.dart
+### 2.4 transfer_delivery_request.dart
+Modelo de transporte (DTO) para registrar la firma digital en el flujo de entrega y recepción de traspasos.
+* Encapsula `transferId` y las firmas opcionales `dispatcherSignatureBase64` y `receiverSignatureBase64`.
+* Permite envíos parciales (asíncronos) desde dispositivos y momentos temporales distintos (el despachador firma antes de la salida física y el receptor confirma al recibir).
+
+### 2.5 requisition_model.dart
 Representa una solicitud administrativa de consumo o salida de inventario.
 * Responsabilidades: Preservar la trazabilidad jerárquica de cantidades (Solicitada -> Aprobada -> Entregada).
 * Llave Primaria: compositeId (generada a partir de empresa, tipo de documento, número, bodega y artículo).
 * Estados soportados: 'pe' (Pendiente), 'ap' (Aprobada), 'na' (Rechazada/No aprobada), 'pr' (Procesada).
 
-### 2.5 physical_count_model.dart y company_model.dart (Módulo de Conteo Físico - Apertura)
+### 2.6 physical_count_model.dart y company_model.dart (Módulo de Conteo Físico - Apertura)
 Modelos encargados de la recolección de datos para la generación de la apertura de un conteo físico de inventario.
 * `PhysicalCountRequest`: Capta empresa, bodega, fecha, artículos, bandera de verificación lógica/física y lista de participantes (solo IDs enviados en JSON para optimización).
 * `CompanyModel`: Entidad simple para listar empresas base.
 
-### 2.6 active_count_model.dart y count_record_model.dart (Módulo de Conteo Físico - Ejecución Offline)
+### 2.7 active_count_model.dart y count_record_model.dart (Módulo de Conteo Físico - Ejecución Offline)
 Modelos diseñados para la operación offline del conteo físico en piso (SQLite).
 * `ActiveCountModel`: Representa la cabecera de un conteo activo con metadatos de sincronización. Incluye serialización bidireccional SQLite (`toMap` / `fromMap`).
 * `CountRecordModel`: Registro individual de lectura por parte del contador. Soporta serialización dual:
   - SQLite local (`toMap` / `fromMap`) para persistencia offline.
   - API Spring Boot (`toJsonApi`) para sincronización con el backend. El formato de API utiliza nomenclatura en español según convención del procedimiento almacenado.
 
-### 2.7 Modelos de Soporte
+### 2.8 Modelos de Soporte
 * `personal_model.dart`: Modelo de datos del personal de la empresa para el módulo de Conteo Físico. Almacena los datos de identificación del empleado bajo la nomenclatura de base de datos (`perscodi`, `persnomb`, `persapel`, `perscoel`, `persdivi`, `persesta`). Su factory constructor `fromJson` implementa un mapeo tolerante a múltiples formatos de llave (minúsculas, mayúsculas, camelCase y las llaves directas del endpoint de personal: `cedula`, `nombre`, `apellido`, `correo`, `division`, `estado`).
 * `user_model.dart`: Modelo básico de usuario autenticado (id, name, email).
 * `warehouse_model.dart`: Bodega o centro de costos con deserialización desde API. Extiende `Equatable` con `bodeCodi`, `bodeDesc` y `bodeEsta` como `props`, permitiendo la comparación por valor requerida por `DropdownButton`.
 
-### 2.8 Modelos de Asignación y Cierre de Conteo Físico (physical_count_model.dart)
+### 2.9 Modelos de Asignación y Cierre de Conteo Físico (physical_count_model.dart)
 Además de `PhysicalCountRequest`, este archivo contiene los modelos para el flujo de asignación y cierre:
 * `AsignacionConteoRequest`: Encapsula los datos requeridos por el endpoint `POST /api/v1/conteo-fisico/asignar_articulos`: `empresa`, `bodega`, `fechaConteo` (ISO 8601 UTC) y la lista de `UsuarioAsignacion`.
 * `UsuarioAsignacion`: Representa a cada contador asignado con `documento` (cédula), `nombre` (nombre + apellido concatenados) y `email`. Ambas clases implementan `Equatable` y exponen `toJson()` con la estructura exacta del schema Swagger.
@@ -66,6 +72,7 @@ Contrato asíncrono (`Future`) que define la creación, consulta y procesamiento
 * `approveTransfer(String)`: Aprueba una solicitud por ID.
 * `rejectTransfer({requestId, rejectionReason})`: Rechaza con motivo obligatorio.
 * `applyTransfer(TransferRequest)`: Aplica un traspaso aprobado (nota: redundante si el backend aplica automáticamente al aprobar).
+* `applyTransferDelivery(TransferDeliveryRequest)`: Registra la firma digital parcial o total del traspaso en el backend (`POST /api/v1/traspasos/{id}/entregar`).
 
 #### 3.1.1 MockTransferRepository
 Implementación en memoria que utiliza `MockInventoryService` como fuente de datos para desarrollo y pruebas offline. Las operaciones son síncronas internamente pero devuelven `Future` para cumplir el contrato.
@@ -202,6 +209,12 @@ Gestor de conexión e impresión Bluetooth global.
 * Delega en `BluetoothPrinterService` para los comandos de red.
 * Contiene la lógica de transformación usando `esc_pos_utils_plus` para generar los tickets QR de manera nativa (comando directo) en paralelo a la generación de archivos PDF.
 
+### 8.9 TransferDeliveryProvider
+Orquestador de estado para el submódulo de Entrega / Recepción de traspasos.
+* Consume `TransferRepository` para consultar solicitudes aprobadas (`ap`) y remitir firmas digitales (`applyTransferDelivery`).
+* Implementa filtrado local en base al identificador/cédula del usuario en sesión (`getAssignedTransfers(userIdentifier)`).
+* Gestiona el envío asíncrono y parcial de firmas (emisor o receptor) convirtiendo las capturas en Base64.
+
 ## 9. Componentes de UI y Navegación
 ### 9.1 RequisitionsScreen y Tabs
 Pantalla principal de requisiciones construida sobre un TabController explícito. 
@@ -246,9 +259,17 @@ Pantalla para la ejecución del conteo físico en piso (modo offline).
 * `GeneratorScreen`: Generación de códigos QR con `QrImageView`.
 * `InventoryScreen`: Pantalla principal de gestión de inventario con geolocalización.
 * `TransferApprovalScreen`: Pantalla de aprobación/rechazo de traspasos con filtros y diálogos.
+* `TransferDeliveryScreen`: Listado de traspasos aprobados asignados al usuario para iniciar el proceso de firmas.
+* `SignatureCaptureScreen`: Pantalla interactiva con canvas de dibujo (paquete `signature`) para registrar la firma digital según el rol del usuario (despachador o receptor con validación de precedencia).
 
 ## 10. Flujo Funcional Integrado (Traspasos y Requisiciones)
 El sistema opera bajo una premisa de desacoplamiento de interfaz y negocio. La UI solo despacha intenciones al Provider, quien delega al Repositorio. El inventario real o los estados de requisición solo se alteran tras la respuesta exitosa del servidor.
+* **Flujo Asíncrono de Traspasos:**
+  1. *Generación (`pe`)*: Solicitud creada desde `InventoryScreen`.
+  2. *Aprobación (`ap`)*: Aprobada desde `TransferApprovalScreen`.
+  3. *Firma Despachador*: El emisor firma en `SignatureCaptureScreen` autorizando la salida física.
+  4. *Firma Receptor*: El receptor valida la recepción firmando en su dispositivo (solo permitido tras la firma del despachador).
+  5. *Completado (`pr`)*: Con ambas firmas registradas, el estado transiciona a completado.
 
 ## 11. Principios de Diseño Consolidados
 * Inmutabilidad en Modelos.

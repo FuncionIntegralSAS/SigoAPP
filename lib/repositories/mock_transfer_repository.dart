@@ -1,4 +1,5 @@
 import '../models/transfer_request.dart';
+import '../models/transfer_delivery_request.dart';
 import '../repositories/transfer_repository.dart';
 import '../services/mock_inventory_service.dart';
 
@@ -61,5 +62,31 @@ class MockTransferRepository implements TransferRepository {
   @override
   Future<void> applyTransfer(TransferRequest request) async {
     inventoryService.applyApprovedTransfer(request);
+  }
+
+  // ============================
+  // APLICAR ENTREGA/RECEPCIÓN
+  // ============================
+
+  @override
+  Future<void> applyTransferDelivery(TransferDeliveryRequest request) async {
+    // Simula una latencia y actualiza el estado local del mock
+    await Future.delayed(const Duration(seconds: 1));
+    final index = inventoryService.transferRequests.indexWhere((t) => t.id == request.transferId);
+    if (index != -1) {
+      final transfer = inventoryService.transferRequests[index];
+      
+      final dispatcherBase64 = request.dispatcherSignatureBase64 ?? transfer.dispatcherSignatureBase64;
+      final receiverBase64 = request.receiverSignatureBase64 ?? transfer.receiverSignatureBase64;
+
+      // Si ambos ya firmaron, pasamos el estado a completado
+      final bool bothSigned = dispatcherBase64 != null && receiverBase64 != null;
+
+      inventoryService.transferRequests[index] = transfer.copyWith(
+        dispatcherSignatureBase64: dispatcherBase64,
+        receiverSignatureBase64: receiverBase64,
+        status: bothSigned ? TransferStatus.completed : transfer.status,
+      );
+    }
   }
 }

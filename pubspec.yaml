@@ -62,6 +62,7 @@ dependencies:
   flutter_pos_printer_platform_image_3: ^1.2.4
   esc_pos_utils_plus: ^2.0.4
   permission_handler: ^13.0.1
+  signature: ^6.4.0
 
 dev_dependencies:
   flutter_test:
@@ -86,6 +87,7 @@ flutter:
   assets:
     - .env
     - .env.production
+    - assets/images/
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

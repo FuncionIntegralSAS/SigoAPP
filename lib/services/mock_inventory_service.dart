@@ -90,6 +90,23 @@ class MockInventoryService {
   /// Retorna la lista de bodegas disponibles.
   List<WarehouseModel> getWarehouses() => _warehouses;
 
+  /// Mapa de bodegas asignadas por responsable (simulación de autorización en cascada)
+  static const Map<String, List<String>> _responsibleWarehouseCodes = {
+    'Juan Pérez': ['BOG001', 'CC003'],
+    'Maria López': ['BOG001', 'MED002'],
+    'Carlos Ruiz': ['MED002', 'CC003'],
+    'Andrés Felipe Restrepo': ['BOG001', 'MED002', 'CC003'],
+  };
+
+  /// Retorna las bodegas asignadas a un responsable específico.
+  List<WarehouseModel> getWarehousesForResponsible(String responsible) {
+    final codes = _responsibleWarehouseCodes[responsible];
+    if (codes == null || codes.isEmpty) {
+      return _warehouses;
+    }
+    return _warehouses.where((w) => codes.contains(w.bodeCodi)).toList();
+  }
+
   /// **Obtener artículos filtrados por ID de Bodega**
   List<ArticleModel> getArticlesByWarehouseId(String warehouseId) {
     return _articles

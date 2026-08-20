@@ -1,16 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 import '../providers/transfer_form_provider.dart';
+import '../utils/dropdown_template.dart';
 
-class CascadingCatalogsWidget extends StatelessWidget {
-  CascadingCatalogsWidget({Key? key}) : super(key: key);
+class CascadingCatalogsWidget extends StatefulWidget {
+  const CascadingCatalogsWidget({super.key});
 
+  @override
+  State<CascadingCatalogsWidget> createState() =>
+      _CascadingCatalogsWidgetState();
+}
+
+class _CascadingCatalogsWidgetState extends State<CascadingCatalogsWidget> {
   final TextEditingController _employeeController = TextEditingController();
+  final TextEditingController _warehouseSearchController =
+      TextEditingController();
+  final ValueNotifier<String?> _warehouseNotifier = ValueNotifier(null);
+
+  @override
+  void dispose() {
+    _employeeController.dispose();
+    _warehouseSearchController.dispose();
+    _warehouseNotifier.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<TransferFormProvider>(
       builder: (context, provider, child) {
+        if (_warehouseNotifier.value != provider.selectedWarehouseId) {
+          _warehouseNotifier.value = provider.selectedWarehouseId;
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -43,34 +66,69 @@ class CascadingCatalogsWidget extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'Empleado: ${provider.employeeName}',
-                style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
 
             const SizedBox(height: 24),
 
-            DropdownButtonFormField<String>(
+            DropdownButtonFormField2<String>(
+              isExpanded: true,
               decoration: InputDecoration(
                 labelText: 'Bodega Destino',
                 border: const OutlineInputBorder(),
                 errorText: provider.warehouseError,
               ),
-              // El Dropdown se bloquea (null) si no hay bodegas o si está cargando
-              value: provider.selectedWarehouseId,
-              items: provider.warehouses.map((bodega) {
-                return DropdownMenuItem<String>(
-                  value: bodega.bodeCodi,
-                  child: Text('${bodega.bodeCodi} - ${bodega.bodeDesc}'),
-                );
-              }).toList(),
-              onChanged: provider.warehouses.isEmpty || provider.isLoadingWarehouses
-                  ? null // Deshabilita el dropdown
-                  : (String? newValue) {
-                      provider.selectWarehouse(newValue);
-                    },
+              valueListenable: _warehouseNotifier,
               hint: provider.isLoadingWarehouses
                   ? const Text('Cargando bodegas...')
-                  : const Text('Seleccione una bodega'),
+                  : provider.warehouses.isEmpty
+                      ? const Text('No hay bodegas disponibles')
+                      : const Text('Seleccione una bodega'),
+              items: provider.warehouses.map((bodega) {
+                return DropdownItem<String>(
+                  value: bodega.bodeCodi,
+                  child: Text(
+                    '${bodega.bodeCodi} - ${bodega.bodeDesc}',
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                );
+              }).toList(),
+              onChanged: provider.warehouses.isEmpty ||
+                      provider.isLoadingWarehouses
+                  ? null
+                  : (String? newValue) {
+                      _warehouseNotifier.value = newValue;
+                      provider.selectWarehouse(newValue);
+                    },
+              dropdownSearchData: DropdownTemplates.searchData(
+                controller: _warehouseSearchController,
+                hintText: 'Buscar bodega...',
+                searchMatchFn: (item, searchValue) {
+                  final bodega = provider.warehouses
+                      .where((w) => w.bodeCodi == item.value)
+                      .firstOrNull;
+                  if (bodega != null) {
+                    return bodega.bodeDesc
+                            .toLowerCase()
+                            .contains(searchValue.toLowerCase()) ||
+                        bodega.bodeCodi
+                            .toLowerCase()
+                            .contains(searchValue.toLowerCase());
+                  }
+                  return item.value
+                          ?.toLowerCase()
+                          .contains(searchValue.toLowerCase()) ??
+                      false;
+                },
+              ),
+              onMenuStateChange: (isOpen) {
+                if (!isOpen) _warehouseSearchController.clear();
+              },
             ),
           ],
         );

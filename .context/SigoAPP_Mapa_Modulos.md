@@ -14,7 +14,7 @@ Fecha de actualización: Agosto 2026
 |---|-------------------|---------------------|-------------------------|
 | 1 | [Autenticación y Dominio](#1-autenticación-y-dominio) | Configuración de dominio, Login JWT | Ninguno (público) |
 | 2 | [Dashboard Principal](#2-dashboard-principal) | Navegación dinámica por permisos | Autenticación válida |
-| 3 | [Inventario](#3-inventario) | Verificación de Activos (QR + GPS), Generación de Traspasos, Aprobación de Traspasos | `avac`, `agqr`, `agst`, `aatr` |
+| 3 | [Inventario](#3-inventario) | Verificación de Activos (QR + GPS), Generación de Traspasos, Aprobación de Traspasos, Entrega / Recepción (Firmas) | `avac`, `agqr`, `agst`, `aatr`, Autenticado |
 | 4 | [Requisiciones](#4-requisiciones) | Aprobación y Entrega de inventario | `areq`, `aein` |
 | 5 | [Conteo Físico](#5-conteo-físico) | Apertura, Asignación de Personal, Cierre, Ejecución Offline | `aacf`, `aacu`, `accf`, `arcf`, `asin` |
 | 6 | [Módulo Principal (Solo Debug)](#6-módulo-principal-solo-debug) | Scanner QR, Generador QR, Gestión de cuentas | `kReleaseMode == false` |
@@ -63,6 +63,7 @@ Fecha de actualización: Agosto 2026
 | Verificación de Activos | `avac` | Inventario | `AssetVerificationScreen` |
 | Generar solicitud de traspaso | `agst` | Inventario | `InventoryScreen` |
 | Aprobación de Traspasos | `aatr` | Inventario | `TransferApprovalScreen` |
+| Entrega / Recepción | Autenticado | Inventario | `TransferDeliveryScreen` |
 | Requisiciones | `areq` | Requisiciones | `RequisitionsScreen` |
 | Conteo Físico | `aacf` ∨ `aacu` ∨ `accf` | Conteo Físico | `PhysicalCountScreen` |
 | Ejecutar Conteo | `arcf` | Conteo Físico | `ActiveCountScreen` |
@@ -128,6 +129,19 @@ Fecha de actualización: Agosto 2026
 
 > [!IMPORTANT]
 > **Recuperación de Estado:** `TransferApprovalScreen` es `StatefulWidget` con recarga automática en `initState` si la lista de traspasos está vacía o hay un error previo (regla de Recuperación de Estado en Providers Globales — ver `SigoAPP_Arquitectura.md` §11).
+
+### 3.4 Entrega / Recepción de Traspasos
+
+**Permiso:** Ninguno específico (Filtro por responsable asignado)
+**Descripción:** Paso intermedio tras la aprobación (`ap`). Permite a los responsables del traspaso capturar sus firmas de entrega y recepción, validando la transición de los activos.
+
+| Capa | Archivo | Ruta |
+|------|---------|------|
+| **Screen** | `TransferDeliveryScreen` | `lib/screens/transfer_delivery_screen.dart` |
+| **Screen** | `SignatureCaptureScreen` | `lib/screens/signature_capture_screen.dart` |
+| **Provider** | `TransferDeliveryProvider` | `lib/providers/transfer_delivery_provider.dart` |
+| **Repositorio** | `TransferRepository` (compartido con §3.2) | `lib/repositories/transfer_repository.dart` |
+| **Modelo** | `TransferDeliveryRequest` | `lib/models/transfer_delivery_request.dart` |
 
 ---
 
@@ -277,6 +291,7 @@ main.dart
  ├── [MÓDULO INVENTARIO]
  │   ├── TransferRequestProvider          ← MockTransferRepository + NotificationService
  │   ├── TransferApprovalProvider         ← MockTransferRepository
+ │   ├── TransferDeliveryProvider         ← MockTransferRepository
  │   ├── TransferFormProvider             ← HttpCatalogRepository(backendDio)
  │   └── AssetVerificationProvider        ← (sin repositorio externo)
  │

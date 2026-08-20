@@ -12,6 +12,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import '../providers/printer_provider.dart';
 import '../widgets/printer_connection_dialog.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
+import '../utils/dropdown_template.dart';
 
 // El StatefulWidget para la pantalla de Generación de QR
 class GeneratorScreen extends StatefulWidget {
@@ -32,16 +34,30 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   List<ArticleModel> _articles = [];
   ArticleModel? _selectedArticle; // Artículo seleccionado (Filtro 2)
 
+  final TextEditingController _warehouseSearchController = TextEditingController();
+  final TextEditingController _articleSearchController = TextEditingController();
+  final ValueNotifier<WarehouseModel?> _warehouseNotifier = ValueNotifier(null);
+  final ValueNotifier<ArticleModel?> _articleNotifier = ValueNotifier(null);
+
   String _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
   bool _isGenerating = false;
   String _message = 'Seleccione el activo y presione "Generar QR".';
 
-  final Color primaryColor = Colors.orange.shade700;
+  final Color primaryColor = Colors.deepPurple;
 
   @override
   void initState() {
     super.initState();
     _loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    _warehouseSearchController.dispose();
+    _articleSearchController.dispose();
+    _warehouseNotifier.dispose();
+    _articleNotifier.dispose();
+    super.dispose();
   }
 
   // Carga inicial de Bodegas
@@ -50,6 +66,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     if (_warehouses.isNotEmpty) {
       // Inicializar con la primera bodega y cargar sus artículos
       _selectedWarehouse = _warehouses.first;
+      _warehouseNotifier.value = _selectedWarehouse;
       _loadArticles(_selectedWarehouse!.bodeCodi);
     }
   }
@@ -60,6 +77,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       // USANDO EL MÉTODO CORREGIDO del servicio
       _articles = _service.getArticlesByWarehouseId(costCenterId);
       _selectedArticle = null; // Reiniciar selección del artículo
+      _articleNotifier.value = null;
       _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
     });
   }
@@ -84,6 +102,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       }
     }
 
+    if (!mounted) return {'latitude': 0.0, 'longitude': 0.0};
     setState(() {
       _isGenerating = true;
       _message = 'Obteniendo ubicación... (Simulación)';
@@ -96,9 +115,11 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       ),
     );
 
-    setState(() {
-      _isGenerating = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isGenerating = false;
+      });
+    }
     return {'latitude': position.latitude, 'longitude': position.longitude};
   }
 
@@ -116,6 +137,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     try {
       // 1. OBTENER LA UBICACIÓN
       final locationData = await _getLocation();
+      if (!mounted) return;
       final lat = locationData['latitude']!;
       final lon = locationData['longitude']!;
 
@@ -140,49 +162,57 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       final pdfFile = await _generatePdfDocument(updatedArticle, newQrData);
 
       // 5. Enviar a impresión Bluetooth (si hay impresora conectada)
-      // ignore: use_build_context_synchronously
-      if (!context.mounted) return;
-      final printerProvider = Provider.of<PrinterProvider>(context, listen: false);
+      if (!mounted) return;
+      final printerProvider = Provider.of<PrinterProvider>(
+        context,
+        listen: false,
+      );
       if (printerProvider.isConnected) {
         final printSuccess = await printerProvider.printQrTicket(
-          newQrData, 
-          updatedArticle.name, 
-          updatedArticle.licensePlate
+          newQrData,
+          updatedArticle.name,
+          updatedArticle.licensePlate,
         );
         if (!printSuccess) {
-           // ignore: use_build_context_synchronously
-           if (context.mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error de impresión térmica: ${printerProvider.errorMessage}')),
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Error de impresión térmica: ${printerProvider.errorMessage}',
+                ),
+              ),
             );
-           }
+          }
         }
       } else {
-        // ignore: use_build_context_synchronously
-        if (context.mounted) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('PDF generado. No hay impresora conectada para impresión térmica.')),
+            const SnackBar(
+              content: Text(
+                'PDF generado. No hay impresora conectada para impresión térmica.',
+              ),
+            ),
           );
         }
       }
 
-      setState(() {
-        _message = '✅ QR y PDF generados con éxito.';
-      });
+      if (mounted) {
+        setState(() {
+          _message = '✅ QR y PDF generados con éxito.';
+        });
+      }
 
       // (Opcional) Abrir el PDF generado
       OpenFilex.open(pdfFile.path);
-
     } catch (e) {
-      setState(() {
-        _isGenerating = false;
-        _message = 'Error: $e';
-      });
-      // ignore: use_build_context_synchronously
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error en el proceso: $e'))
-        );
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+          _message = 'Error: $e';
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error en el proceso: $e')));
       }
     }
   }
@@ -193,26 +223,36 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
 
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
+        pageFormat: const PdfPageFormat(
+          5 * PdfPageFormat.cm,
+          5 * PdfPageFormat.cm,
+          marginAll: 0.2 * PdfPageFormat.cm,
+        ),
         build: (pw.Context context) {
           return pw.Center(
             child: pw.Column(
               mainAxisAlignment: pw.MainAxisAlignment.center,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
               children: [
-                pw.Text('SIGO APP - Activo', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 20),
-                pw.Text('Nombre: ${article.name}', style: const pw.TextStyle(fontSize: 18)),
-                pw.Text('Placa: ${article.licensePlate}', style: const pw.TextStyle(fontSize: 18)),
-                pw.SizedBox(height: 30),
+                pw.Text(
+                  'Nombre: ${article.name}',
+                  style: const pw.TextStyle(fontSize: 8),
+                  textAlign: pw.TextAlign.center,
+                  maxLines: 1,
+                ),
+                pw.SizedBox(height: 2),
+                pw.Text(
+                  'Placa: ${article.licensePlate}',
+                  style: const pw.TextStyle(fontSize: 8),
+                  textAlign: pw.TextAlign.center,
+                ),
+                pw.SizedBox(height: 4),
                 pw.BarcodeWidget(
                   barcode: pw.Barcode.qrCode(),
                   data: qrData,
-                  width: 200,
-                  height: 200,
+                  width: 3.3 * PdfPageFormat.cm,
+                  height: 3.3 * PdfPageFormat.cm,
                 ),
-                pw.SizedBox(height: 20),
-                pw.Text('Latitud: ${article.latitude}'),
-                pw.Text('Longitud: ${article.longitude}'),
               ],
             ),
           );
@@ -233,7 +273,6 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       appBar: AppBar(
         title: const Text('Generador de Código QR'),
         backgroundColor: primaryColor,
-        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.print, color: Colors.white),
@@ -285,56 +324,95 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
 
   // Widget de selección de Bodega
   Widget _buildWarehouseSelector() {
-    return DropdownButtonFormField<WarehouseModel>(
+    return DropdownButtonFormField2<WarehouseModel>(
+      isExpanded: true,
       decoration: InputDecoration(
         labelText: '1. Seleccione Centro de Costos/Bodega',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         prefixIcon: Icon(Icons.location_city, color: primaryColor),
       ),
-      value: _selectedWarehouse,
+      valueListenable: _warehouseNotifier,
       items: _warehouses.map((warehouse) {
-        return DropdownMenuItem<WarehouseModel>(
+        return DropdownItem(
           value: warehouse,
-          child: Text('${warehouse.bodeDesc} (${warehouse.bodeCodi})'),
+          child: Text(
+            '${warehouse.bodeCodi} - ${warehouse.bodeDesc}',
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
         );
       }).toList(),
-      onChanged: (WarehouseModel? newValue) {
-        if (newValue != null) {
-          setState(() {
-            _selectedWarehouse = newValue;
-            _loadArticles(newValue.bodeCodi); // Recargar artículos
-          });
-        }
+      onChanged: _isGenerating
+          ? null
+          : (WarehouseModel? newValue) {
+              if (newValue != null) {
+                setState(() {
+                  _selectedWarehouse = newValue;
+                  _warehouseNotifier.value = newValue;
+                  _loadArticles(newValue.bodeCodi); // Recargar artículos
+                });
+              }
+            },
+      dropdownSearchData: DropdownTemplates.searchData(
+        controller: _warehouseSearchController,
+        hintText: 'Buscar bodega...',
+        searchMatchFn: (item, searchValue) {
+          final wh = item.value!;
+          return wh.bodeDesc.toLowerCase().contains(searchValue.toLowerCase()) ||
+              wh.bodeCodi.toLowerCase().contains(searchValue.toLowerCase());
+        },
+      ),
+      onMenuStateChange: (isOpen) {
+        if (!isOpen) _warehouseSearchController.clear();
       },
     );
   }
 
   // Widget de selección de Artículo
   Widget _buildArticleSelector() {
-    return DropdownButtonFormField<ArticleModel>(
+    return DropdownButtonFormField2<ArticleModel>(
+      isExpanded: true,
       decoration: InputDecoration(
         labelText: '2. Seleccione Activo para QR',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         prefixIcon: Icon(Icons.vpn_key, color: primaryColor),
       ),
-      value: _selectedArticle,
+      valueListenable: _articleNotifier,
+      hint: _articles.isEmpty
+          ? const Text('No hay activos disponibles')
+          : const Text('Seleccione un activo'),
       items: _articles.map((article) {
-        // Usamos la igualdad sobrecargada (==) para que Dart pueda determinar la selección
-        return DropdownMenuItem<ArticleModel>(
+        return DropdownItem(
           value: article,
-          child: Text('${article.name} (${article.licensePlate})'),
+          child: Text(
+            '${article.licensePlate} - ${article.name}',
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
         );
       }).toList(),
-      onChanged: _articles.isEmpty
+      onChanged: _isGenerating || _articles.isEmpty
           ? null
           : (ArticleModel? newValue) {
               setState(() {
                 _selectedArticle = newValue;
-                // Si se selecciona un artículo, mostramos sus datos QR actuales
+                _articleNotifier.value = newValue;
                 _dataToEncodeForQR =
                     newValue?.qrData ?? 'Seleccione un Activo para Generar QR';
               });
             },
+      dropdownSearchData: DropdownTemplates.searchData(
+        controller: _articleSearchController,
+        hintText: 'Buscar activo...',
+        searchMatchFn: (item, searchValue) {
+          final art = item.value!;
+          return art.name.toLowerCase().contains(searchValue.toLowerCase()) ||
+              art.licensePlate.toLowerCase().contains(searchValue.toLowerCase());
+        },
+      ),
+      onMenuStateChange: (isOpen) {
+        if (!isOpen) _articleSearchController.clear();
+      },
     );
   }
 

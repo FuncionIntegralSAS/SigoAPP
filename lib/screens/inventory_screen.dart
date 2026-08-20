@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
 import '../services/mock_inventory_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/transfer_form_widget.dart'; // Importamos el widget del formulario
+import '../utils/dropdown_template.dart';
 
 const WarehouseModel _allWarehousesFilter = WarehouseModel(
   bodeCodi: 'ALL',
@@ -36,11 +38,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
   ];
 
   WarehouseModel? _selectedWarehouse;
+  final ValueNotifier<WarehouseModel?> _filterWarehouseNotifier = ValueNotifier(
+    null,
+  );
+  final TextEditingController _warehouseFilterSearchController =
+      TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _filterWarehouseNotifier.dispose();
+    _warehouseFilterSearchController.dispose();
+    super.dispose();
   }
 
   void _loadData() {
@@ -50,6 +64,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       if (_warehouses.isEmpty) {
         _warehouses = [_allWarehousesFilter, ..._service.getWarehouses()];
         _selectedWarehouse = _allWarehousesFilter;
+        _filterWarehouseNotifier.value = _selectedWarehouse;
       }
 
       _responsibles = [
@@ -76,19 +91,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor:
-          Colors.white, // Permite ver el diseño redondeado del widget
-      builder: (context) =>
-          TransferFormWidget(article: article, users: _responsibles),
+      backgroundColor: Colors.white,
+      builder: (context) => TransferFormWidget(
+        article: article,
+        users: _responsibles,
+        warehouses: _warehouses
+            .where((w) => w.bodeCodi != _allWarehousesFilter.bodeCodi)
+            .toList(),
+      ),
     );
   }
 
-  void _showEditArticleForm(ArticleModel article) {
+  void _showEditArticleForm(ArticleModel article) async {
     final nameController = TextEditingController(text: article.name);
     final plateController = TextEditingController(text: article.licensePlate);
     final commentsController = TextEditingController(
       text: article.comments ?? '',
     );
+    final editWhSearchController = TextEditingController();
+    final editRespSearchController = TextEditingController();
 
     String? selectedResponsible = article.responsible;
     String? selectedStatus = article.status ?? 'Operativo';
@@ -99,12 +120,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
       orElse: () => _service.getWarehouses().first,
     );
 
+    final editWhNotifier = ValueNotifier<WarehouseModel?>(selectedWh);
+    final editStatusNotifier = ValueNotifier<String?>(selectedStatus);
+    final editRespNotifier = ValueNotifier<String?>(
+      _responsibles.contains(selectedResponsible) ? selectedResponsible : null,
+    );
+
     double? currentLat = article.latitude;
     double? currentLon = article.longitude;
     bool isLocating = false;
     bool isSaving = false;
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -196,60 +223,124 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  DropdownButtonFormField<WarehouseModel>(
-                    initialValue: selectedWh,
-                    decoration: const InputDecoration(
+                  DropdownButtonFormField2<WarehouseModel>(
+                    isExpanded: true,
+                    valueListenable: editWhNotifier,
+                    decoration: InputDecoration(
                       labelText: 'Bodega de Destino',
-                      prefixIcon: Icon(Icons.location_on),
+                      prefixIcon: const Icon(Icons.location_on),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     items: _service
                         .getWarehouses()
                         .map(
-                          (w) => DropdownMenuItem(
+                          (w) => DropdownItem<WarehouseModel>(
                             value: w,
-                            child: Text(w.bodeDesc),
+                            child: Text(
+                              '${w.bodeCodi} - ${w.bodeDesc}',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
                         )
                         .toList(),
-                    onChanged: (v) => setModalState(() => selectedWh = v),
+                    onChanged: (v) {
+                      selectedWh = v;
+                      editWhNotifier.value = v;
+                    },
+                    dropdownSearchData: DropdownTemplates.searchData(
+                      controller: editWhSearchController,
+                      hintText: 'Buscar bodega...',
+                      searchMatchFn: (item, searchValue) {
+                        final wh = item.value!;
+                        return wh.bodeDesc.toLowerCase().contains(
+                              searchValue.toLowerCase(),
+                            ) ||
+                            wh.bodeCodi.toLowerCase().contains(
+                              searchValue.toLowerCase(),
+                            );
+                      },
+                    ),
+                    onMenuStateChange: (isOpen) {
+                      if (!isOpen) editWhSearchController.clear();
+                    },
                   ),
                   const SizedBox(height: 10),
 
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: selectedStatus,
-                          decoration: const InputDecoration(
+                        child: DropdownButtonFormField2<String>(
+                          isExpanded: true,
+                          valueListenable: editStatusNotifier,
+                          decoration: InputDecoration(
                             labelText: 'Estado',
-                            prefixIcon: Icon(Icons.info_outline),
+                            prefixIcon: const Icon(Icons.info_outline),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                           items: _statusOptions
                               .map(
-                                (s) =>
-                                    DropdownMenuItem(value: s, child: Text(s)),
+                                (s) => DropdownItem<String>(
+                                  value: s,
+                                  child: Text(
+                                    s,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
                               )
                               .toList(),
-                          onChanged: (v) =>
-                              setModalState(() => selectedStatus = v),
+                          onChanged: (v) {
+                            selectedStatus = v;
+                            editStatusNotifier.value = v;
+                          },
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: selectedResponsible,
-                          decoration: const InputDecoration(
+                        child: DropdownButtonFormField2<String>(
+                          isExpanded: true,
+                          valueListenable: editRespNotifier,
+                          decoration: InputDecoration(
                             labelText: 'Responsable',
-                            prefixIcon: Icon(Icons.person),
+                            prefixIcon: const Icon(Icons.person),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
+                          hint: const Text('Responsable'),
                           items: _responsibles
                               .map(
-                                (r) =>
-                                    DropdownMenuItem(value: r, child: Text(r)),
+                                (r) => DropdownItem<String>(
+                                  value: r,
+                                  child: Text(
+                                    r,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
                               )
                               .toList(),
-                          onChanged: (v) =>
-                              setModalState(() => selectedResponsible = v),
+                          onChanged: (v) {
+                            selectedResponsible = v;
+                            editRespNotifier.value = v;
+                          },
+                          dropdownSearchData: DropdownTemplates.searchData(
+                            controller: editRespSearchController,
+                            hintText: 'Buscar responsable...',
+                            searchMatchFn: (item, searchValue) {
+                              return item.value!.toLowerCase().contains(
+                                searchValue.toLowerCase(),
+                              );
+                            },
+                          ),
+                          onMenuStateChange: (isOpen) {
+                            if (!isOpen) editRespSearchController.clear();
+                          },
                         ),
                       ),
                     ],
@@ -299,7 +390,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              'Geolocalización Registrada',
+                              'Geolocalización',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
@@ -427,6 +518,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
         },
       ),
     );
+
+    nameController.dispose();
+    plateController.dispose();
+    commentsController.dispose();
+    editWhSearchController.dispose();
+    editRespSearchController.dispose();
+    editWhNotifier.dispose();
+    editStatusNotifier.dispose();
+    editRespNotifier.dispose();
   }
 
   @override
@@ -471,16 +571,47 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildWarehouseSelector() {
-    return DropdownButtonFormField<WarehouseModel>(
-      initialValue: _selectedWarehouse,
+    return DropdownButtonFormField2<WarehouseModel>(
+      isExpanded: true,
+      valueListenable: _filterWarehouseNotifier,
       decoration: InputDecoration(
         labelText: 'Filtrar por Bodega',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
       items: _warehouses
-          .map((w) => DropdownMenuItem(value: w, child: Text(w.bodeDesc)))
+          .map(
+            (w) => DropdownItem<WarehouseModel>(
+              value: w,
+              child: Text(
+                w.bodeCodi == 'ALL'
+                    ? w.bodeDesc
+                    : '${w.bodeCodi} - ${w.bodeDesc}',
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          )
           .toList(),
-      onChanged: (v) => setState(() => _selectedWarehouse = v),
+      onChanged: (v) {
+        setState(() {
+          _selectedWarehouse = v;
+          _filterWarehouseNotifier.value = v;
+        });
+      },
+      dropdownSearchData: DropdownTemplates.searchData(
+        controller: _warehouseFilterSearchController,
+        hintText: 'Buscar bodega...',
+        searchMatchFn: (item, searchValue) {
+          final wh = item.value!;
+          return wh.bodeDesc.toLowerCase().contains(
+                searchValue.toLowerCase(),
+              ) ||
+              wh.bodeCodi.toLowerCase().contains(searchValue.toLowerCase());
+        },
+      ),
+      onMenuStateChange: (isOpen) {
+        if (!isOpen) _warehouseFilterSearchController.clear();
+      },
     );
   }
 

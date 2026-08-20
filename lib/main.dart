@@ -9,6 +9,7 @@ import 'package:sigo_app/services/notification_service.dart';
 // Providers
 import 'providers/transfer_request_provider.dart';
 import 'providers/transfer_approval_provider.dart';
+import 'providers/transfer_delivery_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:sigo_app/providers/asset_verification_provider.dart';
 
@@ -78,6 +79,9 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => TransferApprovalProvider(transferRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => TransferDeliveryProvider(transferRepository),
         ),
         ChangeNotifierProvider(create: (_) => AssetVerificationProvider()),
 

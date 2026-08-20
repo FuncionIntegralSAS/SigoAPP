@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 
 import '../models/transfer_filter.dart';
 import '../models/transfer_request.dart';
+import '../utils/dropdown_template.dart';
 
-class TransferFilterPanel extends StatelessWidget {
+class TransferFilterPanel extends StatefulWidget {
   final TransferFilter filter;
   final List<String> availableWarehouses;
   final ValueChanged<TransferFilter> onFilterChanged;
@@ -14,6 +16,42 @@ class TransferFilterPanel extends StatelessWidget {
     required this.availableWarehouses,
     required this.onFilterChanged,
   });
+
+  @override
+  State<TransferFilterPanel> createState() => _TransferFilterPanelState();
+}
+
+class _TransferFilterPanelState extends State<TransferFilterPanel> {
+  final TextEditingController _warehouseSearchController =
+      TextEditingController();
+  late final ValueNotifier<TransferStatus?> _statusNotifier;
+  late final ValueNotifier<String?> _warehouseNotifier;
+
+  @override
+  void initState() {
+    super.initState();
+    _statusNotifier = ValueNotifier(widget.filter.status);
+    _warehouseNotifier = ValueNotifier(widget.filter.proposedWarehouse);
+  }
+
+  @override
+  void didUpdateWidget(covariant TransferFilterPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.filter.status != _statusNotifier.value) {
+      _statusNotifier.value = widget.filter.status;
+    }
+    if (widget.filter.proposedWarehouse != _warehouseNotifier.value) {
+      _warehouseNotifier.value = widget.filter.proposedWarehouse;
+    }
+  }
+
+  @override
+  void dispose() {
+    _warehouseSearchController.dispose();
+    _statusNotifier.dispose();
+    _warehouseNotifier.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,61 +76,96 @@ class TransferFilterPanel extends StatelessWidget {
   }
 
   Widget _buildStatusFilter() {
-    return DropdownButtonFormField<TransferStatus>(
-      value: filter.status,
+    return DropdownButtonFormField2<TransferStatus>(
+      isExpanded: true,
+      valueListenable: _statusNotifier,
       decoration: const InputDecoration(
         labelText: 'Estado del traspaso',
         border: OutlineInputBorder(),
       ),
       items: TransferStatus.values.map((status) {
-        return DropdownMenuItem(
+        return DropdownItem<TransferStatus>(
           value: status,
-          child: Text(status.name),
+          child: Text(
+            status.name,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
         );
       }).toList(),
       onChanged: (value) {
         if (value != null) {
-          onFilterChanged(filter.copyWith(status: value));
+          _statusNotifier.value = value;
+          widget.onFilterChanged(widget.filter.copyWith(status: value));
         }
       },
     );
   }
 
   Widget _buildWarehouseFilter() {
-    return DropdownButtonFormField<String?>(
-      value: filter.proposedWarehouse,
+    return DropdownButtonFormField2<String?>(
+      isExpanded: true,
+      valueListenable: _warehouseNotifier,
       decoration: const InputDecoration(
         labelText: 'Bodega destino',
         border: OutlineInputBorder(),
       ),
       items: [
-        const DropdownMenuItem<String?>(
+        const DropdownItem<String?>(
           value: null,
-          child: Text('Todas'),
+          child: Text(
+            'Todas',
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
         ),
-        ...availableWarehouses.map(
-          (warehouse) => DropdownMenuItem<String?>(
+        ...widget.availableWarehouses.map(
+          (warehouse) => DropdownItem<String?>(
             value: warehouse,
-            child: Text(warehouse),
+            child: Text(
+              warehouse,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
           ),
         ),
       ],
       onChanged: (value) {
-        onFilterChanged(filter.copyWith(proposedWarehouse: value));
+        _warehouseNotifier.value = value;
+        widget.onFilterChanged(
+          widget.filter.copyWith(
+            proposedWarehouse: value,
+          ),
+        );
+      },
+      dropdownSearchData: DropdownTemplates.searchData(
+        controller: _warehouseSearchController,
+        hintText: 'Buscar bodega...',
+        searchMatchFn: (item, searchValue) {
+          if (item.value == null) {
+            return 'todas'.contains(searchValue.toLowerCase());
+          }
+          return item.value!
+              .toLowerCase()
+              .contains(searchValue.toLowerCase());
+        },
+      ),
+      onMenuStateChange: (isOpen) {
+        if (!isOpen) _warehouseSearchController.clear();
       },
     );
   }
 
   Widget _buildResponsibleFilter() {
     return TextFormField(
-      initialValue: filter.responsibleQuery,
+      initialValue: widget.filter.responsibleQuery,
       decoration: const InputDecoration(
         labelText: 'Responsable propuesto',
         border: OutlineInputBorder(),
       ),
       onChanged: (value) {
-        onFilterChanged(
-          filter.copyWith(
+        widget.onFilterChanged(
+          widget.filter.copyWith(
             responsibleQuery: value.isEmpty ? null : value,
           ),
         );
@@ -106,9 +179,9 @@ class TransferFilterPanel extends StatelessWidget {
         Expanded(
           child: _DateField(
             label: 'Desde',
-            date: filter.fromDate,
+            date: widget.filter.fromDate,
             onDateSelected: (date) {
-              onFilterChanged(filter.copyWith(fromDate: date));
+              widget.onFilterChanged(widget.filter.copyWith(fromDate: date));
             },
           ),
         ),
@@ -116,9 +189,9 @@ class TransferFilterPanel extends StatelessWidget {
         Expanded(
           child: _DateField(
             label: 'Hasta',
-            date: filter.toDate,
+            date: widget.filter.toDate,
             onDateSelected: (date) {
-              onFilterChanged(filter.copyWith(toDate: date));
+              widget.onFilterChanged(widget.filter.copyWith(toDate: date));
             },
           ),
         ),
@@ -145,8 +218,9 @@ class _DateField extends StatelessWidget {
         : '${date!.day}/${date!.month}/${date!.year}';
 
     return TextFormField(
+      key: ValueKey(text),
       readOnly: true,
-      controller: TextEditingController(text: text),
+      initialValue: text,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),

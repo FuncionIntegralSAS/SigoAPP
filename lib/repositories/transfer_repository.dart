@@ -1,4 +1,5 @@
 import '../models/transfer_request.dart';
+import '../models/transfer_delivery_request.dart';
 
 /// Contrato único de acceso a datos para el módulo de Traspasos.
 ///
@@ -26,4 +27,7 @@ abstract class TransferRepository {
 
   /// Aplica un traspaso previamente aprobado.
   Future<void> applyTransfer(TransferRequest request);
+
+  /// Aplica el paso intermedio de entrega y recepción con firmas.
+  Future<void> applyTransferDelivery(TransferDeliveryRequest request);
 }

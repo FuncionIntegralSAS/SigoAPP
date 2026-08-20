@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 
 import '../models/article_model.dart';
 import '../widgets/transfer_form_widget.dart';
 import '../providers/transfer_request_provider.dart';
+import '../utils/dropdown_template.dart';
 import 'scanner_screen.dart';
+import 'generator_screen.dart';
 
 class AssetVerificationScreen extends StatefulWidget {
   const AssetVerificationScreen({super.key});
@@ -20,11 +23,22 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
   ArticleModel? verifiedArticle;
   bool? verificationResult;
 
+  final ValueNotifier<String?> _responsibleNotifier = ValueNotifier(null);
+  final TextEditingController _responsibleSearchController =
+      TextEditingController();
+
   final List<String> responsibles = [
     'Juan Pérez',
     'Maria López',
     'Carlos Ruiz',
   ];
+
+  @override
+  void dispose() {
+    _responsibleNotifier.dispose();
+    _responsibleSearchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _openScanner() async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
@@ -80,28 +94,69 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
             ),
             const SizedBox(height: 8),
 
-            DropdownButtonFormField<String>(
-              initialValue: selectedResponsible,
+            DropdownButtonFormField2<String>(
+              isExpanded: true,
+              valueListenable: _responsibleNotifier,
               hint: const Text('Seleccione un responsable'),
               items: responsibles
-                  .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                  .map(
+                    (r) => DropdownItem<String>(
+                      value: r,
+                      child: Text(
+                        r,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (value) {
                 setState(() {
                   selectedResponsible = value;
+                  _responsibleNotifier.value = value;
                 });
               },
-              decoration: const InputDecoration(border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+              ),
+              dropdownSearchData: DropdownTemplates.searchData(
+                controller: _responsibleSearchController,
+                hintText: 'Buscar responsable...',
+                searchMatchFn: (item, searchValue) {
+                  return item.value!
+                      .toLowerCase()
+                      .contains(searchValue.toLowerCase());
+                },
+              ),
+              onMenuStateChange: (isOpen) {
+                if (!isOpen) _responsibleSearchController.clear();
+              },
             ),
 
             const SizedBox(height: 24),
 
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: OutlinedButton.icon(
                 onPressed: _openScanner,
                 icon: const Icon(Icons.qr_code_scanner),
                 label: const Text('Escanear Activo'),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GeneratorScreen()),
+                  );
+                },
+                icon: const Icon(Icons.qr_code),
+                label: const Text('Generar QR'),
               ),
             ),
 
