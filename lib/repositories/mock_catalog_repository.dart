@@ -9,19 +9,19 @@ import 'catalog_repository.dart';
 class MockCatalogRepository implements CatalogRepository {
   /// Empleados en memoria: cédula → [EmployeeResult].
   static final _employees = <String, EmployeeResult>{
-    '123': const EmployeeResult(name: 'Carlos Rodríguez', divisionId: 'D01'),
-    '456': const EmployeeResult(name: 'María González', divisionId: 'D02'),
-    '789': const EmployeeResult(name: 'Juan Pérez', divisionId: 'D01'),
+    '123': const EmployeeResult(nombre: 'Carlos Rodríguez', divisionId: 'D01'),
+    '456': const EmployeeResult(nombre: 'María González', divisionId: 'D02'),
+    '789': const EmployeeResult(nombre: 'Juan Pérez', divisionId: 'D01'),
   };
 
   /// Bodegas en memoria: divisionId → List<WarehouseModel>.
   static final _warehouses = <String, List<WarehouseModel>>{
     'D01': const [
-      WarehouseModel(bodeCodi: 'B01', bodeDesc: 'Bodega Principal', bodeEsta: 'A'),
-      WarehouseModel(bodeCodi: 'B02', bodeDesc: 'Bodega Secundaria', bodeEsta: 'A'),
+      WarehouseModel(codigoBodega: 'B01', descripcionBodega: 'Bodega Principal', estadoBodega: 'A'),
+      WarehouseModel(codigoBodega: 'B02', descripcionBodega: 'Bodega Secundaria', estadoBodega: 'A'),
     ],
     'D02': const [
-      WarehouseModel(bodeCodi: 'B03', bodeDesc: 'Almacén Norte', bodeEsta: 'A'),
+      WarehouseModel(codigoBodega: 'B03', descripcionBodega: 'Almacén Norte', estadoBodega: 'A'),
     ],
   };
 

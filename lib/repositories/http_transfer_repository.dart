@@ -72,13 +72,13 @@ class HttpTransferRepository implements TransferRepository {
 
   // --- 4. RECHAZAR (Mapeado a PUT /procesar con 'na') ---
   @override
-  Future<void> rejectTransfer({required String requestId, required String rejectionReason}) async {
+  Future<void> rejectTransfer({required String requestId, required String motivoRechazo}) async {
     try {
       final response = await dio.put(
         '/api/v1/traspasos/$requestId/procesar',
         data: {
           'decision': 'na', // Decisión 'na' según backend
-          'observacion': rejectionReason // La observación es obligatoria en el rechazo
+          'observacion': motivoRechazo // La observación es obligatoria en el rechazo
         },
         options: Options(headers: {'Content-Type': 'application/json'}),
       );

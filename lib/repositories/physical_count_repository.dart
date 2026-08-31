@@ -14,7 +14,7 @@ abstract class PhysicalCountRepository {
 
   /// Obtiene los artículos asignados a una bodega, con fallback mock si es necesario.
   Future<List<ArticleModel>> getArticles(
-    String warehouseId, [
+    String idBodega, [
     String? companyId,
   ]);
 

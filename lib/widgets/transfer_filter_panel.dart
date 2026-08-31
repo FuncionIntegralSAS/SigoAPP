@@ -31,7 +31,7 @@ class _TransferFilterPanelState extends State<TransferFilterPanel> {
   void initState() {
     super.initState();
     _statusNotifier = ValueNotifier(widget.filter.status);
-    _warehouseNotifier = ValueNotifier(widget.filter.proposedWarehouse);
+    _warehouseNotifier = ValueNotifier(widget.filter.bodegaPropuesta);
   }
 
   @override
@@ -40,8 +40,8 @@ class _TransferFilterPanelState extends State<TransferFilterPanel> {
     if (widget.filter.status != _statusNotifier.value) {
       _statusNotifier.value = widget.filter.status;
     }
-    if (widget.filter.proposedWarehouse != _warehouseNotifier.value) {
-      _warehouseNotifier.value = widget.filter.proposedWarehouse;
+    if (widget.filter.bodegaPropuesta != _warehouseNotifier.value) {
+      _warehouseNotifier.value = widget.filter.bodegaPropuesta;
     }
   }
 
@@ -120,10 +120,10 @@ class _TransferFilterPanelState extends State<TransferFilterPanel> {
           ),
         ),
         ...widget.availableWarehouses.map(
-          (warehouse) => DropdownItem<String?>(
-            value: warehouse,
+          (bodega) => DropdownItem<String?>(
+            value: bodega,
             child: Text(
-              warehouse,
+              bodega,
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
@@ -134,7 +134,7 @@ class _TransferFilterPanelState extends State<TransferFilterPanel> {
         _warehouseNotifier.value = value;
         widget.onFilterChanged(
           widget.filter.copyWith(
-            proposedWarehouse: value,
+            bodegaPropuesta: value,
           ),
         );
       },

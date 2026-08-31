@@ -90,9 +90,9 @@ class _CascadingCatalogsWidgetState extends State<CascadingCatalogsWidget> {
                       : const Text('Seleccione una bodega'),
               items: provider.warehouses.map((bodega) {
                 return DropdownItem<String>(
-                  value: bodega.bodeCodi,
+                  value: bodega.codigoBodega,
                   child: Text(
-                    '${bodega.bodeCodi} - ${bodega.bodeDesc}',
+                    '${bodega.codigoBodega} - ${bodega.descripcionBodega}',
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),
@@ -110,13 +110,13 @@ class _CascadingCatalogsWidgetState extends State<CascadingCatalogsWidget> {
                 hintText: 'Buscar bodega...',
                 searchMatchFn: (item, searchValue) {
                   final bodega = provider.warehouses
-                      .where((w) => w.bodeCodi == item.value)
+                      .where((w) => w.codigoBodega == item.value)
                       .firstOrNull;
                   if (bodega != null) {
-                    return bodega.bodeDesc
+                    return bodega.descripcionBodega
                             .toLowerCase()
                             .contains(searchValue.toLowerCase()) ||
-                        bodega.bodeCodi
+                        bodega.codigoBodega
                             .toLowerCase()
                             .contains(searchValue.toLowerCase());
                   }

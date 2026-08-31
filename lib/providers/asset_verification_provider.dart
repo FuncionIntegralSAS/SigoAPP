@@ -7,8 +7,8 @@ class AssetVerificationProvider extends ChangeNotifier {
   String? get selectedWarehouse => _selectedWarehouse;
   String? get selectedOwner => _selectedOwner;
 
-  void selectWarehouse(String warehouse) {
-    _selectedWarehouse = warehouse;
+  void selectWarehouse(String bodega) {
+    _selectedWarehouse = bodega;
     notifyListeners();
   }
 

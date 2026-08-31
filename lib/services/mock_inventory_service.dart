@@ -23,64 +23,69 @@ class MockInventoryService {
   // Lista de bodegas/centros de costos (Datos maestros)
   final List<WarehouseModel> _warehouses = const [
     WarehouseModel(
-      bodeCodi: 'BOG001',
-      bodeDesc: 'Almacén Central',
-      bodeEsta: 'ac',
+      codigoBodega: 'BOG001',
+      descripcionBodega: 'Almacén Central',
+      estadoBodega: 'ac',
     ),
     WarehouseModel(
-      bodeCodi: 'MED002',
-      bodeDesc: 'Taller de Mantenimiento',
-      bodeEsta: 'ac',
+      codigoBodega: 'MED002',
+      descripcionBodega: 'Taller de Mantenimiento',
+      estadoBodega: 'ac',
     ),
     WarehouseModel(
-      bodeCodi: 'CC003',
-      bodeDesc: 'Oficinas Administrativas',
-      bodeEsta: 'ia',
+      codigoBodega: 'CC003',
+      descripcionBodega: 'Oficinas Administrativas',
+      estadoBodega: 'ia',
     ),
   ];
 
   // Base de datos simulada de artículos
   final List<ArticleModel> _articles = [
     const ArticleModel(
-      id: 'PC001',
-      name: 'Portátil Prueba',
-      licensePlate: 'ABC-123',
-      warehouse: 'BOG001',
-      responsible: 'Responsable Test',
-      status: 'Operativo',
+      id: 1,
+      codigoActivo: 'PC001',
+      nombre: 'Portátil Prueba',
+      placa: 'ABC-123',
+      bodega: 'BOG001',
+      responsable: 'Responsable Test',
+      estado: 'Operativo',
     ),
     const ArticleModel(
-      id: 'A1002',
-      name: 'Rack de Paletas P-20',
-      licensePlate: 'RK-20-01',
-      warehouse: 'BOG001',
-      responsible: 'Maria López',
-      status: 'Operativo',
+      id: 2,
+      codigoActivo: 'A1002',
+      nombre: 'Rack de Paletas P-20',
+      placa: 'RK-20-01',
+      bodega: 'BOG001',
+      responsable: 'Maria López',
+      estado: 'Operativo',
     ),
     const ArticleModel(
-      id: 'A1003',
-      name: 'Mesa de Trabajo',
-      licensePlate: 'MT-01',
-      warehouse: 'BOG001',
-      responsible: 'Juan Pérez',
-      status: 'Operativo',
+      id: 3,
+      codigoActivo: 'A1003',
+      nombre: 'Mesa de Trabajo',
+      placa: 'MT-01',
+      bodega: 'BOG001',
+      responsable: 'Juan Pérez',
+      estado: 'Operativo',
     ),
     const ArticleModel(
-      id: 'A2001',
-      name: 'Compresor Industrial',
-      licensePlate: 'CI-2001',
-      warehouse: 'MED002',
-      responsible: 'Carlos Ruiz',
-      status: 'En Mantenimiento',
-      comments: 'Fuga de aceite detectada en válvula principal.',
+      id: 4,
+      codigoActivo: 'A2001',
+      nombre: 'Compresor Industrial',
+      placa: 'CI-2001',
+      bodega: 'MED002',
+      responsable: 'Carlos Ruiz',
+      estado: 'En Mantenimiento',
+      comentarios: 'Fuga de aceite detectada en válvula principal.',
     ),
     const ArticleModel(
-      id: 'A2002',
-      name: 'Herramienta Neumática',
-      licensePlate: 'HN-01',
-      warehouse: 'MED002',
-      responsible: 'Carlos Ruiz',
-      status: 'Operativo',
+      id: 5,
+      codigoActivo: 'A2002',
+      nombre: 'Herramienta Neumática',
+      placa: 'HN-01',
+      bodega: 'MED002',
+      responsable: 'Carlos Ruiz',
+      estado: 'Operativo',
     ),
   ];
 
@@ -99,18 +104,18 @@ class MockInventoryService {
   };
 
   /// Retorna las bodegas asignadas a un responsable específico.
-  List<WarehouseModel> getWarehousesForResponsible(String responsible) {
-    final codes = _responsibleWarehouseCodes[responsible];
+  List<WarehouseModel> getWarehousesForResponsible(String responsable) {
+    final codes = _responsibleWarehouseCodes[responsable];
     if (codes == null || codes.isEmpty) {
       return _warehouses;
     }
-    return _warehouses.where((w) => codes.contains(w.bodeCodi)).toList();
+    return _warehouses.where((w) => codes.contains(w.codigoBodega)).toList();
   }
 
   /// **Obtener artículos filtrados por ID de Bodega**
-  List<ArticleModel> getArticlesByWarehouseId(String warehouseId) {
+  List<ArticleModel> getArticlesByWarehouseId(String idBodega) {
     return _articles
-        .where((article) => article.warehouse == warehouseId)
+        .where((article) => article.bodega == idBodega)
         .toList();
   }
 
@@ -119,27 +124,27 @@ class MockInventoryService {
   Future<ArticleModel> registerNewArticle({
     required String name,
     required String plate,
-    required String warehouseId,
-    String? responsible,
+    required String idBodega,
+    String? responsable,
     String? status,
-    String? comments,
-    String? photoPath,
+    String? comentarios,
+    String? rutaFoto,
   }) async {
     // 1. Validación de placa única (Case Insensitive)
     final normalizedPlate = plate.trim().toUpperCase();
-    if (_articles.any((a) => a.licensePlate.toUpperCase() == normalizedPlate)) {
+    if (_articles.any((a) => a.placa.toUpperCase() == normalizedPlate)) {
       throw Exception('La placa $plate ya está registrada en el sistema.');
     }
 
     // 2. Preparar datos para la simulación de red
     final Map<String, dynamic> data = {
       'name': name,
-      'licensePlate': normalizedPlate,
-      'warehouseId': warehouseId,
-      'responsible': responsible,
+      'placa': normalizedPlate,
+      'idBodega': idBodega,
+      'responsable': responsable,
       'status': status,
-      'comments': comments,
-      'photoPath': photoPath,
+      'comentarios': comentarios,
+      'rutaFoto': rutaFoto,
     };
 
     // 3. Llamada simulada al cliente de red (Capa de Infraestructura)
@@ -148,14 +153,15 @@ class MockInventoryService {
     // 4. Mapeo al ArticleModel con los nuevos campos
     // Nota: Usamos 'initialValue' semántico para el estado si viene nulo
     final newArticle = ArticleModel(
-      id: response['id'],
-      name: response['name'],
-      licensePlate: response['licensePlate'],
-      warehouse: response['costCenterId'],
-      responsible: response['responsible'],
-      status: status ?? 'Operativo',
-      comments: comments,
-      photoPath: photoPath,
+      id: response['id'] != null ? int.tryParse(response['id'].toString()) : _articles.length + 1,
+      codigoActivo: response['codigoActivo']?.toString() ?? response['artiCodi']?.toString() ?? response['id']?.toString() ?? 'ART${_articles.length + 1}',
+      nombre: response['name'],
+      placa: response['placa'],
+      bodega: response['costCenterId'] ?? response['bodega'] ?? '',
+      responsable: response['responsable'],
+      estado: status ?? 'Operativo',
+      comentarios: comentarios,
+      rutaFoto: rutaFoto,
     );
 
     _articles.add(newArticle);
@@ -163,9 +169,9 @@ class MockInventoryService {
   }
 
   /// **Actualiza la instancia de un artículo**
-  /// Utiliza la comparación de Equatable para localizar el activo por su ID.
+  /// Utiliza la comparación de Equatable para localizar el activo por su código.
   void updateArticle(ArticleModel updatedArticle) {
-    final index = _articles.indexWhere((a) => a.id == updatedArticle.id);
+    final index = _articles.indexWhere((a) => a.codigoActivo == updatedArticle.codigoActivo);
     if (index != -1) {
       _articles[index] = updatedArticle;
     }
@@ -183,7 +189,7 @@ class MockInventoryService {
 
   List<TransferRequest> getPendingTransferRequests() {
     return _transferRequests
-        .where((r) => r.status == TransferStatus.pending)
+        .where((r) => r.estado == TransferStatus.pending)
         .toList();
   }
 
@@ -196,21 +202,21 @@ class MockInventoryService {
 
     _transferRequests[index] = TransferRequest(
       id: request.id,
-      articleId: request.articleId,
-      articleName: request.articleName,
-      currentResponsible: request.currentResponsible,
-      proposedResponsible: request.proposedResponsible,
-      currentWarehouse: request.currentWarehouse,
-      proposedWarehouse: request.proposedWarehouse,
-      requestReason: request.requestReason,
-      requestDate: request.requestDate,
-      status: TransferStatus.approved,
+      idArticulo: request.idArticulo,
+      nombreArticulo: request.nombreArticulo,
+      responsableActual: request.responsableActual,
+      responsablePropuesto: request.responsablePropuesto,
+      bodegaActual: request.bodegaActual,
+      bodegaPropuesta: request.bodegaPropuesta,
+      motivoSolicitud: request.motivoSolicitud,
+      fechaSolicitud: request.fechaSolicitud,
+      estado: TransferStatus.approved,
     );
   }
 
   void rejectTransferRequest({
     required String requestId,
-    required String rejectionReason,
+    required String motivoRechazo,
   }) {
     final index = _transferRequests.indexWhere((r) => r.id == requestId);
     if (index == -1) return;
@@ -219,27 +225,27 @@ class MockInventoryService {
 
     _transferRequests[index] = TransferRequest(
       id: request.id,
-      articleId: request.articleId,
-      articleName: request.articleName,
-      currentResponsible: request.currentResponsible,
-      proposedResponsible: request.proposedResponsible,
-      currentWarehouse: request.currentWarehouse,
-      proposedWarehouse: request.proposedWarehouse,
-      requestReason: request.requestReason,
-      requestDate: request.requestDate,
-      status: TransferStatus.rejected,
-      rejectionReason: rejectionReason,
+      idArticulo: request.idArticulo,
+      nombreArticulo: request.nombreArticulo,
+      responsableActual: request.responsableActual,
+      responsablePropuesto: request.responsablePropuesto,
+      bodegaActual: request.bodegaActual,
+      bodegaPropuesta: request.bodegaPropuesta,
+      motivoSolicitud: request.motivoSolicitud,
+      fechaSolicitud: request.fechaSolicitud,
+      estado: TransferStatus.rejected,
+      motivoRechazo: motivoRechazo,
     );
   }
 
   void applyApprovedTransfer(TransferRequest request) {
     // Validar estado
-    if (request.status != TransferStatus.pending) {
-      throw Exception('El traspaso ya fue procesado (${request.status.name}).');
+    if (request.estado != TransferStatus.pending) {
+      throw Exception('El traspaso ya fue procesado (${request.estado.name}).');
     }
 
     // Buscar el activo
-    final articleIndex = _articles.indexWhere((a) => a.id == request.articleId);
+    final articleIndex = _articles.indexWhere((a) => a.codigoActivo == request.idArticulo);
 
     if (articleIndex == -1) {
       throw Exception('No se encontró el activo asociado al traspaso.');
@@ -249,8 +255,8 @@ class MockInventoryService {
 
     // Aplicar cambios al activo
     final updatedArticle = currentArticle.copyWith(
-      responsible: request.proposedResponsible,
-      warehouse: request.proposedWarehouse,
+      responsable: request.responsablePropuesto,
+      bodega: request.bodegaPropuesta,
     );
 
     _articles[articleIndex] = updatedArticle;
@@ -262,20 +268,20 @@ class MockInventoryService {
 
     if (requestIndex != -1) {
       _transferRequests[requestIndex] = request.copyWith(
-        status: TransferStatus.approved,
+        estado: TransferStatus.approved,
       );
     }
 
     //Lista privada de solicitudes de traspaso
   }
 
-  void rejectTransfer(TransferRequest request, String rejectionReason) {
+  void rejectTransfer(TransferRequest request, String motivoRechazo) {
     final index = _transferRequests.indexWhere((r) => r.id == request.id);
     if (index == -1) return;
 
     _transferRequests[index] = request.copyWith(
-      status: TransferStatus.rejected,
-      rejectionReason: rejectionReason,
+      estado: TransferStatus.rejected,
+      motivoRechazo: motivoRechazo,
     );
   }
 }

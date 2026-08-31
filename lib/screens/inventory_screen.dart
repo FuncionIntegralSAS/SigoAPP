@@ -10,9 +10,9 @@ import '../widgets/transfer_form_widget.dart'; // Importamos el widget del formu
 import '../utils/dropdown_template.dart';
 
 const WarehouseModel _allWarehousesFilter = WarehouseModel(
-  bodeCodi: 'ALL',
-  bodeDesc: 'Todas las Bodegas (Inventario Total)',
-  bodeEsta: '',
+  codigoBodega: 'ALL',
+  descripcionBodega: 'Todas las Bodegas (Inventario Total)',
+  estadoBodega: '',
 );
 
 class InventoryScreen extends StatefulWidget {
@@ -24,7 +24,7 @@ class InventoryScreen extends StatefulWidget {
 
 class _InventoryScreenState extends State<InventoryScreen> {
   final MockInventoryService _service = MockInventoryService();
-  final Color primaryColor = Colors.orange.shade700;
+  final Color primaryColor = Colors.deepPurple;
 
   List<ArticleModel> _allArticles = [];
   List<WarehouseModel> _warehouses = [];
@@ -78,11 +78,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   List<ArticleModel> get _filteredArticles {
     if (_selectedWarehouse == null ||
-        _selectedWarehouse!.bodeCodi == _allWarehousesFilter.bodeCodi) {
+        _selectedWarehouse!.codigoBodega == _allWarehousesFilter.codigoBodega) {
       return _allArticles;
     }
     return _allArticles
-        .where((a) => a.warehouse == _selectedWarehouse!.bodeCodi)
+        .where((a) => a.bodega == _selectedWarehouse!.codigoBodega)
         .toList();
   }
 
@@ -96,38 +96,24 @@ class _InventoryScreenState extends State<InventoryScreen> {
         article: article,
         users: _responsibles,
         warehouses: _warehouses
-            .where((w) => w.bodeCodi != _allWarehousesFilter.bodeCodi)
+            .where((w) => w.codigoBodega != _allWarehousesFilter.codigoBodega)
             .toList(),
       ),
     );
   }
 
   void _showEditArticleForm(ArticleModel article) async {
-    final nameController = TextEditingController(text: article.name);
-    final plateController = TextEditingController(text: article.licensePlate);
     final commentsController = TextEditingController(
-      text: article.comments ?? '',
-    );
-    final editWhSearchController = TextEditingController();
-    final editRespSearchController = TextEditingController();
-
-    String? selectedResponsible = article.responsible;
-    String? selectedStatus = article.status ?? 'Operativo';
-    String? photoPath = article.photoPath;
-
-    WarehouseModel? selectedWh = _service.getWarehouses().firstWhere(
-      (w) => w.bodeCodi == article.warehouse,
-      orElse: () => _service.getWarehouses().first,
+      text: article.comentarios ?? '',
     );
 
-    final editWhNotifier = ValueNotifier<WarehouseModel?>(selectedWh);
+    String? selectedStatus = article.estado ?? 'Operativo';
+    String? rutaFoto = article.rutaFoto;
+
     final editStatusNotifier = ValueNotifier<String?>(selectedStatus);
-    final editRespNotifier = ValueNotifier<String?>(
-      _responsibles.contains(selectedResponsible) ? selectedResponsible : null,
-    );
 
-    double? currentLat = article.latitude;
-    double? currentLon = article.longitude;
+    double? currentLat = article.latitud;
+    double? currentLon = article.longitud;
     bool isLocating = false;
     bool isSaving = false;
 
@@ -171,7 +157,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
           Future<void> takePhoto() async {
             setModalState(() {
-              photoPath =
+              rutaFoto =
                   'path/to/local/storage/photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
             });
             if (context.mounted) {
@@ -185,7 +171,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
           return Padding(
             padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
               left: 20,
               right: 20,
               top: 20,
@@ -196,50 +182,61 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Editar Activo',
+                    'Actualizar Estado de Activo',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: primaryColor,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nombre del Activo',
-                      prefixIcon: Icon(Icons.inventory),
+                  // Información del Activo (Sólo Lectura)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          article.nombre,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text('Placa: ${article.placa}'),
+                        Text('Bodega: ${article.bodega}'),
+                        Text(
+                          'Responsable: ${article.responsable ?? 'Sin responsable'}',
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
 
-                  TextField(
-                    controller: plateController,
-                    decoration: const InputDecoration(
-                      labelText: 'Placa / Identificador',
-                      prefixIcon: Icon(Icons.badge),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  DropdownButtonFormField2<WarehouseModel>(
+                  // Selector de Estado
+                  DropdownButtonFormField2<String>(
                     isExpanded: true,
-                    valueListenable: editWhNotifier,
+                    valueListenable: editStatusNotifier,
                     decoration: InputDecoration(
-                      labelText: 'Bodega de Destino',
-                      prefixIcon: const Icon(Icons.location_on),
+                      labelText: 'Estado',
+                      prefixIcon: const Icon(Icons.info_outline),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    items: _service
-                        .getWarehouses()
+                    items: _statusOptions
                         .map(
-                          (w) => DropdownItem<WarehouseModel>(
-                            value: w,
+                          (s) => DropdownItem<String>(
+                            value: s,
                             child: Text(
-                              '${w.bodeCodi} - ${w.bodeDesc}',
+                              s,
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                             ),
@@ -247,117 +244,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         )
                         .toList(),
                     onChanged: (v) {
-                      selectedWh = v;
-                      editWhNotifier.value = v;
+                      selectedStatus = v;
+                      editStatusNotifier.value = v;
                     },
-                    dropdownSearchData: DropdownTemplates.searchData(
-                      controller: editWhSearchController,
-                      hintText: 'Buscar bodega...',
-                      searchMatchFn: (item, searchValue) {
-                        final wh = item.value!;
-                        return wh.bodeDesc.toLowerCase().contains(
-                              searchValue.toLowerCase(),
-                            ) ||
-                            wh.bodeCodi.toLowerCase().contains(
-                              searchValue.toLowerCase(),
-                            );
-                      },
-                    ),
-                    onMenuStateChange: (isOpen) {
-                      if (!isOpen) editWhSearchController.clear();
-                    },
-                  ),
-                  const SizedBox(height: 10),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField2<String>(
-                          isExpanded: true,
-                          valueListenable: editStatusNotifier,
-                          decoration: InputDecoration(
-                            labelText: 'Estado',
-                            prefixIcon: const Icon(Icons.info_outline),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          items: _statusOptions
-                              .map(
-                                (s) => DropdownItem<String>(
-                                  value: s,
-                                  child: Text(
-                                    s,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (v) {
-                            selectedStatus = v;
-                            editStatusNotifier.value = v;
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: DropdownButtonFormField2<String>(
-                          isExpanded: true,
-                          valueListenable: editRespNotifier,
-                          decoration: InputDecoration(
-                            labelText: 'Responsable',
-                            prefixIcon: const Icon(Icons.person),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          hint: const Text('Responsable'),
-                          items: _responsibles
-                              .map(
-                                (r) => DropdownItem<String>(
-                                  value: r,
-                                  child: Text(
-                                    r,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (v) {
-                            selectedResponsible = v;
-                            editRespNotifier.value = v;
-                          },
-                          dropdownSearchData: DropdownTemplates.searchData(
-                            controller: editRespSearchController,
-                            hintText: 'Buscar responsable...',
-                            searchMatchFn: (item, searchValue) {
-                              return item.value!.toLowerCase().contains(
-                                searchValue.toLowerCase(),
-                              );
-                            },
-                          ),
-                          onMenuStateChange: (isOpen) {
-                            if (!isOpen) editRespSearchController.clear();
-                          },
-                        ),
-                      ),
-                    ],
                   ),
                   const SizedBox(height: 15),
 
+                  // Comentarios del Evento / Estado
                   TextField(
                     controller: commentsController,
                     maxLines: 2,
                     decoration: const InputDecoration(
-                      labelText: 'Comentarios adicionales',
+                      labelText: 'Comentarios del estado',
                       prefixIcon: Icon(Icons.comment),
                       border: OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 15),
 
+                  // Captura de Foto
                   Row(
                     children: [
                       Expanded(
@@ -365,11 +270,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           onPressed: takePhoto,
                           icon: const Icon(Icons.camera_alt),
                           label: Text(
-                            photoPath == null ? 'TOMAR FOTO' : 'CAMBIAR FOTO',
+                            rutaFoto == null ? 'TOMAR FOTO' : 'CAMBIAR FOTO',
                           ),
                         ),
                       ),
-                      if (photoPath != null) ...[
+                      if (rutaFoto != null) ...[
                         const SizedBox(width: 10),
                         const Icon(Icons.check_circle, color: Colors.green),
                       ],
@@ -377,6 +282,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                   const SizedBox(height: 15),
 
+                  // Geolocalización
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -406,7 +312,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                   )
                                 : IconButton(
                                     onPressed: captureLocation,
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.my_location,
                                       color: Colors.blue,
                                       size: 20,
@@ -431,36 +337,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 24),
 
+                  // Botón Guardar
                   ElevatedButton(
                     onPressed: isSaving
                         ? null
                         : () {
-                            if (nameController.text.isEmpty ||
-                                plateController.text.isEmpty ||
-                                selectedWh == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Por favor llene los campos obligatorios.',
-                                  ),
-                                ),
-                              );
-                              return;
-                            }
                             setModalState(() => isSaving = true);
                             try {
                               final updatedArticle = article.copyWith(
-                                name: nameController.text,
-                                licensePlate: plateController.text,
-                                warehouse: selectedWh!.bodeCodi,
-                                responsible: selectedResponsible,
-                                latitude: currentLat,
-                                longitude: currentLon,
-                                status: selectedStatus,
-                                comments: commentsController.text,
-                                photoPath: photoPath,
+                                estado: selectedStatus,
+                                comentarios: commentsController.text,
+                                latitud: currentLat,
+                                longitud: currentLon,
+                                rutaFoto: rutaFoto,
                               );
 
                               _service.updateArticle(updatedArticle);
@@ -469,8 +360,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                 Navigator.pop(context);
                                 _loadData();
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
+                                  SnackBar(
+                                    content: const Text(
                                       '✅ Activo actualizado con éxito',
                                     ),
                                     backgroundColor: Colors.blue,
@@ -490,7 +381,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             }
                           },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
+                      backgroundColor: primaryColor,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                     ),
                     child: isSaving
@@ -519,14 +410,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ),
     );
 
-    nameController.dispose();
-    plateController.dispose();
     commentsController.dispose();
-    editWhSearchController.dispose();
-    editRespSearchController.dispose();
-    editWhNotifier.dispose();
     editStatusNotifier.dispose();
-    editRespNotifier.dispose();
   }
 
   @override
@@ -583,9 +468,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
             (w) => DropdownItem<WarehouseModel>(
               value: w,
               child: Text(
-                w.bodeCodi == 'ALL'
-                    ? w.bodeDesc
-                    : '${w.bodeCodi} - ${w.bodeDesc}',
+                w.codigoBodega == 'ALL'
+                    ? w.descripcionBodega
+                    : '${w.codigoBodega} - ${w.descripcionBodega}',
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
@@ -603,10 +488,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
         hintText: 'Buscar bodega...',
         searchMatchFn: (item, searchValue) {
           final wh = item.value!;
-          return wh.bodeDesc.toLowerCase().contains(
+          return wh.descripcionBodega.toLowerCase().contains(
                 searchValue.toLowerCase(),
               ) ||
-              wh.bodeCodi.toLowerCase().contains(searchValue.toLowerCase());
+              wh.codigoBodega.toLowerCase().contains(searchValue.toLowerCase());
         },
       ),
       onMenuStateChange: (isOpen) {
@@ -617,7 +502,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Widget _buildArticleTile(ArticleModel article) {
     Color statusColor;
-    switch (article.status) {
+    switch (article.estado) {
       case 'Operativo':
         statusColor = Colors.green;
         break;
@@ -649,18 +534,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
           margin: const EdgeInsets.symmetric(vertical: 8),
         ),
         title: Text(
-          article.name,
+          article.nombre,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Placa: ${article.licensePlate} • Resp: ${article.responsible ?? 'N/A'}',
+              'Placa: ${article.placa} • Resp: ${article.responsable ?? 'N/A'}',
             ),
-            if (article.comments != null && article.comments!.isNotEmpty)
+            if (article.comentarios != null && article.comentarios!.isNotEmpty)
               Text(
-                article.comments!,
+                article.comentarios!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -669,7 +554,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
             Text(
-              'Estado: ${article.status ?? "Operativo"}',
+              'Estado: ${article.estado ?? "Operativo"}',
               style: TextStyle(
                 color: statusColor,
                 fontSize: 12,

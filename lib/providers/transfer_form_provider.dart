@@ -41,8 +41,7 @@ class TransferFormProvider extends ChangeNotifier {
 
     try {
       final employee = await catalogRepository.findEmployee(query);
-      _employeeName = employee.name;
-      _divisionId = employee.divisionId;
+      _employeeName = employee.nombre;
 
       notifyListeners();
 
@@ -73,8 +72,8 @@ class TransferFormProvider extends ChangeNotifier {
     }
   }
 
-  void selectWarehouse(String? warehouseId) {
-    _selectedWarehouseId = warehouseId;
+  void selectWarehouse(String? idBodega) {
+    _selectedWarehouseId = idBodega;
     notifyListeners();
   }
 }

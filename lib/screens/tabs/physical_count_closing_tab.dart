@@ -309,11 +309,11 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
                         : provider.pendingWarehouses.isEmpty
                             ? const Text('No hay bodegas pendientes')
                             : const Text('Seleccione una bodega'),
-                    items: provider.pendingWarehouses.map((warehouse) {
+                    items: provider.pendingWarehouses.map((bodega) {
                       return DropdownItem(
-                        value: warehouse,
+                        value: bodega,
                         child: Text(
-                          '${warehouse.bodega} - ${warehouse.descripcion}',
+                          '${bodega.bodega} - ${bodega.descripcion}',
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),

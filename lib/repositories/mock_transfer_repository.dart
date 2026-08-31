@@ -47,11 +47,11 @@ class MockTransferRepository implements TransferRepository {
   @override
   Future<void> rejectTransfer({
     required String requestId,
-    required String rejectionReason,
+    required String motivoRechazo,
   }) async {
     inventoryService.rejectTransferRequest(
       requestId: requestId,
-      rejectionReason: rejectionReason,
+      motivoRechazo: motivoRechazo,
     );
   }
 
@@ -76,16 +76,16 @@ class MockTransferRepository implements TransferRepository {
     if (index != -1) {
       final transfer = inventoryService.transferRequests[index];
       
-      final dispatcherBase64 = request.dispatcherSignatureBase64 ?? transfer.dispatcherSignatureBase64;
-      final receiverBase64 = request.receiverSignatureBase64 ?? transfer.receiverSignatureBase64;
+      final dispatcherBase64 = request.firmaDespachadorBase64 ?? transfer.firmaDespachadorBase64;
+      final receiverBase64 = request.firmaReceptorBase64 ?? transfer.firmaReceptorBase64;
 
       // Si ambos ya firmaron, pasamos el estado a completado
       final bool bothSigned = dispatcherBase64 != null && receiverBase64 != null;
 
       inventoryService.transferRequests[index] = transfer.copyWith(
-        dispatcherSignatureBase64: dispatcherBase64,
-        receiverSignatureBase64: receiverBase64,
-        status: bothSigned ? TransferStatus.completed : transfer.status,
+        firmaDespachadorBase64: dispatcherBase64,
+        firmaReceptorBase64: receiverBase64,
+        estado: bothSigned ? TransferStatus.completed : transfer.estado,
       );
     }
   }

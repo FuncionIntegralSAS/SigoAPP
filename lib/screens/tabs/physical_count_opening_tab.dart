@@ -181,7 +181,7 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                         return DropdownItem(
                           value: wh,
                           child: Text(
-                            '${wh.bodeCodi}-${wh.bodeDesc}',
+                            '${wh.codigoBodega}-${wh.descripcionBodega}',
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
@@ -194,10 +194,10 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                         controller: _warehouseSearchController,
                         hintText: 'Buscar bodega...',
                         searchMatchFn: (item, searchValue) {
-                          return item.value!.bodeDesc.toLowerCase().contains(
+                          return item.value!.descripcionBodega.toLowerCase().contains(
                                 searchValue.toLowerCase(),
                               ) ||
-                              item.value!.bodeCodi.toLowerCase().contains(
+                              item.value!.codigoBodega.toLowerCase().contains(
                                 searchValue.toLowerCase(),
                               );
                         },
@@ -235,7 +235,7 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                         return DropdownItem(
                           value: art,
                           child: Text(
-                            '${art.id} - ${art.name}',
+                            '${art.codigoActivo} - ${art.nombre}',
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
@@ -248,13 +248,13 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                         controller: _articleSearchController,
                         hintText: 'Buscar artículo...',
                         searchMatchFn: (item, searchValue) {
-                          return item.value!.name.toLowerCase().contains(
+                          return item.value!.nombre.toLowerCase().contains(
                                 searchValue.toLowerCase(),
                               ) ||
-                              item.value!.id.toLowerCase().contains(
+                              item.value!.codigoActivo.toLowerCase().contains(
                                 searchValue.toLowerCase(),
                               ) ||
-                              (item.value!.licensePlate).toLowerCase().contains(
+                              (item.value!.placa).toLowerCase().contains(
                                 searchValue.toLowerCase(),
                               );
                         },

@@ -8,14 +8,14 @@ class ListCountView extends StatelessWidget {
 
   void _showNumericKeyboard(
     BuildContext context,
-    String articleId,
+    String idArticulo,
     String descripcion,
   ) {
     final TextEditingController qtyController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Cantidad Física: $articleId - $descripcion'),
+        title: Text('Cantidad Física: $idArticulo - $descripcion'),
         content: TextField(
           controller: qtyController,
           keyboardType: TextInputType.number,
@@ -35,7 +35,7 @@ class ListCountView extends StatelessWidget {
             onPressed: () {
               final val = int.tryParse(qtyController.text);
               if (val != null && val >= 0) {
-                provider.recordCount(articleId, val.toDouble());
+                provider.recordCount(idArticulo, val.toDouble());
                 Navigator.of(ctx).pop();
               }
             },
@@ -66,15 +66,15 @@ class ListCountView extends StatelessWidget {
           DataColumn(label: Text('Cantidad')),
         ],
         rows: masterList.map((entry) {
-          final articleId = entry.key;
+          final idArticulo = entry.key;
           final data = entry.value;
           final descripcion = data['descripcion'] as String;
           final isCounted =
-              provider.currentIterationRecords.containsKey(articleId);
-          final countedQty = provider.currentIterationRecords[articleId] ?? 0.0;
+              provider.currentIterationRecords.containsKey(idArticulo);
+          final countedQty = provider.currentIterationRecords[idArticulo] ?? 0.0;
           return DataRow(
             cells: [
-              DataCell(Text(articleId)),
+              DataCell(Text(idArticulo)),
               DataCell(
                 isCounted
                     ? Row(
@@ -100,7 +100,7 @@ class ListCountView extends StatelessWidget {
               DataCell(Text(countedQty.toStringAsFixed(0))),
             ],
             onSelectChanged: (_) =>
-                _showNumericKeyboard(context, articleId, descripcion),
+                _showNumericKeyboard(context, idArticulo, descripcion),
           );
         }).toList(),
       ),

@@ -5,9 +5,11 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 import '../models/article_model.dart';
 import '../widgets/transfer_form_widget.dart';
 import '../providers/transfer_request_provider.dart';
+import '../providers/geolocation_provider.dart';
 import '../utils/dropdown_template.dart';
 import 'scanner_screen.dart';
 import 'generator_screen.dart';
+import 'package:geolocator/geolocator.dart';
 
 class AssetVerificationScreen extends StatefulWidget {
   const AssetVerificationScreen({super.key});
@@ -51,10 +53,98 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
     );
 
     if (result != null) {
+      final article = result['article'] as ArticleModel;
       setState(() {
-        verifiedArticle = result['article'] as ArticleModel;
+        verifiedArticle = article;
         verificationResult = result['isValid'] as bool;
       });
+      _checkGeolocation(article);
+    }
+  }
+
+  Future<void> _checkGeolocation(ArticleModel article) async {
+    if (article.id == null) return;
+
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    if (permission == LocationPermission.deniedForever) return;
+
+    Position currentPosition;
+    try {
+      currentPosition = await Geolocator.getCurrentPosition();
+    } catch (e) {
+      return;
+    }
+
+    if (!mounted) return;
+    final geoProvider = context.read<GeolocationProvider>();
+    final storedLocation = await geoProvider.getGeolocation(article.id!);
+
+    bool shouldUpdate = false;
+    String dialogTitle = '';
+    String dialogContent = '';
+
+    if (storedLocation != null) {
+      final distance = Geolocator.distanceBetween(
+        currentPosition.latitude,
+        currentPosition.longitude,
+        storedLocation.latitud,
+        storedLocation.longitud,
+      );
+
+      if (distance > 1) {
+        shouldUpdate = true;
+        dialogTitle = 'Actualizar Ubicación';
+        dialogContent =
+            'La ubicación actual del activo difiere de la registrada. ¿Desea actualizarla?';
+      }
+    } else {
+      shouldUpdate = true;
+      dialogTitle = 'Registrar Ubicación';
+      dialogContent =
+          'El activo no tiene ubicación registrada. ¿Desea guardar la ubicación actual?';
+    }
+
+    if (shouldUpdate && mounted) {
+      final update = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(dialogTitle),
+          content: Text(dialogContent),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Sí'),
+            ),
+          ],
+        ),
+      );
+
+      if (update == true && mounted) {
+        await geoProvider.syncGeolocation(
+          article.id!,
+          currentPosition.latitude,
+          currentPosition.longitude,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ubicación guardada exitosamente')),
+          );
+        }
+      }
     }
   }
 
@@ -69,8 +159,8 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
         child: TransferFormWidget(
           article: verifiedArticle!,
           users: responsibles,
-          proposedResponsible: verifiedArticle!.responsible,
-          proposedWarehouse: verifiedArticle!.warehouse,
+          responsablePropuesto: verifiedArticle!.responsable,
+          bodegaPropuesta: verifiedArticle!.bodega,
         ),
       ),
     );
@@ -116,16 +206,14 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
                   _responsibleNotifier.value = value;
                 });
               },
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(border: OutlineInputBorder()),
               dropdownSearchData: DropdownTemplates.searchData(
                 controller: _responsibleSearchController,
                 hintText: 'Buscar responsable...',
                 searchMatchFn: (item, searchValue) {
-                  return item.value!
-                      .toLowerCase()
-                      .contains(searchValue.toLowerCase());
+                  return item.value!.toLowerCase().contains(
+                    searchValue.toLowerCase(),
+                  );
                 },
               ),
               onMenuStateChange: (isOpen) {
@@ -167,7 +255,7 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
               const SizedBox(height: 12),
 
               Text(
-                verifiedArticle!.name,
+                verifiedArticle!.nombre,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -176,9 +264,9 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
 
               const SizedBox(height: 8),
 
-              Text('Placa: ${verifiedArticle!.licensePlate}'),
+              Text('Placa: ${verifiedArticle!.placa}'),
               Text(
-                'Responsable: ${verifiedArticle!.responsible ?? "No asignado"}',
+                'Responsable: ${verifiedArticle!.responsable ?? "No asignado"}',
               ),
 
               const SizedBox(height: 16),

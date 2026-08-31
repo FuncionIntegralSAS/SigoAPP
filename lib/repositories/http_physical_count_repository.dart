@@ -29,7 +29,7 @@ class HttpPhysicalCountRepository implements PhysicalCountRepository {
 
   @override
   Future<List<ArticleModel>> getArticles(
-    String warehouseId, [
+    String idBodega, [
     String? companyId,
   ]) async {
     if (companyId == null || companyId.isEmpty) {
@@ -39,16 +39,17 @@ class HttpPhysicalCountRepository implements PhysicalCountRepository {
 
     try {
       final response = await _dio.get(
-        '/api/v1/articulos/asignados/$warehouseId/$companyId',
+        '/api/v1/articulos/asignados/$idBodega/$companyId',
       );
       final List<dynamic> data = response.data;
 
       final List<ArticleModel> articles = [
         const ArticleModel(
-          id: 'All',
-          name: 'Todos',
-          licensePlate: '',
-          warehouse: 'All',
+          id: 0,
+          codigoActivo: 'All',
+          nombre: 'Todos',
+          placa: '',
+          bodega: 'All',
         ),
       ];
 
@@ -62,22 +63,25 @@ class HttpPhysicalCountRepository implements PhysicalCountRepository {
   List<ArticleModel> _getMockArticles() {
     return [
       const ArticleModel(
-        id: 'All',
-        name: 'Todos',
-        licensePlate: '',
-        warehouse: 'All',
+        id: 0,
+        codigoActivo: 'All',
+        nombre: 'Todos',
+        placa: '',
+        bodega: 'All',
       ),
       const ArticleModel(
-        id: 'A1',
-        name: 'Computador Portátil',
-        licensePlate: 'P-001',
-        warehouse: 'W1',
+        id: 1,
+        codigoActivo: 'A1',
+        nombre: 'Computador Portátil',
+        placa: 'P-001',
+        bodega: 'W1',
       ),
       const ArticleModel(
-        id: 'A2',
-        name: 'Silla Ergonómica',
-        licensePlate: 'S-005',
-        warehouse: 'W1',
+        id: 2,
+        codigoActivo: 'A2',
+        nombre: 'Silla Ergonómica',
+        placa: 'S-005',
+        bodega: 'W1',
       ),
     ];
   }

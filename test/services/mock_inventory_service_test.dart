@@ -34,36 +34,36 @@ void main() {
       'updateArticle debe reemplazar un artículo existente con nuevos datos',
       () {
         const articleCodeToUpdate = 'PC001';
-        const warehouseId = 'BOG001';
+        const idBodega = 'BOG001';
 
         // 1. Obtener el artículo original
         final originalArticle = service
-            .getArticlesByWarehouseId(warehouseId)
-            .firstWhere((a) => a.id == articleCodeToUpdate);
+            .getArticlesByWarehouseId(idBodega)
+            .firstWhere((a) => a.codigoActivo == articleCodeToUpdate);
 
         // 2. Crear un artículo actualizado (con ubicación)
         final newLat = 4.70;
         final updatedArticle = originalArticle.copyWith(
-          latitude: newLat,
-          longitude: -74.15,
+          latitud: newLat,
+          longitud: -74.15,
         );
 
         // 3. Ejecutar la actualización
         service.updateArticle(updatedArticle);
 
         // 4. Obtener la lista nuevamente y verificar la actualización
-        final updatedList = service.getArticlesByWarehouseId(warehouseId);
+        final updatedList = service.getArticlesByWarehouseId(idBodega);
         final fetchedArticle = updatedList.firstWhere(
-          (a) => a.id == articleCodeToUpdate,
+          (a) => a.codigoActivo == articleCodeToUpdate,
         );
 
         // Aserciones:
         // El total de artículos no debe cambiar
         expect(updatedList.length, 3);
         // El artículo encontrado debe tener la nueva latitud
-        expect(fetchedArticle.latitude, newLat);
+        expect(fetchedArticle.latitud, newLat);
         // El resto de las propiedades deben permanecer iguales
-        expect(fetchedArticle.responsible, originalArticle.responsible);
+        expect(fetchedArticle.responsable, originalArticle.responsable);
       },
     );
   });

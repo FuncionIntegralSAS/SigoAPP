@@ -68,7 +68,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
   bool _validateResponsible(ArticleModel article) {
     if (widget.expectedResponsible == null) return true;
 
-    return article.responsible == widget.expectedResponsible;
+    return article.responsable == widget.expectedResponsible;
   }
 
   void _showResultDialog(
@@ -84,9 +84,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Nombre: ${article.name}'),
-            Text('Placa: ${article.licensePlate}'),
-            Text('Responsable: ${article.responsible ?? "No asignado"}'),
+            Text('Nombre: ${article.nombre}'),
+            Text('Placa: ${article.placa}'),
+            Text('Responsable: ${article.responsable ?? "No asignado"}'),
             const SizedBox(height: 12),
             Text(
               isValid

@@ -108,3 +108,16 @@ A continuación, se evidencian las modificaciones arquitectónicas introducidas 
    - **Validación de Roles y Precedencia**: La pantalla `SignatureCaptureScreen` identifica si el usuario actual es despachador o receptor según su cédula de sesión (`AuthProvider.currentCedula`), bloqueando la firma del receptor hasta que el despachador haya firmado el envío.
    - **Provider y Repositorios**: Se creó `TransferDeliveryProvider` inyectado globalmente en `main.dart`, extendiendo `TransferRepository`, `MockTransferRepository` y `HttpTransferRepository` con el método `applyTransferDelivery`.
    - **Navegación en Dashboard**: Se incorporó la tarjeta `Entrega / Recepción` en `DashboardScreen` accesible a usuarios autenticados con traspasos asignados.
+
+## Control de Cambios e Histórico (v2.5 a v2.6)
+
+1. **Módulo de Geolocalización de Activos**:
+   - **Modelo `GeolocationModel`**: Implementación de modelo fuertemente tipado para las coordenadas (`afgeIdre`, `afgeLati`, `afgeLong`) y auditoría con mapeo bidireccional JSON.
+   - **Capa de Repositorio (`GeolocationRepository` y `HttpGeolocationRepository`)**: Contrato abstracto e implementación HTTP con `Dio` para interactuar con los endpoints REST `/api/v1/geolocalizacion-activos` (GET, POST, PUT, DELETE).
+   - **Excepción Tipada `GeolocationBusinessException`**: Manejo desacoplado de errores técnicos y mensajes de negocio provenientes de la API REST.
+   - **Gestión de Estado (`GeolocationProvider`)**: Inyección global en `main.dart` con soporte para sincronización automática (`syncGeolocation` que consulta existencia y conmuta entre POST y PUT según corresponda).
+
+2. **Refactorización y Blindaje de Identidad en `ArticleModel`**:
+   - **Separación de Llaves de Identidad**: Se estableció `codigoActivo` (`String`) como el identificador único de negocio (referencia visible, etiquetas QR y códigos de barras), mientras que `id` (`int?`) quedó estrictamente restringido como identificador interno de base de datos/geolocalización (`afgeIdre`).
+   - **Blindaje de Módulos Operativos**: Se adaptaron y validaron todos los flujos de traslados, conteo físico, apertura, asignación, servicios mock y parsers de QR para garantizar que el atributo `id` no se filtre ni contamine las peticiones REST de negocio, eliminando riesgos de fallas por incompatibilidad de tipos o de esquema en Spring Boot.
+

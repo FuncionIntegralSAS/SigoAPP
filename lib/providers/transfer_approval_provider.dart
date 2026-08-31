@@ -62,12 +62,12 @@ class TransferApprovalProvider extends ChangeNotifier {
   }
 
   bool _applyFilter(TransferRequest request) {
-    if (request.status != _filter.status) {
+    if (request.estado != _filter.status) {
       return false;
     }
 
-    if (_filter.proposedWarehouse != null &&
-        request.proposedWarehouse != _filter.proposedWarehouse) {
+    if (_filter.bodegaPropuesta != null &&
+        request.bodegaPropuesta != _filter.bodegaPropuesta) {
       return false;
     }
 
@@ -80,7 +80,7 @@ class TransferApprovalProvider extends ChangeNotifier {
 
   List<String> get availableWarehouses {
     return allTransfers
-        .map((r) => r.proposedWarehouse)
+        .map((r) => r.bodegaPropuesta)
         .toSet()
         .toList()
       ..sort();
@@ -108,7 +108,7 @@ class TransferApprovalProvider extends ChangeNotifier {
     try {
       await repository.rejectTransfer(
         requestId: requestId,
-        rejectionReason: reason,
+        motivoRechazo: reason,
       );
       await loadTransfers(); // Recarga la lista tras la acción
     } catch (e) {

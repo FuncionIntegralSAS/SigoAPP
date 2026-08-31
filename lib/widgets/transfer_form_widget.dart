@@ -11,16 +11,16 @@ class TransferFormWidget extends StatefulWidget {
   final ArticleModel article;
   final List<String> users;
   final List<WarehouseModel>? warehouses;
-  final String? proposedWarehouse;
-  final String? proposedResponsible;
+  final String? bodegaPropuesta;
+  final String? responsablePropuesto;
 
   const TransferFormWidget({
     super.key,
     required this.article,
     required this.users,
     this.warehouses,
-    this.proposedWarehouse,
-    this.proposedResponsible,
+    this.bodegaPropuesta,
+    this.responsablePropuesto,
   });
 
   @override
@@ -46,18 +46,18 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
   void initState() {
     super.initState();
     _originalResponsible =
-        widget.article.responsible ?? 'Sin responsable';
+        widget.article.responsable ?? 'Sin responsable';
 
-    _targetResponsible = widget.users.contains(widget.proposedResponsible)
-        ? widget.proposedResponsible
+    _targetResponsible = widget.users.contains(widget.responsablePropuesto)
+        ? widget.responsablePropuesto
         : null;
     _responsibleNotifier.value = _targetResponsible;
 
     if (_targetResponsible != null) {
       _availableWarehouses = _getWarehousesFor(_targetResponsible!);
-      if (widget.proposedWarehouse != null) {
+      if (widget.bodegaPropuesta != null) {
         final matches = _availableWarehouses.where(
-          (w) => w.bodeCodi == widget.proposedWarehouse,
+          (w) => w.codigoBodega == widget.bodegaPropuesta,
         );
         if (matches.isNotEmpty) {
           _targetWarehouse = matches.first;
@@ -69,8 +69,8 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
     _warehouseNotifier.value = _targetWarehouse;
   }
 
-  List<WarehouseModel> _getWarehousesFor(String responsible) {
-    return MockInventoryService().getWarehousesForResponsible(responsible);
+  List<WarehouseModel> _getWarehousesFor(String responsable) {
+    return MockInventoryService().getWarehousesForResponsible(responsable);
   }
 
   @override
@@ -103,13 +103,13 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
           ),
           const SizedBox(height: 12),
 
-          Text('Activo: ${widget.article.name}'),
+          Text('Activo: ${widget.article.nombre}'),
           const SizedBox(height: 8),
 
           Text('Responsable actual: $_originalResponsible'),
           const SizedBox(height: 8),
 
-          Text('Bodega actual: ${widget.article.warehouse}'),
+          Text('Bodega actual: ${widget.article.bodega}'),
           const SizedBox(height: 12),
 
           // 1. Selector de Responsable Destino (PRIMERO)
@@ -187,7 +187,7 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                   (w) => DropdownItem<WarehouseModel>(
                     value: w,
                     child: Text(
-                      '${w.bodeCodi} - ${w.bodeDesc}',
+                      '${w.codigoBodega} - ${w.descripcionBodega}',
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
@@ -208,10 +208,10 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
               hintText: 'Buscar bodega...',
               searchMatchFn: (item, searchValue) {
                 final wh = item.value!;
-                return wh.bodeDesc
+                return wh.descripcionBodega
                         .toLowerCase()
                         .contains(searchValue.toLowerCase()) ||
-                    wh.bodeCodi
+                    wh.codigoBodega
                         .toLowerCase()
                         .contains(searchValue.toLowerCase());
               },
@@ -248,13 +248,13 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                       final navigator = Navigator.of(context);
 
                       await provider.createRequest(
-                        articleId: widget.article.id,
-                        articleName: widget.article.name,
-                        currentResponsible: _originalResponsible,
-                        proposedResponsible: _targetResponsible!,
-                        currentWarehouse: widget.article.warehouse,
-                        proposedWarehouse: _targetWarehouse!.bodeCodi,
-                        requestReason: _notes ?? '',
+                        idArticulo: widget.article.codigoActivo,
+                        nombreArticulo: widget.article.nombre,
+                        responsableActual: _originalResponsible,
+                        responsablePropuesto: _targetResponsible!,
+                        bodegaActual: widget.article.bodega,
+                        bodegaPropuesta: _targetWarehouse!.codigoBodega,
+                        motivoSolicitud: _notes ?? '',
                       );
 
                       if (!mounted) return;

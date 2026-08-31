@@ -4,11 +4,12 @@ import 'package:sigo_app/models/article_model.dart';
 void main() {
   // Configuración de un artículo base para usar en todos los tests
   final baseArticle = ArticleModel(
-    id: 'PC001',
-    licensePlate: 'ABC-123',
-    name: 'Portátil Prueba',
-    responsible: 'Responsable Test',
-    warehouse: 'BOG001',
+    id: 1,
+    codigoActivo: 'PC001',
+    placa: 'ABC-123',
+    nombre: 'Portátil Prueba',
+    responsable: 'Responsable Test',
+    bodega: 'BOG001',
   );
 
   group('ArticleModel Tests', () {
@@ -22,8 +23,8 @@ void main() {
     // Test 2: Verificar que el getter qrData incluye la ubicación cuando está presente.
     test('qrData debe incluir la ubicación (Lat/Lon) si está presente', () {
       final locatedArticle = baseArticle.copyWith(
-        latitude: 4.600000,
-        longitude: -74.080000,
+        latitud: 4.600000,
+        longitud: -74.080000,
       );
       final expectedQrData =
           'Código:PC001|Placa:ABC-123|Nombre:Portátil Prueba|Lat:4.600000|Lon:-74.080000';
@@ -35,14 +36,15 @@ void main() {
       final newLat = 10.0;
       final newLon = 20.0;
       final updatedArticle = baseArticle.copyWith(
-        latitude: newLat,
-        longitude: newLon,
+        latitud: newLat,
+        longitud: newLon,
       );
 
-      expect(updatedArticle.latitude, newLat);
-      expect(updatedArticle.longitude, newLon);
+      expect(updatedArticle.latitud, newLat);
+      expect(updatedArticle.longitud, newLon);
       expect(updatedArticle.id, baseArticle.id);
-      expect(updatedArticle.licensePlate, baseArticle.licensePlate);
+      expect(updatedArticle.codigoActivo, baseArticle.codigoActivo);
+      expect(updatedArticle.placa, baseArticle.placa);
     });
 
     // Test 4: Verificar los operadores de igualdad (== y hashCode)
@@ -50,17 +52,18 @@ void main() {
       final articleA = baseArticle;
       // Una nueva instancia (diferente referencia de memoria) con los mismos datos clave
       final articleB = ArticleModel(
-        id: 'PC001',
-        licensePlate: 'OTRA PLACA',
-        name: 'OTRO NOMBRE',
-        responsible: 'OTRO RESPONSABLE',
-        warehouse: 'BOG001',
+        id: 1,
+        codigoActivo: 'PC001',
+        placa: 'OTRA PLACA',
+        nombre: 'OTRO NOMBRE',
+        responsable: 'OTRO RESPONSABLE',
+        bodega: 'BOG001',
       );
 
-      // Test de igualdad: deben ser iguales porque 'code' y 'costCenter' coinciden.
+      // Test de igualdad: deben ser iguales porque 'id', 'codigoActivo' y 'bodega' coinciden.
       expect(articleA, articleB);
       // Test de desigualdad: si el código es diferente, no deben ser iguales.
-      final articleC = articleA.copyWith(id: 'PC002');
+      final articleC = articleA.copyWith(codigoActivo: 'PC002');
       expect(articleA, isNot(articleC));
 
       // Test de hashCode: si son iguales, sus hashCodes también deben ser iguales.

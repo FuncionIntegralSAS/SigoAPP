@@ -13,61 +13,75 @@ enum TransferStatus {
 
 @JsonSerializable()
 class TransferRequest {
+  @JsonKey(name: 'id')
   final String id;
-  final String articleId;
-  final String articleName;
-  final String currentResponsible;  
-  final String proposedResponsible;
-  final String currentWarehouse;
-  final String proposedWarehouse;
-  final String requestReason;
-  final DateTime requestDate;
-  final DateTime? appliedDate;
-  final TransferStatus status;
-  final String? rejectionReason;
-  final String? dispatcherSignatureBase64;
-  final String? receiverSignatureBase64;
+  @JsonKey(name: 'idArticulo')
+  final String idArticulo;
+  @JsonKey(name: 'nombreArticulo')
+  final String nombreArticulo;
+  @JsonKey(name: 'responsableActual')
+  final String responsableActual;  
+  @JsonKey(name: 'responsablePropuesto')
+  final String responsablePropuesto;
+  @JsonKey(name: 'bodegaActual')
+  final String bodegaActual;
+  @JsonKey(name: 'bodegaPropuesta')
+  final String bodegaPropuesta;
+  @JsonKey(name: 'motivoSolicitud')
+  final String motivoSolicitud;
+  @JsonKey(name: 'fechaSolicitud')
+  final DateTime fechaSolicitud;
+  @JsonKey(name: 'fechaAplicacion')
+  final DateTime? fechaAplicacion;
+  @JsonKey(name: 'status')
+  final TransferStatus estado;
+  @JsonKey(name: 'motivoRechazo')
+  final String? motivoRechazo;
+  @JsonKey(name: 'firmaDespachadorBase64')
+  final String? firmaDespachadorBase64;
+  @JsonKey(name: 'firmaReceptorBase64')
+  final String? firmaReceptorBase64;
 
   TransferRequest({
     required this.id,
-    required this.articleId,
-    required this.articleName,
-    required this.currentResponsible,
-    required this.proposedResponsible,
-    required this.requestReason,
-    required this.requestDate,
-    required this.currentWarehouse,
-    required this.proposedWarehouse,
-    this.status = TransferStatus.pending,
-    this.rejectionReason,
-    this.appliedDate,
-    this.dispatcherSignatureBase64,
-    this.receiverSignatureBase64,
+    required this.idArticulo,
+    required this.nombreArticulo,
+    required this.responsableActual,
+    required this.responsablePropuesto,
+    required this.motivoSolicitud,
+    required this.fechaSolicitud,
+    required this.bodegaActual,
+    required this.bodegaPropuesta,
+    this.estado = TransferStatus.pending,
+    this.motivoRechazo,
+    this.fechaAplicacion,
+    this.firmaDespachadorBase64,
+    this.firmaReceptorBase64,
   });
 
   // Mantenemos tu método copyWith intacto. Es una excelente práctica para inmutabilidad.
   TransferRequest copyWith({
-  TransferStatus? status,
-  String? rejectionReason,
-  DateTime? appliedDate,
-  String? dispatcherSignatureBase64,
-  String? receiverSignatureBase64,
+  TransferStatus? estado,
+  String? motivoRechazo,
+  DateTime? fechaAplicacion,
+  String? firmaDespachadorBase64,
+  String? firmaReceptorBase64,
   }) {
     return TransferRequest(
       id: id,
-      articleId: articleId,
-      articleName: articleName,
-      currentResponsible: currentResponsible,
-      proposedResponsible: proposedResponsible,
-      currentWarehouse: currentWarehouse,
-      proposedWarehouse: proposedWarehouse,
-      requestReason: requestReason,
-      requestDate: requestDate,
-      status: status ?? this.status,
-      rejectionReason: rejectionReason ?? this.rejectionReason,
-      appliedDate: appliedDate ?? this.appliedDate,
-      dispatcherSignatureBase64: dispatcherSignatureBase64 ?? this.dispatcherSignatureBase64,
-      receiverSignatureBase64: receiverSignatureBase64 ?? this.receiverSignatureBase64,
+      idArticulo: idArticulo,
+      nombreArticulo: nombreArticulo,
+      responsableActual: responsableActual,
+      responsablePropuesto: responsablePropuesto,
+      bodegaActual: bodegaActual,
+      bodegaPropuesta: bodegaPropuesta,
+      motivoSolicitud: motivoSolicitud,
+      fechaSolicitud: fechaSolicitud,
+      estado: estado ?? this.estado,
+      motivoRechazo: motivoRechazo ?? this.motivoRechazo,
+      fechaAplicacion: fechaAplicacion ?? this.fechaAplicacion,
+      firmaDespachadorBase64: firmaDespachadorBase64 ?? this.firmaDespachadorBase64,
+      firmaReceptorBase64: firmaReceptorBase64 ?? this.firmaReceptorBase64,
     );
   }
 

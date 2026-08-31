@@ -27,6 +27,8 @@ import 'package:sigo_app/providers/transfer_form_provider.dart';
 import 'package:sigo_app/providers/printer_provider.dart';
 import 'package:sigo_app/repositories/http_auth_repository.dart';
 import 'package:sigo_app/utils/app_config.dart';
+import 'package:sigo_app/repositories/http_geolocation_repository.dart';
+import 'package:sigo_app/providers/geolocation_provider.dart';
 
 // Services
 import 'services/mock_inventory_service.dart';
@@ -59,6 +61,9 @@ Future<void> main() async {
 
   // Inyectamos el mismo Dio al repositorio de autenticación
   final authRepository = HttpAuthRepository(backendDio);
+
+  // Inyectamos Dio al repositorio de geolocalización
+  final geolocationRepository = HttpGeolocationRepository(backendDio);
 
   final messengerKey = GlobalKey<ScaffoldMessengerState>();
   final notificationService = InAppNotificationService(messengerKey);
@@ -110,6 +115,11 @@ Future<void> main() async {
 
         // Provider para impresión por Bluetooth
         ChangeNotifierProvider(create: (_) => PrinterProvider()),
+
+        // Provider de geolocalización
+        ChangeNotifierProvider(
+          create: (_) => GeolocationProvider(geolocationRepository),
+        ),
       ],
       child: MyApp(messengerKey),
     ),

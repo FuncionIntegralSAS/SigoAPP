@@ -75,16 +75,21 @@ Fecha de actualización: Agosto 2026
 
 **Descripción:** Módulo de negocio que agrupa todas las funcionalidades relacionadas con la gestión del inventario de activos físicos: verificación mediante QR con captura de coordenadas GPS, generación de solicitudes de traspaso entre bodegas y aprobación/rechazo de dichas solicitudes.
 
-### 3.1 Verificación de Activos
+### 3.1 Verificación de Activos y Geolocalización
 
 **Permiso:** `avac`  
-**Descripción:** Verificación de activos mediante escaneo QR con captura de datos geográficos (latitud y longitud).
+**Descripción:** Verificación de activos mediante escaneo QR con captura, consulta y sincronización de datos geográficos (coordenadas GPS: latitud y longitud).
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
 | **Screen** | `AssetVerificationScreen` | `lib/screens/asset_verification_screen.dart` |
 | **Provider** | `AssetVerificationProvider` | `lib/providers/asset_verification_provider.dart` |
-| **Modelo** | `ArticleModel` | `lib/models/article_model.dart` |
+| **Provider** | `GeolocationProvider` | `lib/providers/geolocation_provider.dart` |
+| **Repositorio (contrato)** | `GeolocationRepository` | `lib/repositories/geolocation_repository.dart` |
+| **Repositorio (HTTP)** | `HttpGeolocationRepository` | `lib/repositories/http_geolocation_repository.dart` |
+| **Modelo** | `ArticleModel` (identificador negocio `codigoActivo`, ID BD `id`) | `lib/models/article_model.dart` |
+| **Modelo** | `GeolocationModel` | `lib/models/geolocation_model.dart` |
+| **Excepción** | `GeolocationBusinessException` | `lib/exceptions/geolocation_business_exception.dart` |
 | **Utilidad** | `ArticleQrParser` | `lib/utils/article_qr_parser.dart` |
 
 ### 3.2 Generación de Traspasos
@@ -293,7 +298,8 @@ main.dart
  │   ├── TransferApprovalProvider         ← MockTransferRepository
  │   ├── TransferDeliveryProvider         ← MockTransferRepository
  │   ├── TransferFormProvider             ← HttpCatalogRepository(backendDio)
- │   └── AssetVerificationProvider        ← (sin repositorio externo)
+ │   ├── AssetVerificationProvider        ← (sin repositorio externo)
+ │   └── GeolocationProvider              ← HttpGeolocationRepository(backendDio)
  │
  ├── [MÓDULO REQUISICIONES]
  │   └── RequisitionApprovalProvider      ← MockRequisitionService

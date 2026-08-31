@@ -77,7 +77,7 @@ class PrinterProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> printQrTicket(String qrData, String name, String licensePlate) async {
+  Future<bool> printQrTicket(String qrData, String name, String placa) async {
     if (!_isConnected) {
       _errorMessage = "No hay impresora conectada";
       notifyListeners();
@@ -89,7 +89,7 @@ class PrinterProvider extends ChangeNotifier {
       List<int> bytes = [];
 
       bytes += generator.text(name, styles: const PosStyles(align: PosAlign.center));
-      bytes += generator.text('Placa: $licensePlate', styles: const PosStyles(align: PosAlign.center));
+      bytes += generator.text('Placa: $placa', styles: const PosStyles(align: PosAlign.center));
       bytes += generator.feed(1);
       bytes += generator.qrcode(qrData, size: QRSize.size4);
       bytes += generator.feed(2);

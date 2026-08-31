@@ -4,11 +4,11 @@
 /// - [name]: nombre del empleado para mostrarlo en la UI.
 /// - [divisionId]: código de división para la carga en cascada de bodegas.
 class EmployeeResult {
-  final String name;
+  final String nombre;
   final String? divisionId;
 
   const EmployeeResult({
-    required this.name,
+    required this.nombre,
     this.divisionId,
   });
 
@@ -32,7 +32,7 @@ class EmployeeResult {
         json['PERSDIVI'];
 
     return EmployeeResult(
-      name: fullName,
+      nombre: fullName,
       divisionId: rawDivi?.toString(),
     );
   }

@@ -27,7 +27,7 @@ class ActiveCountProvider extends ChangeNotifier {
   String? get activeCountId => _activeCountId;
 
   String? _warehouseId;
-  String? get warehouseId => _warehouseId;
+  String? get idBodega => _warehouseId;
 
   // Cédula del usuario actual que maneja el dispositivo
   String? _currentUserId;
@@ -70,7 +70,7 @@ class ActiveCountProvider extends ChangeNotifier {
       // 1. Verificar si hay un formulario activo incompleto
       final forms = await db.query(
         'ActiveCountForms',
-        where: 'isCompleted = ?',
+        where: 'estaCompletado = ?',
         whereArgs: [0],
       );
       if (forms.isEmpty) {
@@ -81,7 +81,7 @@ class ActiveCountProvider extends ChangeNotifier {
 
       final form = forms.first;
       _activeCountId = form['id'] as String;
-      _warehouseId = form['warehouseId'] as String;
+      _warehouseId = form['idBodega'] as String;
 
       final items = await db.query(
         'CountMasterItems',
@@ -139,12 +139,12 @@ class ActiveCountProvider extends ChangeNotifier {
 
     // Calculamos discrepancias si existen ambos conteos
     _articlesNeedingCount3.clear();
-    for (var articleId in _masterItems.keys) {
-      final c1 = _count1Records[articleId] ?? 0.0;
-      final c2 = _count2Records[articleId] ?? 0.0;
+    for (var idArticulo in _masterItems.keys) {
+      final c1 = _count1Records[idArticulo] ?? 0.0;
+      final c2 = _count2Records[idArticulo] ?? 0.0;
       // Si ya hay datos en C2 y difiere de C1, requiere C3
       if (recordsC2.isNotEmpty && c1 != c2) {
-        _articlesNeedingCount3.add(articleId);
+        _articlesNeedingCount3.add(idArticulo);
       }
     }
 
@@ -204,14 +204,14 @@ class ActiveCountProvider extends ChangeNotifier {
 
     final newRecord = CountRecordModel(
       physicalCountId: _activeCountId!,
-      warehouseId: _warehouseId!,
+      idBodega: _warehouseId!,
       financialArticleId: financialArticleId,
       counterUserId: _currentUserId!,
       countNumber: _currentIteration,
       barcode: barcode,
       countedQuantity: quantity,
       countDate: DateTime.now(),
-      status: 'CONTADO',
+      estado: 'CONTADO',
     );
 
     await _dbHelper.insertCountRecord(newRecord.toMap());
@@ -236,13 +236,13 @@ class ActiveCountProvider extends ChangeNotifier {
     } else if (_currentIteration == 2) {
       // Calcular discrepancias
       _articlesNeedingCount3.clear();
-      for (var articleId in _masterItems.keys) {
-        final c1 = _count1Records[articleId] ?? 0.0;
+      for (var idArticulo in _masterItems.keys) {
+        final c1 = _count1Records[idArticulo] ?? 0.0;
         final c2 =
-            _currentIterationRecords[articleId] ??
+            _currentIterationRecords[idArticulo] ??
             0.0; // Lo que acabo de contar
         if (c1 != c2) {
-          _articlesNeedingCount3.add(articleId);
+          _articlesNeedingCount3.add(idArticulo);
         }
       }
 
@@ -268,7 +268,7 @@ class ActiveCountProvider extends ChangeNotifier {
     final db = await _dbHelper.database;
     await db.update(
       'ActiveCountForms',
-      {'isCompleted': 1},
+      {'estaCompletado': 1},
       where: 'id = ?',
       whereArgs: [_activeCountId],
     );
@@ -300,10 +300,10 @@ class ActiveCountProvider extends ChangeNotifier {
         return;
       }
 
-      // Agrupar registros por warehouseId y countNumber (o usar el ID del form)
+      // Agrupar registros por idBodega y countNumber (o usar el ID del form)
       // Para simplificar, reportaremos todos usando el primer registro como base.
       final primerRegistro = pendingRecords.first;
-      final bodega = primerRegistro['warehouseId'] as String;
+      final bodega = primerRegistro['idBodega'] as String;
       final numeroConteo = primerRegistro['countNumber'] as int;
 
       final articulos = pendingRecords.map((r) {
@@ -363,9 +363,9 @@ class ActiveCountProvider extends ChangeNotifier {
 
       final Map<String, dynamic> countFormMap = {
         'id': formId,
-        'warehouseId': ref.idBodega ?? 'GENERIC_WH',
-        'syncDate': DateTime.now().toIso8601String(),
-        'isCompleted': 0,
+        'idBodega': ref.idBodega ?? 'GENERIC_WH',
+        'fechaSincronizacion': DateTime.now().toIso8601String(),
+        'estaCompletado': 0,
       };
 
       final List<MasterItemData> masterItems = pendientes.map((p) {

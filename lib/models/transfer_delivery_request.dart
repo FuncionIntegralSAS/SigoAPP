@@ -5,13 +5,13 @@ part 'transfer_delivery_request.g.dart';
 @JsonSerializable()
 class TransferDeliveryRequest {
   final String transferId;
-  final String? dispatcherSignatureBase64;
-  final String? receiverSignatureBase64;
+  final String? firmaDespachadorBase64;
+  final String? firmaReceptorBase64;
 
   TransferDeliveryRequest({
     required this.transferId,
-    this.dispatcherSignatureBase64,
-    this.receiverSignatureBase64,
+    this.firmaDespachadorBase64,
+    this.firmaReceptorBase64,
   });
 
   factory TransferDeliveryRequest.fromJson(Map<String, dynamic> json) => 

@@ -9,41 +9,41 @@ part of 'transfer_request.dart';
 TransferRequest _$TransferRequestFromJson(Map<String, dynamic> json) =>
     TransferRequest(
       id: json['id'] as String,
-      articleId: json['articleId'] as String,
-      articleName: json['articleName'] as String,
-      currentResponsible: json['currentResponsible'] as String,
-      proposedResponsible: json['proposedResponsible'] as String,
-      requestReason: json['requestReason'] as String,
-      requestDate: DateTime.parse(json['requestDate'] as String),
-      currentWarehouse: json['currentWarehouse'] as String,
-      proposedWarehouse: json['proposedWarehouse'] as String,
-      status:
+      idArticulo: json['idArticulo'] as String,
+      nombreArticulo: json['nombreArticulo'] as String,
+      responsableActual: json['responsableActual'] as String,
+      responsablePropuesto: json['responsablePropuesto'] as String,
+      motivoSolicitud: json['motivoSolicitud'] as String,
+      fechaSolicitud: DateTime.parse(json['fechaSolicitud'] as String),
+      bodegaActual: json['bodegaActual'] as String,
+      bodegaPropuesta: json['bodegaPropuesta'] as String,
+      estado:
           $enumDecodeNullable(_$TransferStatusEnumMap, json['status']) ??
           TransferStatus.pending,
-      rejectionReason: json['rejectionReason'] as String?,
-      appliedDate: json['appliedDate'] == null
+      motivoRechazo: json['motivoRechazo'] as String?,
+      fechaAplicacion: json['fechaAplicacion'] == null
           ? null
-          : DateTime.parse(json['appliedDate'] as String),
-      dispatcherSignatureBase64: json['dispatcherSignatureBase64'] as String?,
-      receiverSignatureBase64: json['receiverSignatureBase64'] as String?,
+          : DateTime.parse(json['fechaAplicacion'] as String),
+      firmaDespachadorBase64: json['firmaDespachadorBase64'] as String?,
+      firmaReceptorBase64: json['firmaReceptorBase64'] as String?,
     );
 
 Map<String, dynamic> _$TransferRequestToJson(TransferRequest instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'articleId': instance.articleId,
-      'articleName': instance.articleName,
-      'currentResponsible': instance.currentResponsible,
-      'proposedResponsible': instance.proposedResponsible,
-      'currentWarehouse': instance.currentWarehouse,
-      'proposedWarehouse': instance.proposedWarehouse,
-      'requestReason': instance.requestReason,
-      'requestDate': instance.requestDate.toIso8601String(),
-      'appliedDate': instance.appliedDate?.toIso8601String(),
-      'status': _$TransferStatusEnumMap[instance.status]!,
-      'rejectionReason': instance.rejectionReason,
-      'dispatcherSignatureBase64': instance.dispatcherSignatureBase64,
-      'receiverSignatureBase64': instance.receiverSignatureBase64,
+      'idArticulo': instance.idArticulo,
+      'nombreArticulo': instance.nombreArticulo,
+      'responsableActual': instance.responsableActual,
+      'responsablePropuesto': instance.responsablePropuesto,
+      'bodegaActual': instance.bodegaActual,
+      'bodegaPropuesta': instance.bodegaPropuesta,
+      'motivoSolicitud': instance.motivoSolicitud,
+      'fechaSolicitud': instance.fechaSolicitud.toIso8601String(),
+      'fechaAplicacion': instance.fechaAplicacion?.toIso8601String(),
+      'status': _$TransferStatusEnumMap[instance.estado]!,
+      'motivoRechazo': instance.motivoRechazo,
+      'firmaDespachadorBase64': instance.firmaDespachadorBase64,
+      'firmaReceptorBase64': instance.firmaReceptorBase64,
     };
 
 const _$TransferStatusEnumMap = {

@@ -67,7 +67,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       // Inicializar con la primera bodega y cargar sus artículos
       _selectedWarehouse = _warehouses.first;
       _warehouseNotifier.value = _selectedWarehouse;
-      _loadArticles(_selectedWarehouse!.bodeCodi);
+      _loadArticles(_selectedWarehouse!.codigoBodega);
     }
   }
 
@@ -143,8 +143,8 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
 
       // 2. ACTUALIZAR EL ARTÍCULO SELECCIONADO con la ubicación.
       final updatedArticle = _selectedArticle!.copyWith(
-        latitude: lat,
-        longitude: lon,
+        latitud: lat,
+        longitud: lon,
       );
 
       // 3. Reemplazamos la instancia en el estado y en la lista mock
@@ -170,8 +170,8 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       if (printerProvider.isConnected) {
         final printSuccess = await printerProvider.printQrTicket(
           newQrData,
-          updatedArticle.name,
-          updatedArticle.licensePlate,
+          updatedArticle.nombre,
+          updatedArticle.placa,
         );
         if (!printSuccess) {
           if (mounted) {
@@ -235,14 +235,14 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
               crossAxisAlignment: pw.CrossAxisAlignment.center,
               children: [
                 pw.Text(
-                  'Nombre: ${article.name}',
+                  'Nombre: ${article.nombre}',
                   style: const pw.TextStyle(fontSize: 8),
                   textAlign: pw.TextAlign.center,
                   maxLines: 1,
                 ),
                 pw.SizedBox(height: 2),
                 pw.Text(
-                  'Placa: ${article.licensePlate}',
+                  'Placa: ${article.placa}',
                   style: const pw.TextStyle(fontSize: 8),
                   textAlign: pw.TextAlign.center,
                 ),
@@ -261,7 +261,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     );
 
     final output = await getApplicationDocumentsDirectory();
-    final file = File('${output.path}/qr_${article.licensePlate}.pdf');
+    final file = File('${output.path}/qr_${article.placa}.pdf');
     await file.writeAsBytes(await pdf.save());
     return file;
   }
@@ -332,11 +332,11 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         prefixIcon: Icon(Icons.location_city, color: primaryColor),
       ),
       valueListenable: _warehouseNotifier,
-      items: _warehouses.map((warehouse) {
+      items: _warehouses.map((bodega) {
         return DropdownItem(
-          value: warehouse,
+          value: bodega,
           child: Text(
-            '${warehouse.bodeCodi} - ${warehouse.bodeDesc}',
+            '${bodega.codigoBodega} - ${bodega.descripcionBodega}',
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
@@ -349,7 +349,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                 setState(() {
                   _selectedWarehouse = newValue;
                   _warehouseNotifier.value = newValue;
-                  _loadArticles(newValue.bodeCodi); // Recargar artículos
+                  _loadArticles(newValue.codigoBodega); // Recargar artículos
                 });
               }
             },
@@ -358,8 +358,8 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         hintText: 'Buscar bodega...',
         searchMatchFn: (item, searchValue) {
           final wh = item.value!;
-          return wh.bodeDesc.toLowerCase().contains(searchValue.toLowerCase()) ||
-              wh.bodeCodi.toLowerCase().contains(searchValue.toLowerCase());
+          return wh.descripcionBodega.toLowerCase().contains(searchValue.toLowerCase()) ||
+              wh.codigoBodega.toLowerCase().contains(searchValue.toLowerCase());
         },
       ),
       onMenuStateChange: (isOpen) {
@@ -385,7 +385,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         return DropdownItem(
           value: article,
           child: Text(
-            '${article.licensePlate} - ${article.name}',
+            '${article.placa} - ${article.nombre}',
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
@@ -406,8 +406,8 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         hintText: 'Buscar activo...',
         searchMatchFn: (item, searchValue) {
           final art = item.value!;
-          return art.name.toLowerCase().contains(searchValue.toLowerCase()) ||
-              art.licensePlate.toLowerCase().contains(searchValue.toLowerCase());
+          return art.nombre.toLowerCase().contains(searchValue.toLowerCase()) ||
+              art.placa.toLowerCase().contains(searchValue.toLowerCase());
         },
       ),
       onMenuStateChange: (isOpen) {

@@ -19,8 +19,10 @@ lib/
  └── widgets/       → Componentes UI reutilizables
 
 ## 2. Definición Extendida de Modelos (lib/models/)
+Todos los modelos de la aplicación siguen una estricta convención de nomenclatura: las propiedades en Dart deben estar escritas en **español `lowerCamelCase`** (ej. `codigoActivo`, `fechaSincronizacion`) para mantener la legibilidad semántica en el dominio y la UI. Sin embargo, para garantizar la compatibilidad con el backend (Spring Boot) y las bases de datos locales (SQLite preexistente), el mapeo en `fromJson`/`toJson` y `fromMap`/`toMap` debe conservar o soportar las llaves originales mediante `@JsonKey` o mecanismos de fallback (ej. `json['idBodega'] ?? json['warehouseId']`).
+
 ### 2.1 article_model.dart
-Representa un activo físico del inventario. Incluye identidad, responsable asignado, ubicación y metadatos operativos, con integración para lectura QR.
+Representa un activo físico del inventario. Separa explícitamente la identidad de base de datos / geolocalización (`id: int?`, mapeado a `afgeIdre`) de la identidad de negocio (`codigoActivo: String`, código de barras/QR de la empresa). Incluye responsable asignado, ubicación y metadatos operativos. Todos los flujos operativos (traslados, conteo físico, requisiciones) utilizan `codigoActivo` para prevenir inconsistencias en los payloads hacia el backend.
 
 ### 2.2 transfer_request.dart
 Modelo central para el traslado físico de activos. Mantiene el estado del flujo y garantiza la trazabilidad entre bodegas y responsables. Soporta serialización JSON automática mediante `json_annotation` / `json_serializable` (archivo generado: `transfer_request.g.dart`).
@@ -64,6 +66,12 @@ Además de `PhysicalCountRequest`, este archivo contiene los modelos para el flu
 * `CierreConteoRequest`: Modelo de petición para el cierre de un conteo activo. Encapsula únicamente el campo `bodega` (String), mapeado directamente al campo `@NotBlank` del backend Spring Boot.
 * `ConteoFisicoResponse`: Modelo de respuesta de los endpoints de conteo (particularmente `/cerrar`). Contiene `success` (bool) y `message` (String). Implementa `Equatable` y `fromJson` con valores por defecto defensivos.
 
+### 2.10 geolocation_model.dart (Módulo de Geolocalización)
+Representa las coordenadas geográficas asociadas a un activo físico en la base de datos Oracle / Spring Boot.
+* Campos principales: `afgeIdre` (int, ID del registro del activo), `afgeLati` (double, latitud), `afgeLong` (double, longitud).
+* Campos de auditoría opcionales: `afgeFcre`, `afgeUcre`, `afgeFedi`, `afgeUedi`.
+* Serialización bidireccional JSON tipada (`fromJson`, `toJson`).
+
 ## 3. Capa de Repositorios (lib/repositories/)
 ### 3.1 TransferRepository (Contrato Único)
 Contrato asíncrono (`Future`) que define la creación, consulta y procesamiento de solicitudes de traspaso de activos. Ambas implementaciones (mock y HTTP) cumplen este mismo contrato, lo que permite intercambiarlas mediante inyección de dependencias en `main.dart`.
@@ -84,6 +92,16 @@ Implementación HTTP real que conecta con los endpoints del backend Spring Boot 
 Contrato que define el acceso a las requisiciones de consumo.
 * getRequisitionsByStatus(String status): Consulta filtrada de requerimientos.
 * processBatch(Map<String, int> selectedItems, String targetStatus): Envío de múltiples identificadores y cantidades en bloque para optimización de transacciones.
+
+### 3.3 GeolocationRepository
+Contrato abstracto para la persistencia y consulta de geolocalización de activos físicos (`lib/repositories/geolocation_repository.dart`).
+* `getGeolocationByAssetId(int assetId)`: Consulta coordenadas existentes para un activo (`GET /api/v1/geolocalizacion-activos/{assetId}`).
+* `createGeolocation(GeolocationModel model)`: Registra nuevas coordenadas (`POST /api/v1/geolocalizacion-activos`).
+* `updateGeolocation(GeolocationModel model)`: Actualiza coordenadas de un activo (`PUT /api/v1/geolocalizacion-activos/{afgeIdre}`).
+* `deleteGeolocation(int assetId)`: Elimina el registro geográfico (`DELETE /api/v1/geolocalizacion-activos/{assetId}`).
+
+#### 3.3.1 HttpGeolocationRepository
+Implementación concreta que utiliza la instancia unificada de `Dio`. Lanza `GeolocationBusinessException` ante fallos de respuesta del servidor o problemas de red.
 
 ## 4. Lógica de Negocio y Servicios (lib/services/)
 ### 4.1 mock_inventory_service.dart y mock_requisition_service.dart
@@ -153,6 +171,11 @@ Excepción tipada para errores de negocio en el módulo de Traspasos.
 
 **Uso actual**: Lanzada exclusivamente desde `HttpTransferRepository` en los bloques `catch (DioException)`, transformando errores de red en mensajes de negocio legibles para el usuario.
 
+### 6.2 geolocation_business_exception.dart
+Excepción tipada para errores de negocio y conectividad en las operaciones de geolocalización (`HttpGeolocationRepository`).
+* Extrae el campo `message` y `code` enviados en la respuesta JSON estructurada del backend (`{success: false, message: ...}`).
+* Proporciona mensajes claros para la capa de presentación cuando las peticiones REST de ubicación fallan.
+
 **Patrón recomendado para extensión**: Si se requieren excepciones para otros módulos, seguir la convención `<módulo>_business_exception.dart` (ej. `requisition_business_exception.dart`, `count_business_exception.dart`).
 
 ## 7. Utilidades (lib/utils/)
@@ -214,6 +237,13 @@ Orquestador de estado para el submódulo de Entrega / Recepción de traspasos.
 * Consume `TransferRepository` para consultar solicitudes aprobadas (`ap`) y remitir firmas digitales (`applyTransferDelivery`).
 * Implementa filtrado local en base al identificador/cédula del usuario en sesión (`getAssignedTransfers(userIdentifier)`).
 * Gestiona el envío asíncrono y parcial de firmas (emisor o receptor) convirtiendo las capturas en Base64.
+
+### 8.10 GeolocationProvider
+Gestor de estado para la sincronización y consulta de geolocalización de activos.
+* Consume `GeolocationRepository`.
+* `syncGeolocation(int assetId, double lat, double lon)`: Orquesta la sincronización automática (intenta obtener coordenadas existentes; si no existen invoca POST `createGeolocation`, y si existen invoca PUT `updateGeolocation`).
+* `getGeolocation(int assetId)`: Consulta la ubicación registrada para un activo.
+* Expone la bandera `isLoading` para estados visuales de progreso.
 
 ## 9. Componentes de UI y Navegación
 ### 9.1 RequisitionsScreen y Tabs

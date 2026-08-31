@@ -13,17 +13,23 @@ class ArticleQrParser {
     }
 
     return ArticleModel(
-      id: map['ID'] ?? '',
-      name: map['NAME'] ?? '',
-      licensePlate: map['PLATE'] ?? '',
-      warehouse: map['WH'] ?? '',
-      responsible: map['RESP'] == 'N/A' ? null : map['RESP'],
-      latitude: map['LAT'] != null && map['LAT'] != 'No disp.'
-          ? double.tryParse(map['LAT']!)
-          : null,
-      longitude: map['LON'] != null && map['LON'] != 'No disp.'
-          ? double.tryParse(map['LON']!)
-          : null,
+      codigoActivo: map['Código'] ?? map['ID'] ?? '',
+      nombre: map['Nombre'] ?? map['NAME'] ?? '',
+      placa: map['Placa'] ?? map['PLATE'] ?? '',
+      bodega: map['Bodega'] ?? map['WH'] ?? '',
+      responsable: (map['RESP'] == 'N/A' || map['Responsable'] == 'N/A')
+          ? null
+          : (map['Responsable'] ?? map['RESP']),
+      latitud: map['Lat'] != null && map['Lat'] != 'No disp.'
+          ? double.tryParse(map['Lat']!)
+          : (map['LAT'] != null && map['LAT'] != 'No disp.'
+              ? double.tryParse(map['LAT']!)
+              : null),
+      longitud: map['Lon'] != null && map['Lon'] != 'No disp.'
+          ? double.tryParse(map['Lon']!)
+          : (map['LON'] != null && map['LON'] != 'No disp.'
+              ? double.tryParse(map['LON']!)
+              : null),
     );
   }
 }

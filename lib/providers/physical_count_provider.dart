@@ -92,21 +92,21 @@ class PhysicalCountProvider extends ChangeNotifier {
     }
   }
 
-  void selectWarehouse(WarehouseModel? warehouse) {
-    selectedWarehouse = warehouse;
+  void selectWarehouse(WarehouseModel? bodega) {
+    selectedWarehouse = bodega;
     selectedArticle = null;
     articles.clear();
     notifyListeners();
 
-    if (warehouse != null && selectedCompany != null) {
-      _loadArticles(warehouse.bodeCodi, selectedCompany!.codigo);
+    if (bodega != null && selectedCompany != null) {
+      _loadArticles(bodega.codigoBodega, selectedCompany!.codigo);
     }
   }
 
-  Future<void> _loadArticles(String warehouseId, String companyId) async {
+  Future<void> _loadArticles(String idBodega, String companyId) async {
     _setState(PhysicalCountState.enProceso);
     try {
-      articles = await _repository.getArticles(warehouseId, companyId);
+      articles = await _repository.getArticles(idBodega, companyId);
       _setState(PhysicalCountState.initial);
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 401) {
@@ -206,9 +206,9 @@ class PhysicalCountProvider extends ChangeNotifier {
 
     final request = PhysicalCountRequest(
       empresa: selectedCompany!.codigo,
-      bodega: selectedWarehouse!.bodeCodi,
+      bodega: selectedWarehouse!.codigoBodega,
       fecha: selectedDate,
-      articulo: selectedArticle!.id,
+      articulo: selectedArticle!.codigoActivo,
       verificarExistencia: verifyExistence,
     );
 
@@ -255,7 +255,7 @@ class PhysicalCountProvider extends ChangeNotifier {
 
     final request = AsignacionConteoRequest(
       empresa: selectedCompany!.codigo,
-      bodega: selectedWarehouse!.bodeCodi,
+      bodega: selectedWarehouse!.codigoBodega,
       fechaConteo: selectedDate,
       usuarios: selectedPersons
           .map(
@@ -301,9 +301,9 @@ class PhysicalCountProvider extends ChangeNotifier {
 
     final createRequest = PhysicalCountRequest(
       empresa: selectedCompany!.codigo,
-      bodega: selectedWarehouse!.bodeCodi,
+      bodega: selectedWarehouse!.codigoBodega,
       fecha: selectedDate,
-      articulo: selectedArticle!.id,
+      articulo: selectedArticle!.codigoActivo,
       verificarExistencia: verifyExistence,
     );
 
@@ -332,7 +332,7 @@ class PhysicalCountProvider extends ChangeNotifier {
 
     final assignRequest = AsignacionConteoRequest(
       empresa: selectedCompany!.codigo,
-      bodega: selectedWarehouse!.bodeCodi,
+      bodega: selectedWarehouse!.codigoBodega,
       fechaConteo: selectedDate,
       usuarios: selectedPersons
           .map(

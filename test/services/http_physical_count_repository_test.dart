@@ -51,8 +51,8 @@ void main() {
 
       final articles = await repository.getArticles('W1', null);
       expect(articles.length, 3);
-      expect(articles.first.id, 'All');
-      expect(articles.first.name, 'Todos');
+      expect(articles.first.codigoActivo, 'All');
+      expect(articles.first.nombre, 'Todos');
     });
 
     test('Should return mock articles when companyId is empty', () async {
@@ -61,8 +61,8 @@ void main() {
 
       final articles = await repository.getArticles('W1', '');
       expect(articles.length, 3);
-      expect(articles.first.id, 'All');
-      expect(articles.first.name, 'Todos');
+      expect(articles.first.codigoActivo, 'All');
+      expect(articles.first.nombre, 'Todos');
     });
 
     test('Should return mock articles when backend call throws DioException (fallback)', () async {
@@ -77,8 +77,8 @@ void main() {
 
       final articles = await repository.getArticles('W1', 'C1');
       expect(articles.length, 3);
-      expect(articles.first.id, 'All');
-      expect(articles[1].id, 'A1');
+      expect(articles.first.codigoActivo, 'All');
+      expect(articles[1].codigoActivo, 'A1');
     });
 
     test('Should return parsed backend articles prepended with Todos when backend call succeeds', () async {
@@ -89,10 +89,11 @@ void main() {
           statusCode: 200,
           data: [
             {
-              'id': 'A100',
+              'id': 100,
+              'artiCodi': 'A100',
               'name': 'Articulo Backend',
-              'licensePlate:': 'PL-99',
-              'warehouse': 'W1',
+              'placa': 'PL-99',
+              'bodega': 'W1',
             }
           ],
         );
@@ -101,10 +102,10 @@ void main() {
 
       final articles = await repository.getArticles('W1', 'C1');
       expect(articles.length, 2);
-      expect(articles[0].id, 'All');
-      expect(articles[0].name, 'Todos');
-      expect(articles[1].id, 'A100');
-      expect(articles[1].name, 'Articulo Backend');
+      expect(articles[0].codigoActivo, 'All');
+      expect(articles[0].nombre, 'Todos');
+      expect(articles[1].codigoActivo, 'A100');
+      expect(articles[1].nombre, 'Articulo Backend');
     });
   });
 }

@@ -29,37 +29,40 @@ class MockPhysicalCountRepository implements PhysicalCountRepository {
     await Future.delayed(const Duration(milliseconds: 50));
     return [
       const WarehouseModel(
-        bodeCodi: 'W1',
-        bodeDesc: 'Bodega Test (Mock)',
-        bodeEsta: 'W1',
+        codigoBodega: 'W1',
+        descripcionBodega: 'Bodega Test (Mock)',
+        estadoBodega: 'W1',
       ),
     ];
   }
 
   @override
   Future<List<ArticleModel>> getArticles(
-    String warehouseId, [
+    String idBodega, [
     String? companyId,
   ]) async {
     await Future.delayed(const Duration(milliseconds: 50));
     return [
       const ArticleModel(
-        id: 'All',
-        name: 'Todos',
-        licensePlate: '',
-        warehouse: 'All',
+        id: 0,
+        codigoActivo: 'All',
+        nombre: 'Todos',
+        placa: '',
+        bodega: 'All',
       ),
       const ArticleModel(
-        id: 'A1',
-        name: 'Computador Portátil (Mock)',
-        licensePlate: 'P-001',
-        warehouse: 'W1',
+        id: 1,
+        codigoActivo: 'A1',
+        nombre: 'Computador Portátil (Mock)',
+        placa: 'P-001',
+        bodega: 'W1',
       ),
       const ArticleModel(
-        id: 'A2',
-        name: 'Silla Ergonómica (Mock)',
-        licensePlate: 'S-005',
-        warehouse: 'W1',
+        id: 2,
+        codigoActivo: 'A2',
+        nombre: 'Silla Ergonómica (Mock)',
+        placa: 'S-005',
+        bodega: 'W1',
       ),
     ];
   }

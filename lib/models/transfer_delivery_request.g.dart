@@ -10,14 +10,14 @@ TransferDeliveryRequest _$TransferDeliveryRequestFromJson(
   Map<String, dynamic> json,
 ) => TransferDeliveryRequest(
   transferId: json['transferId'] as String,
-  dispatcherSignatureBase64: json['dispatcherSignatureBase64'] as String?,
-  receiverSignatureBase64: json['receiverSignatureBase64'] as String?,
+  firmaDespachadorBase64: json['firmaDespachadorBase64'] as String?,
+  firmaReceptorBase64: json['firmaReceptorBase64'] as String?,
 );
 
 Map<String, dynamic> _$TransferDeliveryRequestToJson(
   TransferDeliveryRequest instance,
 ) => <String, dynamic>{
   'transferId': instance.transferId,
-  'dispatcherSignatureBase64': instance.dispatcherSignatureBase64,
-  'receiverSignatureBase64': instance.receiverSignatureBase64,
+  'firmaDespachadorBase64': instance.firmaDespachadorBase64,
+  'firmaReceptorBase64': instance.firmaReceptorBase64,
 };

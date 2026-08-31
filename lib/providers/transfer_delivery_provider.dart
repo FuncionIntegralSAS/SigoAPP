@@ -33,12 +33,12 @@ class TransferDeliveryProvider extends ChangeNotifier {
   List<TransferRequest> getAssignedTransfers(String userIdentifier) {
     return _transfers.where((t) {
       // Solo mostramos los aprobados ('ap')
-      if (t.status != TransferStatus.approved) return false;
+      if (t.estado != TransferStatus.approved) return false;
 
       // Y que estén asignados al usuario (como actual o propuesto)
       // userIdentifier puede ser la cédula o nombre
-      return t.currentResponsible.contains(userIdentifier) || 
-             t.proposedResponsible.contains(userIdentifier);
+      return t.responsableActual.contains(userIdentifier) || 
+             t.responsablePropuesto.contains(userIdentifier);
     }).toList();
   }
 
@@ -50,8 +50,8 @@ class TransferDeliveryProvider extends ChangeNotifier {
     try {
       final request = TransferDeliveryRequest(
         transferId: transferId,
-        dispatcherSignatureBase64: dispatcherBase64,
-        receiverSignatureBase64: receiverBase64,
+        firmaDespachadorBase64: dispatcherBase64,
+        firmaReceptorBase64: receiverBase64,
       );
       await repository.applyTransferDelivery(request);
       await loadTransfers();

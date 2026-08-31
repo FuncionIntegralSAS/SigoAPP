@@ -101,11 +101,11 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
     final auth = context.watch<AuthProvider>();
     final userIdentifier = auth.currentCedula ?? '';
 
-    final bool isDispatcher = widget.transfer.currentResponsible.contains(userIdentifier);
-    final bool isReceiver = widget.transfer.proposedResponsible.contains(userIdentifier);
+    final bool isDispatcher = widget.transfer.responsableActual.contains(userIdentifier);
+    final bool isReceiver = widget.transfer.responsablePropuesto.contains(userIdentifier);
 
     // Según la regla del negocio: "el emisor debe firmar antes de hacer el despacho"
-    final bool dispatcherHasSigned = widget.transfer.dispatcherSignatureBase64 != null;
+    final bool dispatcherHasSigned = widget.transfer.firmaDespachadorBase64 != null;
 
     bool canSign = false;
     String title = '';

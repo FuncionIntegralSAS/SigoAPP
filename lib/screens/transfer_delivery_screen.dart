@@ -69,7 +69,7 @@ class _DeliveryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              request.articleName,
+              request.nombreArticulo,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -78,11 +78,11 @@ class _DeliveryCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text('ID Traspaso: ${request.id}'),
             const SizedBox(height: 8),
-            Text('Responsable actual: ${request.currentResponsible}'),
-            Text('Responsable propuesto: ${request.proposedResponsible}'),
+            Text('Responsable actual: ${request.responsableActual}'),
+            Text('Responsable propuesto: ${request.responsablePropuesto}'),
             const SizedBox(height: 6),
-            Text('Bodega actual: ${request.currentWarehouse}'),
-            Text('Bodega propuesta: ${request.proposedWarehouse}'),
+            Text('Bodega actual: ${request.bodegaActual}'),
+            Text('Bodega propuesta: ${request.bodegaPropuesta}'),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,

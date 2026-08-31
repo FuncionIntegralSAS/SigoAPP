@@ -13,26 +13,26 @@ class TransferRequestProvider extends ChangeNotifier {
   TransferRequestProvider(this.repository, this.notificationService);
 
   Future<void> createRequest({
-    required String articleId,
-    required String articleName,
-    required String currentResponsible,
-    required String proposedResponsible,
-    required String currentWarehouse,
-    required String proposedWarehouse,
-    required String requestReason,
+    required String idArticulo,
+    required String nombreArticulo,
+    required String responsableActual,
+    required String responsablePropuesto,
+    required String bodegaActual,
+    required String bodegaPropuesta,
+    required String motivoSolicitud,
   }) async {
     _setLoading(true);
 
     final request = TransferRequest(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      articleId: articleId,
-      articleName: articleName,
-      currentResponsible: currentResponsible,
-      proposedResponsible: proposedResponsible,
-      currentWarehouse: currentWarehouse,
-      proposedWarehouse: proposedWarehouse,
-      requestReason: requestReason,
-      requestDate: DateTime.now(),
+      idArticulo: idArticulo,
+      nombreArticulo: nombreArticulo,
+      responsableActual: responsableActual,
+      responsablePropuesto: responsablePropuesto,
+      bodegaActual: bodegaActual,
+      bodegaPropuesta: bodegaPropuesta,
+      motivoSolicitud: motivoSolicitud,
+      fechaSolicitud: DateTime.now(),
     );
 
     try {

@@ -10,6 +10,7 @@ Su propósito es ser una guía de consulta rápida para desarrolladores presente
 
 ## 2. Tipado y Modelos (`lib/models`)
 - Jamás usar estructuras dinámicas (ej. `Map<String, dynamic>`) directamente en la UI o en los Providers. Todo mapeo debe realizarse mediante clases de Modelo fuertemente tipadas (usando `fromJson` y `toJson`).
+- **Nomenclatura (Español lowerCamelCase):** Las propiedades de los modelos en Dart deben estar estrictamente en español y en formato `lowerCamelCase` (ej. `codigoActivo`, `idBodega`). Sin embargo, los contratos JSON con el backend **jamás** deben romperse. Para lograr esto, se debe usar obligatoriamente la anotación `@JsonKey(name: 'original_key')` (si se usa `json_serializable`) o mapear manualmente en las factorías `fromJson` y `toJson` con la llave exacta esperada por Spring Boot.
 - **Optimización de Payloads:** Si un proceso complejo (como un Conteo Físico o un Traspaso) requiere enviar participantes o dependencias, enviar *únicamente* los IDs necesarios (ej. `nationalId`, `articleId`) en lugar de los objetos anidados completos para reducir el peso de las peticiones.
 
 ## 3. Implementación de Servicios (`lib/services`)

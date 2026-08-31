@@ -3,41 +3,44 @@ import 'package:equatable/equatable.dart';
 /// Modelo de datos para representar un Activo/Artículo del inventario.
 /// Implementa [Equatable] para facilitar las comparaciones y pruebas unitarias.
 class ArticleModel extends Equatable {
-  final String id;
-  final String name;
-  final String licensePlate;
-  final String warehouse; // ID de la bodega/centro de costos
-  final String? responsible;
-  final String? status;    // Estado del activo (Operativo, Dañado, etc.)
+  final int? id; // PK de la base de datos (ACFIIDIN)
+  final String codigoActivo; // Antiguo id, código comúnmente usado (ACFIARTI)
+  final String nombre;
+  final String placa;
+  final String bodega; // ID de la bodega/centro de costos
+  final String? responsable;
+  final String? estado;    // Estado del activo (Operativo, Dañado, etc.)
   
-  // Ubicación GPS (opcional, se llena al generar el QR)
-  final double? latitude;
-  final double? longitude;
+  // Ubicación GPS (opcional, se llena al generar el QR o al consultar)
+  final double? latitud;
+  final double? longitud;
 
   // ATRIBUTOS PARA REGISTRO ADICIONAL
-  final String? comments;  // Comentarios o notas adicionales
-  final String? photoPath; // Ruta local de la fotografía en el dispositivo
+  final String? comentarios;  // Comentarios o notas adicionales
+  final String? rutaFoto; // Ruta local de la fotografía en el dispositivo
 
   const ArticleModel({
-    required this.id,
-    required this.name,
-    required this.licensePlate,
-    required this.warehouse,
-    this.responsible,
-    this.latitude,
-    this.longitude,
-    this.status,
-    this.comments,
-    this.photoPath,
+    this.id,
+    required this.codigoActivo,
+    required this.nombre,
+    required this.placa,
+    required this.bodega,
+    this.responsable,
+    this.latitud,
+    this.longitud,
+    this.estado,
+    this.comentarios,
+    this.rutaFoto,
   });
 
   factory ArticleModel.fromJson(Map<String, dynamic> json) {
     return ArticleModel(
-      id: json['artiCodi']?.toString() ?? json['id']?.toString() ?? '',
-      name: json['artiDesc']?.toString() ?? json['name']?.toString() ?? '',
-      licensePlate: json['artiPlac']?.toString() ?? json['licensePlate']?.toString() ?? '',
-      warehouse: json['bodeCodi']?.toString() ?? json['warehouse']?.toString() ?? '',
-      responsible: json['responsable']?.toString() ?? json['responsible']?.toString(),
+      id: json['id'] != null ? int.tryParse(json['id'].toString()) : null,
+      codigoActivo: json['artiCodi']?.toString() ?? json['codigoActivo']?.toString() ?? json['activeCode']?.toString() ?? '',
+      nombre: json['artiDesc']?.toString() ?? json['nombre']?.toString() ?? json['name']?.toString() ?? '',
+      placa: json['artiPlac']?.toString() ?? json['placa']?.toString() ?? json['licensePlate']?.toString() ?? '',
+      bodega: json['bodeCodi']?.toString() ?? json['codigoBodega']?.toString() ?? json['warehouse']?.toString() ?? json['bodega']?.toString() ?? '',
+      responsable: json['responsable']?.toString() ?? json['responsible']?.toString(),
     );
   }
 
@@ -45,41 +48,43 @@ class ArticleModel extends Equatable {
   /// NOTA: Por seguridad y optimización, los campos de comentarios, estado
   /// y ruta de foto NO se incluyen en el código QR.
   String get qrData {
-    if (latitude != null && longitude != null) {
-      final latStr = latitude!.toStringAsFixed(6);
-      final lonStr = longitude!.toStringAsFixed(6);
-      return 'Código:$id|Placa:$licensePlate|Nombre:$name|Lat:$latStr|Lon:$lonStr';
+    if (latitud != null && longitud != null) {
+      final latStr = latitud!.toStringAsFixed(6);
+      final lonStr = longitud!.toStringAsFixed(6);
+      return 'Código:$codigoActivo|Placa:$placa|Nombre:$nombre|Lat:$latStr|Lon:$lonStr';
     }
-    return 'Código:$id|Placa:$licensePlate|Nombre:$name';
+    return 'Código:$codigoActivo|Placa:$placa|Nombre:$nombre';
   }
 
   /// Método para crear una copia del modelo con campos actualizados.
   ArticleModel copyWith({
-    String? id,
-    String? name,
-    String? licensePlate,
-    String? warehouse,
-    String? responsible,
-    double? latitude,
-    double? longitude,
-    String? status,
-    String? comments,
-    String? photoPath,
+    int? id,
+    String? codigoActivo,
+    String? nombre,
+    String? placa,
+    String? bodega,
+    String? responsable,
+    double? latitud,
+    double? longitud,
+    String? estado,
+    String? comentarios,
+    String? rutaFoto,
   }) {
     return ArticleModel(
       id: id ?? this.id,
-      name: name ?? this.name,
-      licensePlate: licensePlate ?? this.licensePlate,
-      warehouse: warehouse ?? this.warehouse,
-      responsible: responsible ?? this.responsible,
-      latitude: latitude ?? this.latitude,
-      longitude: longitude ?? this.longitude,
-      status: status ?? this.status,
-      comments: comments ?? this.comments,
-      photoPath: photoPath ?? this.photoPath,
+      codigoActivo: codigoActivo ?? this.codigoActivo,
+      nombre: nombre ?? this.nombre,
+      placa: placa ?? this.placa,
+      bodega: bodega ?? this.bodega,
+      responsable: responsable ?? this.responsable,
+      latitud: latitud ?? this.latitud,
+      longitud: longitud ?? this.longitud,
+      estado: estado ?? this.estado,
+      comentarios: comentarios ?? this.comentarios,
+      rutaFoto: rutaFoto ?? this.rutaFoto,
     );
   }
 
   @override
-  List<Object?> get props => [id, warehouse];
+  List<Object?> get props => [id, codigoActivo, bodega];
 }

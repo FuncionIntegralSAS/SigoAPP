@@ -19,10 +19,10 @@ abstract class TransferRepository {
   /// Aprueba una solicitud de traspaso identificada por [requestId].
   Future<void> approveTransfer(String requestId);
 
-  /// Rechaza una solicitud de traspaso con una [rejectionReason] obligatoria.
+  /// Rechaza una solicitud de traspaso con una [motivoRechazo] obligatoria.
   Future<void> rejectTransfer({
     required String requestId,
-    required String rejectionReason,
+    required String motivoRechazo,
   });
 
   /// Aplica un traspaso previamente aprobado.
