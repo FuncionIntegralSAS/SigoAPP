@@ -40,6 +40,7 @@ Fecha de actualización: Agosto 2026
 | **Utilidad** | `PermissionUtils`, `PermissionListExtension` | `lib/utils/permission_utils.dart` |
 | **Utilidad** | `AppLogger` | `lib/utils/app_logger.dart` |
 | **Utilidad** | `JsonInterceptor` (Dio) | `lib/utils/json_interceptor.dart` |
+| **Utilidad** | `AuthInterceptor` (Dio) | `lib/utils/auth_interceptor.dart` |
 
 **Estados del Provider:** `AuthProvider` mantiene: `isAuthenticated`, `currentToken`, `currentCedula`, `permisos`.
 
@@ -73,6 +74,8 @@ Fecha de actualización: Agosto 2026
 
 ## 3. Inventario
 
+**Documentación Funcional:** [`SigoAPP_Funcional_Inventario.md`](./SigoAPP_Funcional_Inventario.md)
+
 **Descripción:** Módulo de negocio que agrupa todas las funcionalidades relacionadas con la gestión del inventario de activos físicos: verificación mediante QR con captura de coordenadas GPS, generación de solicitudes de traspaso entre bodegas y aprobación/rechazo de dichas solicitudes.
 
 ### 3.1 Verificación de Activos y Geolocalización
@@ -100,17 +103,23 @@ Fecha de actualización: Agosto 2026
 | Capa | Archivo | Ruta |
 |------|---------|------|
 | **Screen** | `InventoryScreen` | `lib/screens/inventory_screen.dart` |
+| **Screen** | `GeneratorScreen` (generación QR) | `lib/screens/generator_screen.dart` |
+| **Provider** | `InventoryProvider` | `lib/providers/inventory_provider.dart` |
 | **Provider** | `TransferRequestProvider` | `lib/providers/transfer_request_provider.dart` |
 | **Provider** | `TransferFormProvider` | `lib/providers/transfer_form_provider.dart` |
-| **Repositorio (contrato)** | `TransferRepository` | `lib/repositories/transfer_repository.dart` |
-| **Repositorio (HTTP)** | `HttpTransferRepository` | `lib/repositories/http_transfer_repository.dart` |
-| **Repositorio (mock)** | `MockTransferRepository` | `lib/repositories/mock_transfer_repository.dart` |
+| **Repositorio (contrato inventario)** | `InventoryRepository` | `lib/repositories/inventory_repository.dart` |
+| **Repositorio (HTTP inventario)** | `HttpInventoryRepository` | `lib/repositories/http_inventory_repository.dart` |
+| **Repositorio (contrato traspasos)** | `TransferRepository` | `lib/repositories/transfer_repository.dart` |
+| **Repositorio (HTTP traspasos)** | `HttpTransferRepository` | `lib/repositories/http_transfer_repository.dart` |
+| **Repositorio (mock traspasos)** | `MockTransferRepository` | `lib/repositories/mock_transfer_repository.dart` |
 | **Repositorio (contrato catálogos)** | `CatalogRepository` | `lib/repositories/catalog_repository.dart` |
 | **Repositorio (HTTP catálogos)** | `HttpCatalogRepository` | `lib/repositories/http_catalog_repository.dart` |
 | **Repositorio (mock catálogos)** | `MockCatalogRepository` | `lib/repositories/mock_catalog_repository.dart` |
+| **Modelo** | `CompanyModel` | `lib/models/company_model.dart` |
+| **Modelo** | `WarehouseModel` | `lib/models/warehouse_model.dart` |
+| **Modelo** | `ArticleModel` | `lib/models/article_model.dart` |
 | **Modelo** | `TransferRequest` | `lib/models/transfer_request.dart` |
 | **Modelo** | `TransferFilter` | `lib/models/transfer_filter.dart` |
-| **Modelo** | `ArticleModel` | `lib/models/article_model.dart` |
 | **Modelo** | `EmployeeResult` | `lib/models/employee_result.dart` |
 | **Widget** | `TransferFormWidget` | `lib/widgets/transfer_form_widget.dart` |
 | **Widget** | `CascadingCatalogsWidget` | `lib/widgets/cascading_catalogs_widget.dart` |
@@ -278,6 +287,7 @@ Los siguientes servicios y utilidades son compartidos entre múltiples módulos:
 | `AppConfig` | `lib/utils/app_config.dart` | Todos (configuración de Dio, dominio) |
 | `AppLogger` | `lib/utils/app_logger.dart` | Todos (logging centralizado) |
 | `JsonInterceptor` | `lib/utils/json_interceptor.dart` | Todos los repositorios HTTP |
+| `AuthInterceptor` | `lib/utils/auth_interceptor.dart` | Todos los repositorios HTTP (token JWT automático) |
 | `NotificationService` | `lib/services/notification_service.dart` | Inventario (Traspasos) |
 | `InAppNotificationService` | `lib/services/in_app_notification_service.dart` | Inventario (Traspasos) |
 | `PermissionUtils` | `lib/utils/permission_utils.dart` | Dashboard, PhysicalCountScreen |
@@ -294,6 +304,7 @@ main.dart
  ├── Provider<NotificationService>        ← InAppNotificationService
  │
  ├── [MÓDULO INVENTARIO]
+ │   ├── InventoryProvider                ← HttpInventoryRepository(backendDio)
  │   ├── TransferRequestProvider          ← MockTransferRepository + NotificationService
  │   ├── TransferApprovalProvider         ← MockTransferRepository
  │   ├── TransferDeliveryProvider         ← MockTransferRepository

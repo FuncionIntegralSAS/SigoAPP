@@ -3,13 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
+import '../providers/transfer_form_provider.dart';
 import '../providers/transfer_request_provider.dart';
-import '../services/mock_inventory_service.dart';
 import '../utils/dropdown_template.dart';
 
 class TransferFormWidget extends StatefulWidget {
   final ArticleModel article;
-  final List<String> users;
+  final List<String>? users;
   final List<WarehouseModel>? warehouses;
   final String? bodegaPropuesta;
   final String? responsablePropuesto;
@@ -17,7 +17,7 @@ class TransferFormWidget extends StatefulWidget {
   const TransferFormWidget({
     super.key,
     required this.article,
-    required this.users,
+    this.users,
     this.warehouses,
     this.bodegaPropuesta,
     this.responsablePropuesto,
@@ -28,55 +28,36 @@ class TransferFormWidget extends StatefulWidget {
 }
 
 class _TransferFormWidgetState extends State<TransferFormWidget> {
-  String? _targetResponsible;
-  WarehouseModel? _targetWarehouse;
-  String? _notes;
-  late String _originalResponsible;
-  late List<WarehouseModel> _availableWarehouses;
-
-  final TextEditingController _responsibleSearchController =
+  final TextEditingController _employeeSearchController =
       TextEditingController();
-  final ValueNotifier<String?> _responsibleNotifier = ValueNotifier(null);
-
   final TextEditingController _warehouseSearchController =
       TextEditingController();
   final ValueNotifier<WarehouseModel?> _warehouseNotifier = ValueNotifier(null);
 
+  WarehouseModel? _targetWarehouse;
+  String? _notes;
+  late String _originalResponsible;
+
   @override
   void initState() {
     super.initState();
-    _originalResponsible =
-        widget.article.responsable ?? 'Sin responsable';
+    _originalResponsible = widget.article.responsable ?? 'Sin responsable';
 
-    _targetResponsible = widget.users.contains(widget.responsablePropuesto)
-        ? widget.responsablePropuesto
-        : null;
-    _responsibleNotifier.value = _targetResponsible;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final formProvider = context.read<TransferFormProvider>();
+      formProvider.resetForm();
 
-    if (_targetResponsible != null) {
-      _availableWarehouses = _getWarehousesFor(_targetResponsible!);
-      if (widget.bodegaPropuesta != null) {
-        final matches = _availableWarehouses.where(
-          (w) => w.codigoBodega == widget.bodegaPropuesta,
-        );
-        if (matches.isNotEmpty) {
-          _targetWarehouse = matches.first;
-        }
+      if (widget.responsablePropuesto != null &&
+          widget.responsablePropuesto!.isNotEmpty) {
+        _employeeSearchController.text = widget.responsablePropuesto!;
+        formProvider.searchEmployee(widget.responsablePropuesto!);
       }
-    } else {
-      _availableWarehouses = [];
-    }
-    _warehouseNotifier.value = _targetWarehouse;
-  }
-
-  List<WarehouseModel> _getWarehousesFor(String responsable) {
-    return MockInventoryService().getWarehousesForResponsible(responsable);
+    });
   }
 
   @override
   void dispose() {
-    _responsibleSearchController.dispose();
-    _responsibleNotifier.dispose();
+    _employeeSearchController.dispose();
     _warehouseSearchController.dispose();
     _warehouseNotifier.dispose();
     super.dispose();
@@ -84,7 +65,8 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<TransferRequestProvider>();
+    final requestProvider = context.watch<TransferRequestProvider>();
+    final formProvider = context.watch<TransferFormProvider>();
 
     return Padding(
       padding: EdgeInsets.only(
@@ -93,187 +75,244 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
         top: 16,
         bottom: MediaQuery.of(context).viewInsets.bottom + 16,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Solicitud de Traspaso',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-
-          Text('Activo: ${widget.article.nombre}'),
-          const SizedBox(height: 8),
-
-          Text('Responsable actual: $_originalResponsible'),
-          const SizedBox(height: 8),
-
-          Text('Bodega actual: ${widget.article.bodega}'),
-          const SizedBox(height: 12),
-
-          // 1. Selector de Responsable Destino (PRIMERO)
-          DropdownButtonFormField2<String>(
-            isExpanded: true,
-            valueListenable: _responsibleNotifier,
-            hint: widget.users.isEmpty
-                ? const Text('No hay responsables disponibles')
-                : const Text('Seleccionar responsable destino'),
-            decoration: const InputDecoration(
-              labelText: 'Responsable Destino',
-              border: OutlineInputBorder(),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Solicitud de Traspaso',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            items: widget.users
-                .map(
-                  (u) => DropdownItem<String>(
-                    value: u,
-                    child: Text(
-                      u,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                )
-                .toList(),
-            onChanged: widget.users.isEmpty
-                ? null
-                : (value) {
-                    setState(() {
-                      _targetResponsible = value;
-                      _responsibleNotifier.value = value;
-                      // Al cambiar de responsable se resetea la bodega seleccionada
-                      _targetWarehouse = null;
-                      _warehouseNotifier.value = null;
-                      if (value != null) {
-                        _availableWarehouses = _getWarehousesFor(value);
-                      } else {
-                        _availableWarehouses = [];
-                      }
-                    });
-                  },
-            dropdownSearchData: DropdownTemplates.searchData(
-              controller: _responsibleSearchController,
-              hintText: 'Buscar responsable...',
-              searchMatchFn: (item, searchValue) {
-                return item.value!
-                    .toLowerCase()
-                    .contains(searchValue.toLowerCase());
-              },
-            ),
-            onMenuStateChange: (isOpen) {
-              if (!isOpen) _responsibleSearchController.clear();
-            },
-          ),
+            const SizedBox(height: 12),
 
-          const SizedBox(height: 12),
+            Text('Activo: ${widget.article.nombre}'),
+            const SizedBox(height: 6),
+            Text('Código: ${widget.article.codigoActivo}'),
+            const SizedBox(height: 6),
+            Text('Responsable actual: $_originalResponsible'),
+            const SizedBox(height: 6),
+            Text('Bodega actual: ${widget.article.bodega}'),
+            const SizedBox(height: 16),
 
-          // 2. Selector de Bodega Destino (SEGUNDO - En cascada)
-          DropdownButtonFormField2<WarehouseModel>(
-            isExpanded: true,
-            valueListenable: _warehouseNotifier,
-            hint: _targetResponsible == null
-                ? const Text('Seleccione primero un responsable')
-                : (_availableWarehouses.isEmpty
-                    ? const Text('No hay bodegas asociadas')
-                    : const Text('Seleccionar bodega destino')),
-            decoration: InputDecoration(
-              labelText: 'Bodega Destino',
-              border: const OutlineInputBorder(),
-              enabled: _targetResponsible != null &&
-                  _availableWarehouses.isNotEmpty,
-            ),
-            items: _availableWarehouses
-                .map(
-                  (w) => DropdownItem<WarehouseModel>(
-                    value: w,
-                    child: Text(
-                      '${w.codigoBodega} - ${w.descripcionBodega}',
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                )
-                .toList(),
-            onChanged: (_targetResponsible == null ||
-                    _availableWarehouses.isEmpty)
-                ? null
-                : (value) {
-                    setState(() {
-                      _targetWarehouse = value;
-                      _warehouseNotifier.value = value;
-                    });
-                  },
-            dropdownSearchData: DropdownTemplates.searchData(
-              controller: _warehouseSearchController,
-              hintText: 'Buscar bodega...',
-              searchMatchFn: (item, searchValue) {
-                final wh = item.value!;
-                return wh.descripcionBodega
-                        .toLowerCase()
-                        .contains(searchValue.toLowerCase()) ||
-                    wh.codigoBodega
-                        .toLowerCase()
-                        .contains(searchValue.toLowerCase());
-              },
-            ),
-            onMenuStateChange: (isOpen) {
-              if (!isOpen) _warehouseSearchController.clear();
-            },
-          ),
-
-          const SizedBox(height: 12),
-
-          // 3. Observaciones
-          TextFormField(
-            decoration: const InputDecoration(
-              labelText: 'Observaciones',
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 2,
-            onChanged: (value) {
-              _notes = value;
-            },
-          ),
-
-          const SizedBox(height: 16),
-
-          // 4. Botón de Creación
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: (_targetResponsible == null || _targetWarehouse == null)
-                  ? null
-                  : () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      final navigator = Navigator.of(context);
-
-                      await provider.createRequest(
-                        idArticulo: widget.article.codigoActivo,
-                        nombreArticulo: widget.article.nombre,
-                        responsableActual: _originalResponsible,
-                        responsablePropuesto: _targetResponsible!,
-                        bodegaActual: widget.article.bodega,
-                        bodegaPropuesta: _targetWarehouse!.codigoBodega,
-                        motivoSolicitud: _notes ?? '',
-                      );
-
-                      if (!mounted) return;
-
-                      navigator.pop();
-
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Solicitud de traspaso enviada'),
-                          backgroundColor: Colors.green,
+            // 1. Búsqueda de Responsable Destino por Cédula / Código
+            TextFormField(
+              controller: _employeeSearchController,
+              decoration: InputDecoration(
+                labelText: 'Buscar Empleado Destino',
+                hintText: 'Ingrese cédula del empleado...',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.badge_outlined),
+                suffixIcon: formProvider.isSearchingEmployee
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
-                      );
-                    },
-              child: provider.loading
-                  ? const CircularProgressIndicator()
-                  : const Text('Crear solicitud'),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.search),
+                        onPressed: () {
+                          formProvider.searchEmployee(
+                            _employeeSearchController.text,
+                          );
+                        },
+                      ),
+              ),
+              onFieldSubmitted: (query) {
+                formProvider.searchEmployee(query);
+              },
             ),
-          ),
-        ],
+
+            if (formProvider.employeeName != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.green,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${formProvider.employeeName!} (División: ${formProvider.divisionId ?? "N/A"})',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            if (formProvider.employeeError != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                formProvider.employeeError!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ],
+
+            const SizedBox(height: 14),
+
+            // 2. Selector de Bodega Destino (Restringida a la división del empleado)
+            DropdownButtonFormField2<WarehouseModel>(
+              isExpanded: true,
+              valueListenable: _warehouseNotifier,
+              hint: formProvider.isLoadingWarehouses
+                  ? const Text('Cargando bodegas de la división...')
+                  : formProvider.employeeName == null
+                      ? const Text('Busque primero el empleado destino')
+                      : formProvider.warehouses.isEmpty
+                          ? const Text('Sin bodegas asociadas a la división')
+                          : const Text('Seleccionar bodega destino'),
+              decoration: InputDecoration(
+                labelText: 'Bodega Destino (División)',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.warehouse_outlined),
+                enabled: formProvider.employeeName != null &&
+                    formProvider.warehouses.isNotEmpty &&
+                    !formProvider.isLoadingWarehouses,
+              ),
+              items: formProvider.warehouses
+                  .map(
+                    (w) => DropdownItem<WarehouseModel>(
+                      value: w,
+                      child: Text(
+                        '${w.codigoBodega} - ${w.descripcionBodega}',
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (formProvider.employeeName == null ||
+                      formProvider.warehouses.isEmpty)
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _targetWarehouse = value;
+                        _warehouseNotifier.value = value;
+                      });
+                      formProvider.selectWarehouse(value?.codigoBodega);
+                    },
+              dropdownSearchData: DropdownTemplates.searchData(
+                controller: _warehouseSearchController,
+                hintText: 'Buscar bodega...',
+                searchMatchFn: (item, searchValue) {
+                  final wh = item.value!;
+                  return wh.descripcionBodega
+                          .toLowerCase()
+                          .contains(searchValue.toLowerCase()) ||
+                      wh.codigoBodega
+                          .toLowerCase()
+                          .contains(searchValue.toLowerCase());
+                },
+              ),
+              onMenuStateChange: (isOpen) {
+                if (!isOpen) _warehouseSearchController.clear();
+              },
+            ),
+
+            if (formProvider.warehouseError != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                formProvider.warehouseError!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ],
+
+            const SizedBox(height: 14),
+
+            // 3. Observaciones
+            TextFormField(
+              decoration: const InputDecoration(
+                labelText: 'Observaciones / Motivo',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.notes_outlined),
+              ),
+              maxLines: 2,
+              onChanged: (value) {
+                _notes = value;
+              },
+            ),
+
+            const SizedBox(height: 18),
+
+            // 4. Botón de Creación
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: (formProvider.employeeName == null ||
+                        _targetWarehouse == null ||
+                        requestProvider.loading)
+                    ? null
+                    : () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final navigator = Navigator.of(context);
+
+                        await requestProvider.createRequest(
+                          idArticulo: widget.article.codigoActivo,
+                          nombreArticulo: widget.article.nombre,
+                          responsableActual: _originalResponsible,
+                          responsablePropuesto: formProvider.employeeName!,
+                          bodegaActual: widget.article.bodega,
+                          bodegaPropuesta: _targetWarehouse!.codigoBodega,
+                          motivoSolicitud: _notes ??
+                              'Solicitud de traspaso generada desde SigoAPP',
+                        );
+
+                        if (!mounted) return;
+
+                        navigator.pop();
+
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Solicitud de traspaso enviada exitosamente',
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: requestProvider.loading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Crear Solicitud',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

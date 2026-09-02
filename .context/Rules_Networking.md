@@ -29,12 +29,19 @@ Future<void> searchPerson({String? nombre, String? apellido, String? cedula}) { 
 
 ## 4. Validaciones de Peticiones y Manejo de Errores
 - **Validación Temprana (Fail Fast):** Validar la forma del request antes de realizar la llamada HTTP. Si hacen falta parámetros obligatorios *lógicos* (como la necesidad de enviar al menos uno de tres parámetros para búsqueda), lanzar excepción desde el Servicio y/o rechazar el proceso en el Provider antes de golpear el servidor, para así ahorrar uso de red.
-- **Identificación de Errores HTTP:**
+- **Identificación de Errores y Códigos HTTP:**
+  - `204 No Content`: Retornado por endpoints como `/api/v1/empresas/getAll` cuando no existen registros disponibles. Los repositorios deben validar explícitamente `response.statusCode == 204` o `response.data == null`, retornando una colección vacía (`[]`) sin intentar deserializar para evitar errores de casteo (`TypeError: null is not a subtype of List`).
   - `400 Bad Request`: Representan errores de malformación, datos faltantes, o validaciones en donde intervino el usuario. Siempre extraer el string `message` de la API para mostrarlo al usuario.
+  - `401 Unauthorized / 403 Forbidden`: Indican sesión expirada, token inválido o falta de permisos. Deben capturarse en los Providers para transicionar a estado `ERROR` con mensajes claros al usuario invitando a renovar la sesión.
   - `409 Conflict`: Casos puntuales en los que reglas lógicas colisionan (ej. bodega ya bloqueada, lote consumido). Siempre informar sobre el conflicto puntual.
   - `500 Internal Server Error`: Errores imprevisibles; la aplicación no debe crashear, sino proveer una advertencia general invirtiendo en logs internos, invitando a intentar más tarde.
 - **Manejo Resiliente:** Toda llamada de red debe ir protegida mediante un bloque `try/catch`. Nunca derivar la excepción cruda a la UI. Capturarla en el Provider y transformarla a un estado `(state == PhysicalCountState.ERROR)` proveyendo un mensaje `errorMessage` humano y amigable.
 
-## 5. Pruebas y Simulaciones (Mocks)
+## 5. Autenticación y Cabeceras Automáticas (AuthInterceptor)
+- **Inyección Centralizada de Token:** La cabecera `Authorization: Bearer <token>` se inyecta de forma automática en todas las peticiones a endpoints protegidos mediante `AuthInterceptor` en la instancia única de `Dio` (`AppConfig.createDio()`).
+- **Exclusión de Rutas Públicas:** Las rutas públicas de autenticación (`/api/v1/auth/`) se omiten automáticamente del interceptor.
+- **Desacoplamiento de Providers:** Los constructores de Providers no deben disparar peticiones protegidas durante el arranque global de la aplicación (antes del login). La carga de datos debe vincularse al ciclo de vida de las pantallas correspondientes (`initState` con `WidgetsBinding.instance.addPostFrameCallback`).
+
+## 6. Pruebas y Simulaciones (Mocks)
 - **Mocks con Latencia:** Al construir un servicio falso (`MockService`), utilizar `Future.delayed` para simular asincronía y asegurar que los *Loading States* (`CircularProgressIndicator`) actúan correctamente en la UI.
 - **Inyección de Errores Intencionales:** Para garantizar la solidez de los Providers, los Mocks deben incluir la bandera intencional de simulación de errores (`throw DioException()`), con el fin de correr pruebas unitarias validando la transición a estado ERROR de sus respectivos flujos.

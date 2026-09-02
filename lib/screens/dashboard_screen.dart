@@ -111,19 +111,20 @@ class DashboardScreen extends StatelessWidget {
                     );
                   },
                 ),
-              _DashboardItem(
-                icon: Icons.handshake,
-                title: 'Entrega / Recepción',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          const transfer_delivery.TransferDeliveryScreen(),
-                    ),
-                  );
-                },
-              ),
+              if (auth.permisos.hasPermission(AppPermission.entregaInventario))
+                _DashboardItem(
+                  icon: Icons.handshake,
+                  title: 'Entrega / Recepción',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const transfer_delivery.TransferDeliveryScreen(),
+                      ),
+                    );
+                  },
+                ),
 
               if (!kReleaseMode)
                 _DashboardItem(

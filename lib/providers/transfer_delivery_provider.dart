@@ -30,15 +30,19 @@ class TransferDeliveryProvider extends ChangeNotifier {
     }
   }
 
-  List<TransferRequest> getAssignedTransfers(String userIdentifier) {
+  List<TransferRequest> getAssignedTransfers([String? userIdentifier]) {
     return _transfers.where((t) {
       // Solo mostramos los aprobados ('ap')
       if (t.estado != TransferStatus.approved) return false;
 
-      // Y que estén asignados al usuario (como actual o propuesto)
-      // userIdentifier puede ser la cédula o nombre
-      return t.responsableActual.contains(userIdentifier) || 
-             t.responsablePropuesto.contains(userIdentifier);
+      // Si no se especifica identificador o viene vacío, mostramos todos los aprobados
+      if (userIdentifier == null || userIdentifier.trim().isEmpty) {
+        return true;
+      }
+
+      final query = userIdentifier.trim().toLowerCase();
+      return t.responsableActual.toLowerCase().contains(query) ||
+          t.responsablePropuesto.toLowerCase().contains(query);
     }).toList();
   }
 

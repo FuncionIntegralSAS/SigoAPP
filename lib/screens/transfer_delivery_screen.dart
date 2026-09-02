@@ -26,9 +26,9 @@ class _TransferDeliveryScreenState extends State<TransferDeliveryScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<TransferDeliveryProvider>();
     final auth = context.watch<AuthProvider>();
-    
-    // Usar la cédula como identificador principal
-    final userIdentifier = auth.currentCedula ?? ''; 
+
+    // Usar el username o la cédula como identificador principal del usuario en sesión
+    final userIdentifier = auth.currentUsername ?? auth.currentCedula ?? '';
 
     final transfers = provider.getAssignedTransfers(userIdentifier);
 

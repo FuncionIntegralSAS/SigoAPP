@@ -3,7 +3,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
-import '../services/mock_inventory_service.dart';
+import '../models/company_model.dart';
+import '../providers/inventory_provider.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:pdf/pdf.dart';
@@ -14,6 +15,7 @@ import '../providers/printer_provider.dart';
 import '../widgets/printer_connection_dialog.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import '../utils/dropdown_template.dart';
+import '../providers/geolocation_provider.dart';
 
 // El StatefulWidget para la pantalla de Generación de QR
 class GeneratorScreen extends StatefulWidget {
@@ -24,18 +26,13 @@ class GeneratorScreen extends StatefulWidget {
 }
 
 class _GeneratorScreenState extends State<GeneratorScreen> {
-  // Instancia única del servicio
-  final MockInventoryService _service = MockInventoryService();
-
   // --- Estado de la Pantalla ---
-  List<WarehouseModel> _warehouses = [];
-  WarehouseModel? _selectedWarehouse; // Bodega seleccionada (Filtro 1)
-
-  List<ArticleModel> _articles = [];
   ArticleModel? _selectedArticle; // Artículo seleccionado (Filtro 2)
 
+  final TextEditingController _companySearchController = TextEditingController();
   final TextEditingController _warehouseSearchController = TextEditingController();
   final TextEditingController _articleSearchController = TextEditingController();
+  final ValueNotifier<CompanyModel?> _companyNotifier = ValueNotifier(null);
   final ValueNotifier<WarehouseModel?> _warehouseNotifier = ValueNotifier(null);
   final ValueNotifier<ArticleModel?> _articleNotifier = ValueNotifier(null);
 
@@ -48,38 +45,40 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   @override
   void initState() {
     super.initState();
-    _loadInitialData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = context.read<InventoryProvider>();
+      if (provider.companies.isEmpty && provider.state != InventoryState.loading) {
+        provider.loadCompanies();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _companySearchController.dispose();
     _warehouseSearchController.dispose();
     _articleSearchController.dispose();
+    _companyNotifier.dispose();
     _warehouseNotifier.dispose();
     _articleNotifier.dispose();
     super.dispose();
   }
 
-  // Carga inicial de Bodegas
-  void _loadInitialData() {
-    _warehouses = _service.getWarehouses();
-    if (_warehouses.isNotEmpty) {
-      // Inicializar con la primera bodega y cargar sus artículos
-      _selectedWarehouse = _warehouses.first;
-      _warehouseNotifier.value = _selectedWarehouse;
-      _loadArticles(_selectedWarehouse!.codigoBodega);
+  // Sync notifiers with provider
+  void _syncNotifiers(InventoryProvider provider) {
+    if (_companyNotifier.value != provider.selectedCompany) {
+      _companyNotifier.value = provider.selectedCompany;
     }
-  }
-
-  // Carga de artículos basada en la Bodega seleccionada
-  void _loadArticles(String costCenterId) {
-    setState(() {
-      // USANDO EL MÉTODO CORREGIDO del servicio
-      _articles = _service.getArticlesByWarehouseId(costCenterId);
-      _selectedArticle = null; // Reiniciar selección del artículo
-      _articleNotifier.value = null;
-      _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
-    });
+    if (_warehouseNotifier.value != provider.selectedWarehouse) {
+      _warehouseNotifier.value = provider.selectedWarehouse;
+      // Reset article if warehouse changed globally
+      if (_selectedArticle != null && provider.articles.every((a) => a.id != _selectedArticle!.id)) {
+        _selectedArticle = null;
+        _articleNotifier.value = null;
+        _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
+      }
+    }
   }
 
   // FUNCIÓN: obtención de la geolocalización.
@@ -147,8 +146,30 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         longitud: lon,
       );
 
-      // 3. Reemplazamos la instancia en el estado y en la lista mock
-      _service.updateArticle(updatedArticle);
+      final geoProvider = context.read<GeolocationProvider>();
+      if (updatedArticle.id != null) {
+        final synced =
+            await geoProvider.syncGeolocation(updatedArticle.id!, lat, lon);
+        if (!synced && mounted) {
+          await showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Aviso de Sincronización'),
+              content: Text(
+                'No se pudo registrar la ubicación en el servidor:\n${geoProvider.errorMessage ?? "Error de red"}\n\nEl proceso local continuará con normalidad.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Aceptar'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+
+      if (!mounted) return;
 
       final newQrData = updatedArticle.qrData;
 
@@ -269,6 +290,9 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   // --- Estructura Visual (build) ---
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<InventoryProvider>();
+    _syncNotifiers(provider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Generador de Código QR'),
@@ -286,24 +310,41 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: provider.state == InventoryState.loading 
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Selector de Bodega
-            _buildWarehouseSelector(),
+            if (provider.errorMessage != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                color: Colors.red.shade100,
+                child: Text(
+                  provider.errorMessage!,
+                  style: TextStyle(color: Colors.red.shade900),
+                ),
+              ),
+
+            // 1. Selector de Empresa
+            _buildCompanySelector(provider),
             const SizedBox(height: 20),
 
-            // 2. Selector de Artículo
-            _buildArticleSelector(),
+            // 2. Selector de Bodega
+            _buildWarehouseSelector(provider),
+            const SizedBox(height: 20),
+
+            // 3. Selector de Artículo
+            _buildArticleSelector(provider),
             const SizedBox(height: 30),
 
-            // 3. Botón de Generación
-            _buildGenerateButton(),
+            // 4. Botón de Generación
+            _buildGenerateButton(provider),
             const SizedBox(height: 20),
 
-            // 4. Mensaje de Estado
+            // 5. Mensaje de Estado
             Text(
               _message,
               textAlign: TextAlign.center,
@@ -314,7 +355,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             ),
             const SizedBox(height: 30),
 
-            // 5. Contenedor del QR
+            // 6. Contenedor del QR
             _buildQrDisplay(),
           ],
         ),
@@ -322,17 +363,59 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     );
   }
 
+  // Widget de selección de Empresa
+  Widget _buildCompanySelector(InventoryProvider provider) {
+    return DropdownButtonFormField2<CompanyModel>(
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: '1. Seleccione Empresa',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        prefixIcon: Icon(Icons.business, color: primaryColor),
+      ),
+      valueListenable: _companyNotifier,
+      items: provider.companies.map((company) {
+        return DropdownItem(
+          value: company,
+          child: Text(
+            '${company.codigo} - ${company.descripcion}',
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        );
+      }).toList(),
+      onChanged: _isGenerating
+          ? null
+          : (CompanyModel? newValue) {
+              if (newValue != null) {
+                provider.selectCompany(newValue);
+              }
+            },
+      dropdownSearchData: DropdownTemplates.searchData(
+        controller: _companySearchController,
+        hintText: 'Buscar empresa...',
+        searchMatchFn: (item, searchValue) {
+          final comp = item.value!;
+          return comp.descripcion.toLowerCase().contains(searchValue.toLowerCase()) ||
+              comp.codigo.toLowerCase().contains(searchValue.toLowerCase());
+        },
+      ),
+      onMenuStateChange: (isOpen) {
+        if (!isOpen) _companySearchController.clear();
+      },
+    );
+  }
+
   // Widget de selección de Bodega
-  Widget _buildWarehouseSelector() {
+  Widget _buildWarehouseSelector(InventoryProvider provider) {
     return DropdownButtonFormField2<WarehouseModel>(
       isExpanded: true,
       decoration: InputDecoration(
-        labelText: '1. Seleccione Centro de Costos/Bodega',
+        labelText: '2. Seleccione Centro de Costos/Bodega',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         prefixIcon: Icon(Icons.location_city, color: primaryColor),
       ),
       valueListenable: _warehouseNotifier,
-      items: _warehouses.map((bodega) {
+      items: provider.warehouses.map((bodega) {
         return DropdownItem(
           value: bodega,
           child: Text(
@@ -346,11 +429,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
           ? null
           : (WarehouseModel? newValue) {
               if (newValue != null) {
-                setState(() {
-                  _selectedWarehouse = newValue;
-                  _warehouseNotifier.value = newValue;
-                  _loadArticles(newValue.codigoBodega); // Recargar artículos
-                });
+                provider.selectWarehouse(newValue);
               }
             },
       dropdownSearchData: DropdownTemplates.searchData(
@@ -369,19 +448,19 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   }
 
   // Widget de selección de Artículo
-  Widget _buildArticleSelector() {
+  Widget _buildArticleSelector(InventoryProvider provider) {
     return DropdownButtonFormField2<ArticleModel>(
       isExpanded: true,
       decoration: InputDecoration(
-        labelText: '2. Seleccione Activo para QR',
+        labelText: '3. Seleccione Activo para QR',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         prefixIcon: Icon(Icons.vpn_key, color: primaryColor),
       ),
       valueListenable: _articleNotifier,
-      hint: _articles.isEmpty
+      hint: provider.articles.isEmpty
           ? const Text('No hay activos disponibles')
           : const Text('Seleccione un activo'),
-      items: _articles.map((article) {
+      items: provider.articles.map((article) {
         return DropdownItem(
           value: article,
           child: Text(
@@ -391,7 +470,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
           ),
         );
       }).toList(),
-      onChanged: _isGenerating || _articles.isEmpty
+      onChanged: _isGenerating || provider.articles.isEmpty
           ? null
           : (ArticleModel? newValue) {
               setState(() {
@@ -417,7 +496,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   }
 
   // Widget del botón de Generación
-  Widget _buildGenerateButton() {
+  Widget _buildGenerateButton(InventoryProvider provider) {
     return ElevatedButton.icon(
       onPressed: _isGenerating || _selectedArticle == null ? null : _generateQr,
       icon: _isGenerating
@@ -431,7 +510,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             )
           : const SizedBox.shrink(),
       label: Text(
-        _isGenerating ? 'Generando QR...' : '3. Generar QR',
+        _isGenerating ? 'Generando QR...' : '4. Generar QR',
         style: const TextStyle(color: Colors.white),
       ),
       style: ElevatedButton.styleFrom(

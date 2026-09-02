@@ -3,11 +3,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
-import '../services/mock_inventory_service.dart';
+import '../models/company_model.dart';
 import 'package:provider/provider.dart';
+import '../providers/inventory_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/transfer_form_widget.dart'; // Importamos el widget del formulario
 import '../utils/dropdown_template.dart';
+import '../providers/geolocation_provider.dart';
 
 const WarehouseModel _allWarehousesFilter = WarehouseModel(
   codigoBodega: 'ALL',
@@ -23,12 +25,7 @@ class InventoryScreen extends StatefulWidget {
 }
 
 class _InventoryScreenState extends State<InventoryScreen> {
-  final MockInventoryService _service = MockInventoryService();
   final Color primaryColor = Colors.deepPurple;
-
-  List<ArticleModel> _allArticles = [];
-  List<WarehouseModel> _warehouses = [];
-  List<String> _responsibles = [];
 
   final List<String> _statusOptions = [
     'Operativo',
@@ -37,67 +34,48 @@ class _InventoryScreenState extends State<InventoryScreen> {
     'Baja',
   ];
 
-  WarehouseModel? _selectedWarehouse;
-  final ValueNotifier<WarehouseModel?> _filterWarehouseNotifier = ValueNotifier(
-    null,
-  );
-  final TextEditingController _warehouseFilterSearchController =
-      TextEditingController();
-
+  final ValueNotifier<CompanyModel?> _companyNotifier = ValueNotifier(null);
+  final ValueNotifier<WarehouseModel?> _warehouseNotifier = ValueNotifier(null);
+  final TextEditingController _companySearchController = TextEditingController();
+  final TextEditingController _warehouseSearchController = TextEditingController();
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = context.read<InventoryProvider>();
+      if (provider.companies.isEmpty || provider.errorMessage != null) {
+        provider.loadCompanies();
+      }
+    });
   }
 
   @override
   void dispose() {
-    _filterWarehouseNotifier.dispose();
-    _warehouseFilterSearchController.dispose();
+    _companyNotifier.dispose();
+    _warehouseNotifier.dispose();
+    _companySearchController.dispose();
+    _warehouseSearchController.dispose();
     super.dispose();
   }
 
-  void _loadData() {
-    if (!mounted) return;
-    setState(() {
-      _allArticles = List.from(_service.getArticles());
-      if (_warehouses.isEmpty) {
-        _warehouses = [_allWarehousesFilter, ..._service.getWarehouses()];
-        _selectedWarehouse = _allWarehousesFilter;
-        _filterWarehouseNotifier.value = _selectedWarehouse;
-      }
-
-      _responsibles = [
-        'Juan Pérez',
-        'Maria López',
-        'Carlos Ruiz',
-        'Andrés Felipe Restrepo',
-      ];
-    });
-  }
-
-  List<ArticleModel> get _filteredArticles {
-    if (_selectedWarehouse == null ||
-        _selectedWarehouse!.codigoBodega == _allWarehousesFilter.codigoBodega) {
-      return _allArticles;
+  void _syncNotifiers(InventoryProvider provider) {
+    if (_companyNotifier.value != provider.selectedCompany) {
+      _companyNotifier.value = provider.selectedCompany;
     }
-    return _allArticles
-        .where((a) => a.bodega == _selectedWarehouse!.codigoBodega)
-        .toList();
+    if (_warehouseNotifier.value != provider.selectedWarehouse) {
+      _warehouseNotifier.value = provider.selectedWarehouse;
+    }
   }
 
   /// MÉTODO PARA MOSTRAR EL FORMULARIO DE TRASPASO
-  void _showTransferForm(ArticleModel article) {
+  void _showTransferForm(ArticleModel article, InventoryProvider provider) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       builder: (context) => TransferFormWidget(
         article: article,
-        users: _responsibles,
-        warehouses: _warehouses
-            .where((w) => w.codigoBodega != _allWarehousesFilter.codigoBodega)
-            .toList(),
       ),
     );
   }
@@ -126,6 +104,27 @@ class _InventoryScreenState extends State<InventoryScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           Future<void> captureLocation() async {
+            if (currentLat != null && currentLon != null) {
+              final update = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Actualizar Ubicación'),
+                  content: const Text('El activo ya cuenta con una ubicación registrada. ¿Desea reemplazarla por su ubicación actual?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('No'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Sí'),
+                    ),
+                  ],
+                ),
+              );
+              if (update != true) return;
+            }
+
             setModalState(() => isLocating = true);
             try {
               LocationPermission permission =
@@ -343,30 +342,59 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ElevatedButton(
                     onPressed: isSaving
                         ? null
-                        : () {
+                        : () async {
                             setModalState(() => isSaving = true);
                             try {
+                              if (currentLat != null &&
+                                  currentLon != null &&
+                                  article.id != null) {
+                                final geoProvider =
+                                    context.read<GeolocationProvider>();
+                                final synced = await geoProvider.syncGeolocation(
+                                  article.id!,
+                                  currentLat!,
+                                  currentLon!,
+                                );
+                                if (!synced && context.mounted) {
+                                  await showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Aviso de Sincronización'),
+                                      content: Text(
+                                        'No se pudo registrar la ubicación en el servidor:\n${geoProvider.errorMessage ?? "Error de red"}\n\nLos cambios locales continuarán.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx),
+                                          child: const Text('Aceptar'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                              }
+
                               final updatedArticle = article.copyWith(
-                                estado: selectedStatus,
-                                comentarios: commentsController.text,
                                 latitud: currentLat,
                                 longitud: currentLon,
-                                rutaFoto: rutaFoto,
+                                estado: selectedStatus,
+                                comentarios: commentsController.text.trim(),
                               );
 
-                              _service.updateArticle(updatedArticle);
-
                               if (context.mounted) {
-                                Navigator.pop(context);
-                                _loadData();
+                                context
+                                    .read<InventoryProvider>()
+                                    .updateArticleLocally(updatedArticle);
+
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text(
-                                      '✅ Activo actualizado con éxito',
+                                  const SnackBar(
+                                    content: Text(
+                                      'Datos del activo actualizados correctamente',
                                     ),
-                                    backgroundColor: Colors.blue,
+                                    backgroundColor: Colors.green,
                                   ),
                                 );
+                                Navigator.pop(context);
                               }
                             } catch (e) {
                               if (context.mounted) {
@@ -417,6 +445,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.read<AuthProvider>();
+    final provider = context.watch<InventoryProvider>();
+    _syncNotifiers(provider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Inventario de Activos'),
@@ -429,24 +460,56 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
         ],
       ),
-      body: Padding(
+      body: provider.state == InventoryState.loading 
+        ? const Center(child: CircularProgressIndicator())
+        : Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _buildWarehouseSelector(),
+            if (provider.errorMessage != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red.shade900),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        provider.errorMessage!,
+                        style: TextStyle(color: Colors.red.shade900),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      tooltip: 'Reintentar',
+                      color: Colors.red.shade900,
+                      onPressed: () => provider.loadCompanies(),
+                    ),
+                  ],
+                ),
+              ),
+            _buildCompanySelector(provider),
+            const SizedBox(height: 10),
+            _buildWarehouseSelector(provider),
             const SizedBox(height: 10),
             Text(
-              'Activos en lista: ${_filteredArticles.length}',
+              'Activos en lista: ${provider.articles.length}',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const Divider(),
             Expanded(
-              child: _filteredArticles.isEmpty
+              child: provider.articles.isEmpty
                   ? const Center(child: Text('No hay activos para esta bodega'))
                   : ListView.builder(
-                      itemCount: _filteredArticles.length,
+                      itemCount: provider.articles.length,
                       itemBuilder: (context, index) =>
-                          _buildArticleTile(_filteredArticles[index]),
+                          _buildArticleTile(provider.articles[index], provider),
                     ),
             ),
           ],
@@ -455,15 +518,59 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  Widget _buildWarehouseSelector() {
+  Widget _buildCompanySelector(InventoryProvider provider) {
+    return DropdownButtonFormField2<CompanyModel>(
+      isExpanded: true,
+      valueListenable: _companyNotifier,
+      decoration: InputDecoration(
+        labelText: 'Filtrar por Empresa',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      items: provider.companies
+          .map(
+            (c) => DropdownItem<CompanyModel>(
+              value: c,
+              child: Text(
+                '${c.codigo} - ${c.descripcion}',
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: (v) {
+        if (v != null) {
+          provider.selectCompany(v);
+        }
+      },
+      dropdownSearchData: DropdownTemplates.searchData(
+        controller: _companySearchController,
+        hintText: 'Buscar empresa...',
+        searchMatchFn: (item, searchValue) {
+          final comp = item.value!;
+          return comp.descripcion.toLowerCase().contains(
+                searchValue.toLowerCase(),
+              ) ||
+              comp.codigo.toLowerCase().contains(searchValue.toLowerCase());
+        },
+      ),
+      onMenuStateChange: (isOpen) {
+        if (!isOpen) _companySearchController.clear();
+      },
+    );
+  }
+
+  Widget _buildWarehouseSelector(InventoryProvider provider) {
+    final List<WarehouseModel> whOptions = [_allWarehousesFilter, ...provider.warehouses];
+
     return DropdownButtonFormField2<WarehouseModel>(
       isExpanded: true,
-      valueListenable: _filterWarehouseNotifier,
+      valueListenable: _warehouseNotifier,
       decoration: InputDecoration(
         labelText: 'Filtrar por Bodega',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
-      items: _warehouses
+      items: whOptions
           .map(
             (w) => DropdownItem<WarehouseModel>(
               value: w,
@@ -478,13 +585,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
           )
           .toList(),
       onChanged: (v) {
-        setState(() {
-          _selectedWarehouse = v;
-          _filterWarehouseNotifier.value = v;
-        });
+        if (v != null) {
+          provider.selectWarehouse(v);
+        }
       },
       dropdownSearchData: DropdownTemplates.searchData(
-        controller: _warehouseFilterSearchController,
+        controller: _warehouseSearchController,
         hintText: 'Buscar bodega...',
         searchMatchFn: (item, searchValue) {
           final wh = item.value!;
@@ -495,12 +601,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
         },
       ),
       onMenuStateChange: (isOpen) {
-        if (!isOpen) _warehouseFilterSearchController.clear();
+        if (!isOpen) _warehouseSearchController.clear();
       },
     );
   }
 
-  Widget _buildArticleTile(ArticleModel article) {
+  Widget _buildArticleTile(ArticleModel article, InventoryProvider provider) {
     Color statusColor;
     switch (article.estado) {
       case 'Operativo':
@@ -571,7 +677,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             IconButton(
               icon: const Icon(Icons.swap_horiz, color: Colors.orange),
               tooltip: 'Traspasar Activo',
-              onPressed: () => _showTransferForm(article),
+              onPressed: () => _showTransferForm(article, provider),
             ),
             const Icon(Icons.chevron_right, color: Colors.grey),
           ],

@@ -35,3 +35,8 @@ Este documento describe las clases y métodos utilitarios de la carpeta `lib/uti
 - **Propósito**: Interceptor de `Dio` diseñado para capturar respuestas del backend que vienen en formato de texto o con un `Content-Type` incorrecto (por ejemplo `text/plain`), pero que en realidad son un JSON válido. Este interceptor hace el _parsing_ forzado para evitar errores tipo `String is not a subtype of Map/List`.
 - **Lugares de uso**:
   - `lib/utils/app_config.dart` (se añade a la instancia global de Dio)
+
+## `auth_interceptor.dart`
+- **Propósito**: Interceptor de `Dio` encargado de inyectar automáticamente la cabecera `Authorization: Bearer <token>` en todas las peticiones salientes hacia endpoints protegidos, leyendo el token JWT de `FlutterSecureStorage` (clave `'auth_token'`). Excluye de forma automática los endpoints públicos de autenticación (`/api/v1/auth/`) y emite advertencias con `AppLogger` ante errores 401 o 403.
+- **Lugares de uso**:
+  - `lib/utils/app_config.dart` (se añade a la instancia global de Dio)

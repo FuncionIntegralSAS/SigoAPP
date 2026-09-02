@@ -4,7 +4,6 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 
 import '../models/article_model.dart';
 import '../widgets/transfer_form_widget.dart';
-import '../providers/transfer_request_provider.dart';
 import '../providers/geolocation_provider.dart';
 import '../utils/dropdown_template.dart';
 import 'scanner_screen.dart';
@@ -134,15 +133,26 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
       );
 
       if (update == true && mounted) {
-        await geoProvider.syncGeolocation(
+        final success = await geoProvider.syncGeolocation(
           article.id!,
           currentPosition.latitude,
           currentPosition.longitude,
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ubicación guardada exitosamente')),
-          );
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ubicación guardada exitosamente')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'No se pudo sincronizar la ubicación: ${geoProvider.errorMessage ?? "Error de conexión"}',
+                ),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
         }
       }
     }
@@ -154,14 +164,10 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => ChangeNotifierProvider.value(
-        value: context.read<TransferRequestProvider>(),
-        child: TransferFormWidget(
-          article: verifiedArticle!,
-          users: responsibles,
-          responsablePropuesto: verifiedArticle!.responsable,
-          bodegaPropuesta: verifiedArticle!.bodega,
-        ),
+      builder: (_) => TransferFormWidget(
+        article: verifiedArticle!,
+        responsablePropuesto: verifiedArticle!.responsable,
+        bodegaPropuesta: verifiedArticle!.bodega,
       ),
     );
   }
