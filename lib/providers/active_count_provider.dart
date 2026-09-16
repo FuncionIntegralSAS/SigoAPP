@@ -36,7 +36,7 @@ class ActiveCountProvider extends ChangeNotifier {
   int _currentIteration = 1;
   int get currentIteration => _currentIteration;
 
-  Map<String, MasterItemData> _masterItems = {};
+  final Map<String, MasterItemData> _masterItems = {};
   Map<String, MasterItemData> get masterItems => _masterItems;
 
   // Records counted in the current iteration: { 'financialArticleId': totalCounted }
@@ -53,7 +53,7 @@ class ActiveCountProvider extends ChangeNotifier {
   Map<String, double> _count2Records = {};
 
   // To fast check if an article needs a 3rd count
-  Set<String> _articlesNeedingCount3 = {};
+  final Set<String> _articlesNeedingCount3 = {};
 
   void _setState(ActiveCountState newState) {
     _state = newState;
@@ -174,8 +174,9 @@ class ActiveCountProvider extends ChangeNotifier {
   Future<void> recordCount(String barcode, double quantity) async {
     if (_activeCountId == null ||
         _warehouseId == null ||
-        _currentUserId == null)
+        _currentUserId == null) {
       return;
+    }
 
     // Buscar si el código de barras coincide con un artículo financiero maestro
     String? financialArticleId;
@@ -394,6 +395,22 @@ class ActiveCountProvider extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Limpia todo el estado en memoria al cerrar sesión
+  void resetState() {
+    _activeCountId = null;
+    _warehouseId = null;
+    _currentUserId = null;
+    _currentIteration = 1;
+    _masterItems.clear();
+    _currentIterationRecords.clear();
+    _count1Records.clear();
+    _count2Records.clear();
+    _articlesNeedingCount3.clear();
+    _errorMessage = null;
+    _state = ActiveCountState.idle;
     notifyListeners();
   }
 }

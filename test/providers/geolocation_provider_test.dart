@@ -17,6 +17,14 @@ class FakeGeolocationRepository implements GeolocationRepository {
   }
 
   @override
+  Future<List<GeolocationModel>> getAllGeolocations() async {
+    if (shouldThrow) {
+      throw GeolocationBusinessException('Fallo de conexión al servidor');
+    }
+    return database.values.toList();
+  }
+
+  @override
   Future<void> createGeolocation(GeolocationModel model) async {
     if (shouldThrow) {
       throw GeolocationBusinessException('Error al crear registro');

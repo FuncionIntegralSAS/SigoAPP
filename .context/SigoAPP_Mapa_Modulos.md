@@ -12,7 +12,7 @@ Fecha de actualización: Agosto 2026
 
 | # | Módulo de Negocio | Sub-funcionalidades | Permiso(s) Involucrados |
 |---|-------------------|---------------------|-------------------------|
-| 1 | [Autenticación y Dominio](#1-autenticación-y-dominio) | Configuración de dominio, Login JWT | Ninguno (público) |
+| 1 | [Autenticación y Dominio](#1-autenticación-y-dominio) | Configuración de dominio, Login JWT, Expiración de sesión (401) | Ninguno (público) |
 | 2 | [Dashboard Principal](#2-dashboard-principal) | Navegación dinámica por permisos | Autenticación válida |
 | 3 | [Inventario](#3-inventario) | Verificación de Activos (QR + GPS), Generación de Traspasos, Aprobación de Traspasos, Entrega / Recepción (Firmas) | `avac`, `agqr`, `agst`, `aatr`, Autenticado |
 | 4 | [Requisiciones](#4-requisiciones) | Aprobación y Entrega de inventario | `areq`, `aein` |
@@ -23,7 +23,7 @@ Fecha de actualización: Agosto 2026
 
 ## 1. Autenticación y Dominio
 
-**Descripción:** Flujo obligatorio de configuración inicial de dominio (QR) y autenticación del usuario (login JWT). Punto de arranque de toda la aplicación.
+**Descripción:** Flujo obligatorio de configuración inicial de dominio (QR), autenticación del usuario (login JWT) y gestión centralizada del ciclo de vida de la sesión (expiración automática 401 y logout desacoplado). Punto de arranque de toda la aplicación.
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
@@ -41,6 +41,7 @@ Fecha de actualización: Agosto 2026
 | **Utilidad** | `AppLogger` | `lib/utils/app_logger.dart` |
 | **Utilidad** | `JsonInterceptor` (Dio) | `lib/utils/json_interceptor.dart` |
 | **Utilidad** | `AuthInterceptor` (Dio) | `lib/utils/auth_interceptor.dart` |
+| **Utilidad** | `AuthUtils` (Cierre de sesión centralizado) | `lib/utils/auth_utils.dart` |
 
 **Estados del Provider:** `AuthProvider` mantiene: `isAuthenticated`, `currentToken`, `currentCedula`, `permisos`.
 
@@ -56,6 +57,7 @@ Fecha de actualización: Agosto 2026
 | **Provider consumido** | `AuthProvider` (solo lectura de permisos) | `lib/providers/auth_provider.dart` |
 | **Modelo consumido** | `AppPermission` | `lib/models/auth_model.dart` |
 | **Utilidad** | `PermissionListExtension.hasPermission()` | `lib/utils/permission_utils.dart` |
+| **Utilidad** | `AuthUtils` (Cierre de sesión centralizado) | `lib/utils/auth_utils.dart` |
 
 **Navegación desde Dashboard (agrupada por módulo de negocio):**
 
@@ -74,7 +76,7 @@ Fecha de actualización: Agosto 2026
 
 ## 3. Inventario
 
-**Documentación Funcional:** [`SigoAPP_Funcional_Inventario.md`](./SigoAPP_Funcional_Inventario.md)
+**Documentación Funcional:** [`SigoAPP_Funcional_Inventario.md`](./SigoAPP_Funcional_Inventario.md) | [`SigoAPP_Funcional_Traspasos.md`](./SigoAPP_Funcional_Traspasos.md)
 
 **Descripción:** Módulo de negocio que agrupa todas las funcionalidades relacionadas con la gestión del inventario de activos físicos: verificación mediante QR con captura de coordenadas GPS, generación de solicitudes de traspaso entre bodegas y aprobación/rechazo de dichas solicitudes.
 
@@ -98,13 +100,13 @@ Fecha de actualización: Agosto 2026
 ### 3.2 Generación de Traspasos
 
 **Permiso:** `agst` (generar traspaso), relacionado con `agqr` (generación QR)  
-**Descripción:** Formulario de creación de solicitudes de traspaso de activos entre bodegas. Incluye carga en cascada de catálogos (búsqueda de empleado → división → bodegas autorizadas) e integración con geolocalización e inventario.
+**Descripción:** Gestión de inventario con filtrado en cascada Empresa → Bodega → Colaborador (`TransferRepository.getPersonsByWarehouse` y `getAssetsByPerson`) y creación de solicitudes de traspaso diferenciadas: **Traspaso Individual** vía botón de acción rápida `⇄` en cada tarjeta de activo (pre-cargando activo único) y **Traspaso Múltiple** interactivo vía Floating Action Button, el cual activa el modo de selección (`_isSelectionMode`) con casillas de verificación, validación de colaborador responsable único y barra de acciones inferior. Orquestación del flujo en `TransferFormWidget` (modo estándar o modo compacto con preselección e inyección mediante `TransferFormProvider.addPreselectedAsset()`, tarjeta compacta con desplegable interactivo de activos y retorno a inventario) que conecta con backend (`POST /api/v1/traspasos/crear`, `GET /api/v1/traspasos/personas`, `GET /api/v1/traspasos/activos`) con validación de personas distintas y compatibilidad multi-artículo PL/SQL.
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
 | **Screen** | `InventoryScreen` | `lib/screens/inventory_screen.dart` |
 | **Screen** | `GeneratorScreen` (generación QR) | `lib/screens/generator_screen.dart` |
-| **Provider** | `InventoryProvider` | `lib/providers/inventory_provider.dart` |
+| **Provider** | `InventoryProvider` (gestiona inventario y colaboradores vía `TransferRepository`) | `lib/providers/inventory_provider.dart` |
 | **Provider** | `TransferRequestProvider` | `lib/providers/transfer_request_provider.dart` |
 | **Provider** | `TransferFormProvider` | `lib/providers/transfer_form_provider.dart` |
 | **Repositorio (contrato inventario)** | `InventoryRepository` | `lib/repositories/inventory_repository.dart` |
@@ -118,36 +120,49 @@ Fecha de actualización: Agosto 2026
 | **Modelo** | `CompanyModel` | `lib/models/company_model.dart` |
 | **Modelo** | `WarehouseModel` | `lib/models/warehouse_model.dart` |
 | **Modelo** | `ArticleModel` | `lib/models/article_model.dart` |
+| **Modelo** | `TransferPersonModel` | `lib/models/transfer_person_model.dart` |
+| **Modelo** | `TransferAssetModel` | `lib/models/transfer_asset_model.dart` |
+| **Modelo** | `TransferCreateRequest` | `lib/models/transfer_create_request.dart` |
 | **Modelo** | `TransferRequest` | `lib/models/transfer_request.dart` |
 | **Modelo** | `TransferFilter` | `lib/models/transfer_filter.dart` |
 | **Modelo** | `EmployeeResult` | `lib/models/employee_result.dart` |
 | **Widget** | `TransferFormWidget` | `lib/widgets/transfer_form_widget.dart` |
 | **Widget** | `CascadingCatalogsWidget` | `lib/widgets/cascading_catalogs_widget.dart` |
+| **Widget** | `ArticleEditModal` (Edición, GPS y foto desacoplados) | `lib/widgets/article_edit_modal.dart` |
+| **Widget** | `InventoryArticleTile` (Tarjeta de activo con modo normal y selección) | `lib/widgets/inventory_article_tile.dart` |
 | **Servicio** | `MockInventoryService` | `lib/services/mock_inventory_service.dart` |
 | **Servicio** | `NotificationService` / `InAppNotificationService` | `lib/services/notification_service.dart`, `lib/services/in_app_notification_service.dart` |
 | **Excepción** | `TransferBusinessException` | `lib/exceptions/transfer_business_exception.dart` |
+| **Excepción** | `CatalogBusinessException` | `lib/exceptions/catalog_business_exception.dart` |
+| **Utilidad** | `AuthUtils` (Cierre de sesión y reautenticación en banner) | `lib/utils/auth_utils.dart` |
 
 ### 3.3 Aprobación de Traspasos
 
 **Permiso:** `aatr`  
-**Descripción:** Visualización y gestión (aprobación/rechazo) de solicitudes de traspaso pendientes. Incluye filtros por estado y bodega propuesta. Comparte `TransferRepository` con §3.2.
+**Descripción:** Visualización y gestión (aprobación/rechazo) de solicitudes de traspaso pendientes. Incluye filtros reactivos por estado, búsqueda de responsables, rango de fechas y bodega propuesta. Conectado a consumo HTTP real contra Spring Boot (`HttpTransferRepository`). Integra resolución concurrente (`Future.wait`) entre `CatalogRepository` (para nombres completos de colaboradores formateados como `Nombre Apellido (Cédula)`) y `TransferRepository` (para descripciones oficiales de artículos en `TransferArticleItem.nombre`), optimizado con caché en memoria por lote.
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
 | **Screen** | `TransferApprovalScreen` | `lib/screens/transfer_approval_screen.dart` |
 | **Provider** | `TransferApprovalProvider` | `lib/providers/transfer_approval_provider.dart` |
-| **Repositorio** | `TransferRepository` (compartido con §3.2) | `lib/repositories/transfer_repository.dart` |
-| **Modelo** | `TransferRequest` | `lib/models/transfer_request.dart` |
+| **Repositorio** | `HttpTransferRepository` (vía contrato `TransferRepository`) | `lib/repositories/http_transfer_repository.dart` |
+| **Repositorio (catálogos)** | `CatalogRepository` / `HttpCatalogRepository` | `lib/repositories/catalog_repository.dart` |
+| **Modelo** | `TransferRequest` (con `TransferArticleItem.nombre`) | `lib/models/transfer_request.dart` |
+| **Modelo** | `TransferAssetModel` | `lib/models/transfer_asset_model.dart` |
+| **Modelo** | `EmployeeResult` | `lib/models/employee_result.dart` |
 | **Modelo** | `TransferFilter` | `lib/models/transfer_filter.dart` |
 | **Widget** | `TransferFilterPanel` | `lib/widgets/transfer_filter_panel.dart` |
 
 > [!IMPORTANT]
-> **Recuperación de Estado:** `TransferApprovalScreen` es `StatefulWidget` con recarga automática en `initState` si la lista de traspasos está vacía o hay un error previo (regla de Recuperación de Estado en Providers Globales — ver `SigoAPP_Arquitectura.md` §11).
+> **Consumo HTTP y Ciclo de Vida:** `TransferApprovalProvider` se instancia con `autoLoad: false` en `lib/main.dart` para desacoplar peticiones de red del constructor. `TransferApprovalScreen` es un `StatefulWidget` que dispara la recarga garantizada en `initState` (`WidgetsBinding.instance.addPostFrameCallback`), asegurando datos frescos al ingresar a la pantalla. Además, `loadTransfers({String? empresa, String? bodega})` soporta el paso opcional de filtros contextuales de empresa y bodega hacia los query parameters de `GET /api/v1/traspasos/list`, y coordina el enriquecimiento concurrente por lote con caché local.
+
+> [!TIP]
+> **Diseño y Estética Institucional:** La interfaz de `TransferApprovalScreen` y `TransferFilterPanel` implementa el estándar canónico de UI/UX documentado en `SigoAPP_Guia_Estilos_UI.md` (AppBar sólido, franja métrica de conteo, tarjetas con franja lateral izquierda de estado de 5px, flujo en una línea con `maxLines: 2` en responsables, presentación enriquecida de artículos con códigos/placas y botones rectangulares `r: 8`).
 
 ### 3.4 Entrega / Recepción de Traspasos
 
 **Permiso:** Ninguno específico (Filtro por responsable asignado)
-**Descripción:** Paso intermedio tras la aprobación (`ap`). Permite a los responsables del traspaso capturar sus firmas de entrega y recepción, validando la transición de los activos.
+**Descripción:** Paso intermedio tras la aprobación (`ap`). Permite a los responsables del traspaso capturar sus firmas de entrega y recepción, validando la transición de los activos. `TransferDeliveryProvider` cuenta con inyección de `CatalogRepository` para enriquecer concurrentemente nombres y descripciones de artículos con caché local.
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
@@ -155,6 +170,8 @@ Fecha de actualización: Agosto 2026
 | **Screen** | `SignatureCaptureScreen` | `lib/screens/signature_capture_screen.dart` |
 | **Provider** | `TransferDeliveryProvider` | `lib/providers/transfer_delivery_provider.dart` |
 | **Repositorio** | `TransferRepository` (compartido con §3.2) | `lib/repositories/transfer_repository.dart` |
+| **Repositorio (catálogos)** | `CatalogRepository` (compartido con §3.2) | `lib/repositories/catalog_repository.dart` |
+| **Modelo** | `TransferRequest` | `lib/models/transfer_request.dart` |
 | **Modelo** | `TransferDeliveryRequest` | `lib/models/transfer_delivery_request.dart` |
 
 ---

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../exceptions/auth_business_exception.dart';
 import '../providers/auth_provider.dart';
 import '../providers/active_count_provider.dart';
+import '../utils/auth_utils.dart';
 import 'active_count_screen.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -199,9 +200,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 IconButton(
                   icon: const Icon(Icons.logout),
                   tooltip: 'Cerrar Sesión',
-                  onPressed: () {
-                    authProvider.logout();
-                  },
+                  onPressed: AuthUtils.isLoggingOut ? null : () => AuthUtils.logout(context),
                 ),
             ],
           ),
@@ -358,7 +357,7 @@ class _AccountScreenState extends State<AccountScreen> {
             foregroundColor: primaryColor,
             padding: const EdgeInsets.symmetric(vertical: 16),
             elevation: 0,
-            side: BorderSide(color: primaryColor.withOpacity(0.3)),
+            side: BorderSide(color: primaryColor.withValues(alpha: 0.3)),
           ),
         ),
 

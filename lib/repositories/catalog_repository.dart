@@ -13,10 +13,19 @@ import '../models/warehouse_model.dart';
 /// Tanto [HttpCatalogRepository] como [MockCatalogRepository] cumplen este
 /// contrato, lo que permite intercambiarlos mediante inyección de dependencias.
 abstract class CatalogRepository {
-  /// Busca un empleado por su cédula o código interno.
+  /// Busca un empleado por su cédula, nombre o apellido.
   ///
   /// Lanza [Exception] si no se encuentra el empleado o hay error de red.
   Future<EmployeeResult> findEmployee(String query);
+
+  /// Busca personal a partir de filtros opcionales (nombre, apellido y/o cédula).
+  ///
+  /// Devuelve una lista de colaboradores activos que coincidan con los criterios.
+  Future<List<EmployeeResult>> searchEmployees({
+    String? nombre,
+    String? apellido,
+    String? cedula,
+  });
 
   /// Retorna las bodegas asociadas a la división [divisionId].
   ///

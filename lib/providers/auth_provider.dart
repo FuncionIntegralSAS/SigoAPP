@@ -4,6 +4,7 @@ import '../repositories/auth_repository.dart';
 import '../models/auth_model.dart';
 import '../models/physical_count_model.dart';
 import '../utils/permission_utils.dart';
+import '../utils/app_logger.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _repository;
@@ -35,6 +36,17 @@ class AuthProvider extends ChangeNotifier {
     
     final permisosStr = await _storage.read(key: 'auth_permissions');
     _permisos = PermissionUtils.parsePermissions(permisosStr);
+
+    // ignore: avoid_print
+    print('======================================================');
+    // ignore: avoid_print
+    print('>>> [AuthProvider] CÉDULA GUARDADA EN SESIÓN: $_cedula');
+    // ignore: avoid_print
+    print('>>> [AuthProvider] USERNAME GUARDADO EN SESIÓN: $_username');
+    // ignore: avoid_print
+    print('>>> [AuthProvider] TOKEN GUARDADO: ${_token != null ? "Presente" : "Nulo"}');
+    // ignore: avoid_print
+    print('======================================================');
 
     notifyListeners();
   }
@@ -179,11 +191,21 @@ class AuthProvider extends ChangeNotifier {
     _cedula = null;
     _username = null;
     _permisos = [];
-    await _storage.delete(key: 'auth_token');
-    await _storage.delete(key: 'auth_cedula');
-    await _storage.delete(key: 'auth_username');
-    await _storage.delete(key: 'auth_refresh_token');
-    await _storage.delete(key: 'auth_permissions');
-    notifyListeners();
+    _isLoading = false;
+    _errorMessage = null;
+
+    try {
+      await Future.wait([
+        _storage.delete(key: 'auth_token'),
+        _storage.delete(key: 'auth_cedula'),
+        _storage.delete(key: 'auth_username'),
+        _storage.delete(key: 'auth_refresh_token'),
+        _storage.delete(key: 'auth_permissions'),
+      ]).timeout(const Duration(seconds: 2));
+    } catch (e) {
+      AppLogger.e('AuthProvider: Error o timeout al eliminar credenciales en secure storage', e);
+    } finally {
+      notifyListeners();
+    }
   }
 }

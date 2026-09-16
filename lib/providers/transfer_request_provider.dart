@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sigo_app/services/notification_service.dart';
+import '../models/transfer_create_request.dart';
 import '../models/transfer_request.dart';
 import '../repositories/transfer_repository.dart';
 
@@ -12,27 +13,43 @@ class TransferRequestProvider extends ChangeNotifier {
 
   TransferRequestProvider(this.repository, this.notificationService);
 
-  Future<void> createRequest({
-    required String idArticulo,
+  Future<bool> createRequest({
+    required String codigoActivo,
     required String nombreArticulo,
     required String responsableActual,
     required String responsablePropuesto,
     required String bodegaActual,
     required String bodegaPropuesta,
     required String motivoSolicitud,
+    String? empresa,
+    String? personaFuente,
+    String? personaDestino,
+    String? placa,
+    List<TransferArticleItem>? articulos,
+    String? tipoMovimiento,
   }) async {
     _setLoading(true);
 
-    final request = TransferRequest(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      idArticulo: idArticulo,
-      nombreArticulo: nombreArticulo,
-      responsableActual: responsableActual,
-      responsablePropuesto: responsablePropuesto,
-      bodegaActual: bodegaActual,
-      bodegaPropuesta: bodegaPropuesta,
-      motivoSolicitud: motivoSolicitud,
-      fechaSolicitud: DateTime.now(),
+    final resolvedFuente = personaFuente?.trim().isNotEmpty == true
+        ? personaFuente!.trim()
+        : responsableActual.trim();
+
+    final resolvedDestino = personaDestino?.trim().isNotEmpty == true
+        ? personaDestino!.trim()
+        : responsablePropuesto.trim();
+
+    final List<TransferArticleItem> items =
+        (articulos != null && articulos.isNotEmpty)
+        ? articulos
+        : [TransferArticleItem(articulo: codigoActivo, placa: placa)];
+
+    final request = TransferCreateRequest(
+      empresa: empresa ?? '01',
+      personaFuente: resolvedFuente,
+      personaDestino: resolvedDestino,
+      articulos: items,
+      observacion: motivoSolicitud,
+      tipoMovimiento: tipoMovimiento,
     );
 
     try {
@@ -40,10 +57,11 @@ class TransferRequestProvider extends ChangeNotifier {
       notificationService.success(
         'Solicitud de traspaso enviada correctamente',
       );
+      return true;
     } catch (e) {
-      notificationService.error(
-        'Error al crear la solicitud: $e',
-      );
+      final cleanError = e.toString().replaceAll('Exception: ', '');
+      notificationService.error('Error al crear la solicitud: $cleanError');
+      return false;
     } finally {
       _setLoading(false);
     }

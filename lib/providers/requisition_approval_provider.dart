@@ -73,4 +73,13 @@ class RequisitionApprovalProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  /// Limpia los datos de requisiciones en memoria al cerrar sesión
+  void reset() {
+    _pendingRequisitions = [];
+    _isLoading = false;
+    _errorMessage = null;
+    _selectedItems.clear();
+    notifyListeners();
+  }
 }

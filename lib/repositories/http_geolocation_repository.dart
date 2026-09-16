@@ -12,7 +12,7 @@ class HttpGeolocationRepository implements GeolocationRepository {
   Future<GeolocationModel?> getGeolocationByAssetId(int assetId) async {
     try {
       final response = await dio.get(
-        '/api/v1/geolocalizacion-activos/$assetId',
+        '/api/v1/geolocalizacion-activos/buscar/$assetId',
         options: Options(headers: {'Accept': 'application/json'}),
       );
       return GeolocationModel.fromJson(response.data);
@@ -26,10 +26,28 @@ class HttpGeolocationRepository implements GeolocationRepository {
   }
 
   @override
+  Future<List<GeolocationModel>> getAllGeolocations() async {
+    try {
+      final response = await dio.get(
+        '/api/v1/geolocalizacion-activos/listar',
+        options: Options(headers: {'Accept': 'application/json'}),
+      );
+      if (response.statusCode == 204 || response.data == null || response.data is! List) {
+        return [];
+      }
+      final List<dynamic> data = response.data as List<dynamic>;
+      return data.map((json) => GeolocationModel.fromJson(json)).toList();
+    } on DioException catch (e) {
+      _handleDioError(e, 'Error al listar las geolocalizaciones');
+      return [];
+    }
+  }
+
+  @override
   Future<void> createGeolocation(GeolocationModel model) async {
     try {
       await dio.post(
-        '/api/v1/geolocalizacion-activos',
+        '/api/v1/geolocalizacion-activos/crear',
         data: model.toJson(),
         options: Options(headers: {
           'Content-Type': 'application/json',
@@ -45,11 +63,8 @@ class HttpGeolocationRepository implements GeolocationRepository {
   Future<void> updateGeolocation(GeolocationModel model) async {
     try {
       await dio.put(
-        '/api/v1/geolocalizacion-activos/${model.idRegistro}',
-        data: {
-          'latitud': model.latitud,
-          'longitud': model.longitud,
-        },
+        '/api/v1/geolocalizacion-activos/actualizar',
+        data: model.toJson(),
         options: Options(headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -63,7 +78,7 @@ class HttpGeolocationRepository implements GeolocationRepository {
   @override
   Future<void> deleteGeolocation(int assetId) async {
     try {
-      await dio.delete('/api/v1/geolocalizacion-activos/$assetId');
+      await dio.delete('/api/v1/geolocalizacion-activos/eliminar/$assetId');
     } on DioException catch (e) {
       _handleDioError(e, 'Error al eliminar la geolocalización');
     }

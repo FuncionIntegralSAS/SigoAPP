@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:sigo_app/providers/auth_provider.dart';
 import 'package:sigo_app/screens/account_screen.dart';
 import 'package:sigo_app/screens/generator_screen.dart';
 import 'package:sigo_app/screens/inventory_screen.dart';
 import 'package:sigo_app/screens/scanner_screen.dart';
 import 'package:sigo_app/screens/transfer_approval_screen.dart';
+import '../utils/auth_utils.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -115,10 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Cerrar Sesión',
                   style: TextStyle(color: Colors.red),
                 ),
-                onTap: () {
-                  context.read<AuthProvider>().logout();
-                  Navigator.pop(context);
-                },
+                onTap: AuthUtils.isLoggingOut ? null : () => AuthUtils.logout(context),
               ),
             ],
           ),

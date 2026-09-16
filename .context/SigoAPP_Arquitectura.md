@@ -72,15 +72,26 @@ Representa las coordenadas geográficas asociadas a un activo físico en la base
 * Campos de auditoría opcionales: `afgeFcre`, `afgeUcre`, `afgeFedi`, `afgeUedi`.
 * Serialización bidireccional JSON tipada (`fromJson`, `toJson`).
 
+### 2.11 Modelos Auxiliares y Creación de Traspasos (transfer_person_model.dart, transfer_asset_model.dart, transfer_create_request.dart)
+Modelos diseñados para soportar el flujo interactivo guiado de traspasos de activos entre bodegas y colaboradores:
+* `TransferPersonModel`: Colaborador asociado a una bodega (`cedula`, `nombre`, `apellido`). Provee `nombreCompleto` y serialización JSON para el endpoint `GET /api/v1/traspasos/personas`.
+* `TransferAssetModel`: Activo fijo asignado a un colaborador (`articulo`, `placa`, `nombre`, `centroInformacion`, `tercero`, `enTramite`). Utilizado por `GET /api/v1/traspasos/activos` y soporte de reglas PL/SQL (`PKG_FI_MOVITRAS`) para validar que todos los activos compartan el mismo centro de información y tercero. Incluye el helper `toTransferArticleItem()`.
+* `TransferCreateRequest`: Encapsula el payload de creación multi-artículo enviado a `POST /api/v1/traspasos/crear` (`empresa`, `personaFuente`, `personaDestino`, `articulos`, `observacion`). Por especificación del backend, omite campos de bodega en el JSON.
+
 ## 3. Capa de Repositorios (lib/repositories/)
 ### 3.1 TransferRepository (Contrato Único)
 Contrato asíncrono (`Future`) que define la creación, consulta y procesamiento de solicitudes de traspaso de activos. Ambas implementaciones (mock y HTTP) cumplen este mismo contrato, lo que permite intercambiarlas mediante inyección de dependencias en `main.dart`.
-* `create(TransferRequest)`: Crea una nueva solicitud.
-* `getAllTransfers()`: Obtiene todas las solicitudes.
+* `create(dynamic request)`: Crea una nueva solicitud (admite `TransferCreateRequest` o `TransferRequest`).
+* `getAllTransfers({estado, empresa, bodega, fetchDetails})`: Obtiene las solicitudes de traspaso.
+* `getTransferById(String id)`: Detalle completo de un trámite.
+* `getPersonsByWarehouse({bodega, empresa})`: Consulta colaboradores de una bodega (`GET /api/v1/traspasos/personas`).
+* `getAssetsByPerson({persona, empresa})`: Consulta activos asignados a un colaborador (`GET /api/v1/traspasos/activos`).
 * `approveTransfer(String)`: Aprueba una solicitud por ID.
-* `rejectTransfer({requestId, rejectionReason})`: Rechaza con motivo obligatorio.
-* `applyTransfer(TransferRequest)`: Aplica un traspaso aprobado (nota: redundante si el backend aplica automáticamente al aprobar).
-* `applyTransferDelivery(TransferDeliveryRequest)`: Registra la firma digital parcial o total del traspaso en el backend (`POST /api/v1/traspasos/{id}/entregar`).
+* `rejectTransfer({requestId, motivoRechazo})`: Rechaza con motivo obligatorio.
+* `signTransfer({transferId, tipoFirma, firmaBase64})`: Registra firma digital independiente (`FU` o `DE`).
+* `receiveTransfer(String transferId)`: Concreta la recepción en ERP y asienta inventario.
+* `applyTransfer(TransferRequest)`: Aplica un traspaso aprobado (compatibilidad).
+* `applyTransferDelivery(TransferDeliveryRequest)`: Flujo compuesto de firmas y recepción.
 
 #### 3.1.1 MockTransferRepository
 Implementación en memoria que utiliza `MockInventoryService` como fuente de datos para desarrollo y pruebas offline. Las operaciones son síncronas internamente pero devuelven `Future` para cumplir el contrato.
@@ -95,13 +106,26 @@ Contrato que define el acceso a las requisiciones de consumo.
 
 ### 3.3 GeolocationRepository
 Contrato abstracto para la persistencia y consulta de geolocalización de activos físicos (`lib/repositories/geolocation_repository.dart`).
-* `getGeolocationByAssetId(int assetId)`: Consulta coordenadas existentes para un activo (`GET /api/v1/geolocalizacion-activos/{assetId}`).
-* `createGeolocation(GeolocationModel model)`: Registra nuevas coordenadas (`POST /api/v1/geolocalizacion-activos`).
-* `updateGeolocation(GeolocationModel model)`: Actualiza coordenadas de un activo (`PUT /api/v1/geolocalizacion-activos/{afgeIdre}`).
-* `deleteGeolocation(int assetId)`: Elimina el registro geográfico (`DELETE /api/v1/geolocalizacion-activos/{assetId}`).
+* `getGeolocationByAssetId(int assetId)`: Consulta coordenadas existentes para un activo (`GET /api/v1/geolocalizacion-activos/buscar/{assetId}`).
+* `getAllGeolocations()`: Obtiene el listado completo de ubicaciones (`GET /api/v1/geolocalizacion-activos/listar`).
+* `createGeolocation(GeolocationModel model)`: Registra nuevas coordenadas (`POST /api/v1/geolocalizacion-activos/crear`).
+* `updateGeolocation(GeolocationModel model)`: Actualiza coordenadas de un activo (`PUT /api/v1/geolocalizacion-activos/actualizar`).
+* `deleteGeolocation(int assetId)`: Elimina el registro geográfico (`DELETE /api/v1/geolocalizacion-activos/eliminar/{assetId}`).
 
 #### 3.3.1 HttpGeolocationRepository
 Implementación concreta que utiliza la instancia unificada de `Dio`. Lanza `GeolocationBusinessException` ante fallos de respuesta del servidor o problemas de red.
+
+### 3.4 CatalogRepository
+Contrato abstracto para la consulta de catálogos del sistema y personal (`lib/repositories/catalog_repository.dart`).
+* `searchEmployees({String? nombre, String? apellido, String? cedula})`: Consulta y filtra personal activo en el backend (`GET /api/v1/personal/buscar`) mediante query parameters opcionales. Retorna `List<EmployeeResult>`.
+* `findEmployee(String query)`: Búsqueda unificada con autodetección de tipo de término (numérico para cédula, alfabético para nombre/apellido) y fallbacks ordenados.
+* `getWarehousesByDivision(String divisionId)`: Consulta las bodegas autorizadas asociadas a la división del colaborador (`GET /api/v1/bodegas/division/{divisionId}`).
+
+#### 3.4.1 HttpCatalogRepository
+Implementación concreta que utiliza `Dio`. Conecta con `/api/v1/personal/buscar` y `/api/v1/bodegas/division/{divisionId}`. Procesa arreglos de tipo `PersonResponse` (`cedula`, `nombre`, `apellido`, `correo`, `division`, `estado`), gestiona respuestas vacías (200 con `[]`, 204 o 404) retornando listas vacías y mapea los resultados al modelo `EmployeeResult`.
+
+#### 3.4.2 MockCatalogRepository
+Implementación en memoria para desarrollo offline y pruebas unitarias, con latencia simulada y filtrado dinámico por cédula, nombre o apellido.
 
 ## 4. Lógica de Negocio y Servicios (lib/services/)
 ### 4.1 mock_inventory_service.dart y mock_requisition_service.dart
@@ -199,7 +223,7 @@ Orquestador de estado para la aprobación, rechazo y aplicación de traslados.
 * Recarga la lista completa tras cada operación exitosa (aprobar/rechazar/aplicar).
 
 ### 8.3 TransferFormProvider
-Provider para el formulario de creación de traspasos. Implementa la carga en cascada de catálogos: Búsqueda de empleado → Obtención de división → Carga de bodegas autorizadas.
+Provider para el formulario interactivo de creación de traspasos. Orquesta el flujo dinámico en cascada: Selección de Empresa -> Bodega Origen -> Colaboradores Fuente (`getPersonsByWarehouse`) -> Activos Asignados (`getAssetsByPerson`) con validación de bloqueo por trámite pendiente (`enTramite`) y compatibilidad multi-artículo PL/SQL (`centroInformacion` y `tercero`) -> Bodega Destino -> Colaboradores Destino -> Validación de personas distintas. Mantiene compatibilidad con catálogos legados para no alterar otros componentes.
 
 ### 8.4 AssetVerificationProvider
 Maneja la lógica de interpretación de códigos QR (separación de placa y artículo) y validación contra el servicio.
@@ -311,6 +335,29 @@ El sistema opera bajo una premisa de desacoplamiento de interfaz y negocio. La U
 * Persistencia local offline con sincronización diferida (SQLite + Backend).
 * Cliente HTTP estandarizado (`Dio`) como única librería de red.
 * **Recuperación de Estado en Providers Globales:** Las pantallas principales que consumen Providers instanciados de manera global (ej. en `main.dart`) deben estar implementadas preferentemente como `StatefulWidget`. En su ciclo de vida (`initState`), deben verificar si el proveedor mantiene un estado de error previo (ej. por expiración de token 401 o falla de red) o si sus listas maestras están vacías, para invocar automáticamente la recarga de datos iniciales. Esto garantiza la resiliencia en la navegación del usuario sin requerir reinicios de la aplicación.
+
+### 11.1 Estándares y Guía de Estilos UI/UX
+
+La apariencia visual, el sistema de diseño institucional y los componentes de interfaz de usuario están centralizados en:
+
+📄 **[SigoAPP_Guia_Estilos_UI.md](./SigoAPP_Guia_Estilos_UI.md)**
+
+El documento se divide formalmente en dos niveles que deben consultarse y cumplirse en conjunto:
+1. **Parte I — Directrices Generales (Nivel de Proyecto):**
+   * **AppBar Corporativo Institucional:** Fondo primario sólido (`backgroundColor: Theme.of(context).colorScheme.primary`), contenido y acciones en blanco puro (`foregroundColor: Colors.white`), elevación 0.
+   * **Franja Superior de Resumen:** Métrica de conteo en negrita (`Activos en lista: N` o `Solicitudes en lista: N`) con separador sutil `const Divider(height: 1, thickness: 1)`.
+   * **Escala de Radios (`BorderRadius`):** `r: 6` para badges/placas, `r: 8` para controles operativos (botones, filtros, inputs) y `r: 12` para tarjetas (`Card`) y diálogos.
+   * **Tarjetas con Franja Vertical de Estado (5px):** Identidad visual transversal con barra lateral de 5px (`pe`: ámbar, `ap`: verde, `na`: rojo, `re`/`pr`: azul/índigo).
+   * **Botones Formales:** `OutlinedButton` (`r: 8`) en rojo tenue para rechazo, `ElevatedButton` (`r: 8`) en verde esmeralda institucional (`#1B5E20`) para aprobación.
+   * **Manejo Asíncrono Estándar:** Estados de carga, lista vacía con iconografía formal y alertas de error con botón de reintento.
+2. **Parte II — Especificaciones Particulares (Por Pantalla y Módulo):**
+   * **Autenticación:** Card de login centrado, botón ancho total y escáner de dominio con visor delimitado.
+   * **Dashboard:** Grid modular responsivo con badges numéricos de trámites pendientes e intercepción `PopScope`.
+   * **Inventario:** Filtros en cascada (`CascadingCatalogsWidget`), placa monoespacio, botón rápido `⇄` y modo selección múltiple con barra inferior.
+   * **Aprobación de Traspasos:** `TransferFilterPanel` plano con estados horizontales temáticos, flujo en fila única origen ➔ destino y modal de rechazo con justificación obligatoria.
+   * **Entrega y Firmas:** Checklist de entrega física y canvas de firma digital con guía horizontal y botones de guardado institucional.
+   * **Requisiciones:** TabBar institucional para Aprobación/Entrega y tarjetas `RequisitionActionCard`.
+   * **Conteo Físico:** Pestañas de administración (apertura en cascada, asignación de personal, semáforo de cierre) y pantalla offline en piso con feedback visual instantáneo (flash verde/rojo).
 
 ---
 

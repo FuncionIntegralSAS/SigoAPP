@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sigo_app/providers/physical_count_provider.dart';
 
 class DialogUtils {
@@ -46,6 +47,210 @@ class DialogUtils {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Muestra un modal de error amigable y conciso para el usuario final,
+  /// incorporando una sección expandible con el código de error y los detalles
+  /// técnicos identificables para el desarrollador, junto con la opción de copiar.
+  static Future<void> showErrorDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String? technicalDetails,
+    int? statusCode,
+    String? endpoint,
+    String buttonText = 'Aceptar',
+    VoidCallback? onAccept,
+    VoidCallback? onRetry,
+  }) async {
+    bool isExpanded = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  statusCode == 500 ? Icons.dns_outlined : Icons.error_outline,
+                  color: Colors.red.shade800,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message,
+                  style: const TextStyle(fontSize: 15, height: 1.4),
+                ),
+                if (statusCode != null ||
+                    technicalDetails != null ||
+                    endpoint != null) ...[
+                  const SizedBox(height: 16),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
+                      setState(() {
+                        isExpanded = !isExpanded;
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isExpanded ? Icons.expand_less : Icons.expand_more,
+                            size: 20,
+                            color: Colors.grey.shade700,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isExpanded
+                                ? 'Ocultar detalles técnicos'
+                                : 'Ver detalles técnicos (Desarrollador)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          if (statusCode != null) ...[
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.red.shade200),
+                              ),
+                              child: Text(
+                                'HTTP $statusCode',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (isExpanded) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SelectableText(
+                            technicalDetails ??
+                                'Endpoint: ${endpoint ?? "N/A"}\nCódigo: ${statusCode ?? "N/A"}',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
+                              ),
+                              icon: const Icon(Icons.copy, size: 14),
+                              label: const Text('Copiar detalle',
+                                  style: TextStyle(fontSize: 11)),
+                              onPressed: () {
+                                final textToCopy = technicalDetails ??
+                                    'Endpoint: ${endpoint ?? "N/A"}\nCódigo: ${statusCode ?? "N/A"}';
+                                Clipboard.setData(
+                                    ClipboardData(text: textToCopy));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Detalles técnicos copiados al portapapeles'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.end,
+          actions: [
+            if (onRetry != null)
+              OutlinedButton.icon(
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Reintentar'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  onRetry();
+                },
+              ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade800,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                if (onAccept != null) onAccept();
+              },
+              child: Text(buttonText),
+            ),
+          ],
+        ),
       ),
     );
   }

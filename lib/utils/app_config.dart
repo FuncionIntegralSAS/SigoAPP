@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sigo_app/utils/json_interceptor.dart';
@@ -10,9 +10,17 @@ import 'app_logger.dart';
 ///
 /// Provee una instancia única de [Dio] configurada con la URL base
 /// del backend, timeouts y los interceptores necesarios. Maneja la
-/// persistencia dinámica del dominio.
+/// persistencia dinámica del dominio y provee llaves globales desacopladas
+/// para navegación y notificaciones.
 class AppConfig {
   AppConfig._();
+
+  /// Llave de navegación global desacoplada de BuildContext
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  /// Llave global de ScaffoldMessenger para notificaciones desacopladas de BuildContext
+  static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
 
   static const _storage = FlutterSecureStorage();
   static const String _baseUrlKey = 'domain_base_url';

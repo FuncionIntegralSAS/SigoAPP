@@ -1,0 +1,447 @@
+# Guía de Estilos, Apariencia Estética y UI/UX de SigoAPP
+
+**Versión:** 2.0  
+**Fecha:** Septiembre 2026  
+**Ámbito:** Transversal a toda la aplicación SigoAPP (Directrices Generales de Proyecto y Especificaciones Particulares por Pantalla y Módulo).
+
+---
+
+## 📌 Estructura y Navegación del Documento
+
+Este documento se estructura formalmente en dos grandes secciones para garantizar que todo desarrollador o agente de IA mantenga la coherencia visual institucional y a la vez aplique los requerimientos específicos de cada pantalla operativa:
+
+1. **[PARTE I — DIRECTRICES GENERALES (A NIVEL DE PROYECTO / TRANSVERSAL)](#parte-i--directrices-generales-a-nivel-de-proyecto--transversal):**
+   * Fundamentos y filosofía visual de la aplicación.
+   * Jerarquía de superficies, contenedores y paleta cromática transversal.
+   * Código de colores de estado canónico del sistema.
+   * Sistema de radios (`BorderRadius`), bordes y sombras.
+   * Componentes transversales estándar (AppBars, franjas métricas, paneles de filtros, botones formales, modales y diálogos).
+   * Manejo de estados asíncronos transversales (carga, vacío, error).
+   * Anti-patrones de diseño explícitamente prohibidos.
+
+2. **[PARTE II — ESPECIFICACIONES PARTICULARES (POR PANTALLA Y MÓDULO)](#parte-ii--especificaciones-particulares-por-pantalla-y-módulo):**
+   * **Módulo 1:** Autenticación y Configuración de Dominio (`DomainScannerScreen`, `AuthScreen`).
+   * **Módulo 2:** Dashboard Principal y Navegación Dinámica (`DashboardScreen`).
+   * **Módulo 3:** Inventario, Verificación y Catálogo (`InventoryScreen`, `AssetVerificationScreen`, `GeneratorScreen`).
+   * **Módulo 4:** Aprobación de Traspasos (`TransferApprovalScreen`, `TransferFilterPanel`).
+   * **Módulo 5:** Entrega, Recepción y Captura de Firmas (`TransferDeliveryScreen`, `SignatureCaptureScreen`).
+   * **Módulo 6:** Requisiciones de Inventario (`RequisitionsScreen`, `ApprovalTabView`, `DeliveryTabView`).
+   * **Módulo 7:** Conteo Físico Administrativo y en Piso (`PhysicalCountScreen`, `ActiveCountScreen`).
+   * **Módulo 8:** Gestión de Cuenta y Utilidades de Diagnóstico (`AccountScreen`, `ScannerScreen`, `HomeScreen`).
+
+---
+
+# PARTE I — DIRECTRICES GENERALES (A NIVEL DE PROYECTO / TRANSVERSAL)
+
+Esta sección define las reglas maestras que **todas** las pantallas, widgets y diálogos de SigoAPP deben cumplir obligatoriamente. Ninguna pantalla o componente particular puede contradecir estas pautas base.
+
+---
+
+## 1. Filosofía de Diseño y Propósito Visual
+
+SigoAPP es una aplicación empresarial e industrial orientada a operaciones de logística, activos fijos y gestión administrativa en campo y bodega. Su diseño estético responde a cuatro pilares inquebrantables:
+
+1. **Sobriedad Corporativa Institucional:**
+   * Interfaces limpias, serias y formales, libres de gradientes llamativos, adornos tipo videojuego o paletas pastel deslavadas sin contraste.
+   * El color se usa como vehículo funcional de información (estados, acciones críticas, alertas), no como mero adorno.
+2. **Alta Densidad de Información:**
+   * La aplicación se opera en entornos de alta rotación donde el operador necesita visualizar el contexto completo de un registro (ID, procedencia, destino, responsable, cantidad) sin verse obligado a desplazarse verticalmente por pantallas kilométricas.
+   * Aprovechamiento milimétrico del espacio mediante espaciados verticales compactos (`4px` a `8px`) y filas estructuradas de un solo renglón.
+3. **Escaneo Visual Rápido (Scanning en Milisegundos):**
+   * Empleo sistemático de **franjas verticales laterales de 5px** en tarjetas para identificar el estado del trámite al instante.
+   * Badges con tipografía en negrita monoespacio para placas, seriales y números de trámite.
+4. **Consistencia Transversal:**
+   * Cada módulo nuevo desarrollado debe parecer diseñado por el mismo equipo y bajo las mismas reglas que los módulos existentes.
+
+---
+
+## 2. Paleta Cromática, Tokens y Jerarquía de Superficies
+
+### 2.1 Jerarquía de Superficies y Fondos
+| Elemento | Token / Valor Flutter | Comportamiento y Propósito |
+|---|---|---|
+| **Fondo Global de Pantalla** | `Colors.grey.shade50` | Fondo base del `Scaffold`. Genera un suave contraste con las tarjetas blancas y reduce la fatiga visual. |
+| **Superficie de Tarjetas (`Card`)** | `Colors.white` | Superficie elevada limpia para registros y trámites. Siempre combinada con borde sutil. |
+| **Borde Sutil de Tarjetas** | `BorderSide(color: Colors.grey.shade200, width: 1)` | Delimitación nítida sin recurrir a sombras invasivas. |
+| **Fondo de Paneles de Filtros** | `Colors.white` | Barra superior plana delimitada por `Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1))`. |
+| **Superficies Secundarias Internas** | `Colors.grey.shade50` | Bloques interiores dentro de tarjetas (origen/destino, observaciones, metadatos). |
+| **Borde de Controles e Inputs** | `Border.all(color: Colors.grey.shade300, width: 1)` | Contornos de campos de texto, botones secundarios y chips inactivos. |
+
+### 2.2 Colores Corporativos y de Acción
+| Rol | Token / Valor | Uso Estándar |
+|---|---|---|
+| **Primario Institucional** | `Theme.of(context).colorScheme.primary` | AppBars sólidos, botones principales estándar, tabs activas, destinos de flujo. |
+| **Aprobación / Éxito** | Verde Esmeralda (`Color(0xFF1B5E20)` o `Colors.green.shade700`) | Botones de aprobación (`ElevatedButton`), badges de aprobado/verificado, confirmaciones. |
+| **Rechazo / Peligro** | Rojo Corporativo (`Colors.red.shade700`, bordes `Colors.red.shade300`) | Botones de rechazo (`OutlinedButton`), badges de error/anulado, motivo de rechazo. |
+| **Informativo / Proceso** | Índigo / Azul (`Colors.indigo.shade700` / `Colors.blue.shade700`) | Trámites procesados, consultas históricas, sincronización en piso. |
+| **Advertencia / Pendiente** | Ámbar (`Colors.amber.shade800`) | Trámites pendientes de revisión, alertas de tiempo, estado de cálculo GPS. |
+
+### 2.3 Código de Colores de Estado Canónico (Identidad SigoAPP)
+Cualquier entidad que implemente estados de ciclo de vida (traspasos, requisiciones, inventarios) debe utilizar la siguiente correspondencia cromática obligatoria:
+
+```dart
+Color getStatusColor(TransferStatus status) {
+  switch (status) {
+    case TransferStatus.pending:
+      return Colors.amber.shade800;
+    case TransferStatus.approved:
+      return Colors.green.shade700;
+    case TransferStatus.rejected:
+      return Colors.red.shade700;
+    case TransferStatus.received:
+      return Colors.blue.shade700;
+    case TransferStatus.completed:
+      return Colors.indigo.shade700;
+    case TransferStatus.sourceSigned:
+      return Colors.purple.shade700;
+    case TransferStatus.targetSigned:
+      return Colors.teal.shade700;
+  }
+}
+```
+
+---
+
+## 3. Sistema de Radios de Esquinas (`BorderRadius`), Bordes y Sombras
+
+Para evitar la estética inflada e informal del Material 3 desconfigurado, SigoAPP utiliza una escala de curvaturas estricta:
+
+* **`BorderRadius.circular(6)` — Badges y Chips Compactos:**
+  Utilizado para placas de activos, identificadores de trámite (`#1234`), chips de conteo (`3 artículos`) y selectores secundarios de filtro activo.
+* **`BorderRadius.circular(8)` — Controles Operativos e Inputs:**
+  Utilizado para todos los botones de acción (`ElevatedButton`, `OutlinedButton`), botones de estado de filtro, campos de texto (`TextFormField`) y menús desplegables (`DropdownButtonFormField`).
+* **`BorderRadius.circular(12)` — Tarjetas y Diálogos:**
+  Utilizado para tarjetas principales de registro (`Card`), paneles flotantes y ventanas modales de confirmación (`AlertDialog`).
+* **Regla de Elevaciones:**
+  * Tarjetas operativas: `elevation: 1.0` o `elevation: 1.5` como máximo.
+  * AppBars: `elevation: 0` estrictamente.
+  * Diálogos modales: `elevation: 3.0`.
+
+---
+
+## 4. Componentes Transversales Estándar
+
+### 4.1 AppBar Corporativo Sólido
+Toda pantalla principal o secundaria debe utilizar el AppBar con fondo primario sólido y contenido en blanco puro de alto contraste:
+```dart
+appBar: AppBar(
+  title: Text(
+    tituloPantalla,
+    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
+  ),
+  backgroundColor: Theme.of(context).colorScheme.primary,
+  foregroundColor: Colors.white,
+  elevation: 0,
+  actions: [ ... ],
+)
+```
+
+### 4.2 Franja Superior de Resumen (Métricas de Conteo)
+Inmediatamente debajo del AppBar o del panel de filtros se debe situar una franja continua informativa:
+```dart
+Container(
+  width: double.infinity,
+  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  color: Colors.white,
+  child: Text(
+    'Registros en lista: ${elementos.length}',
+    style: const TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: 13,
+      color: Colors.black87,
+    ),
+  ),
+),
+const Divider(height: 1, thickness: 1),
+```
+
+### 4.3 Tarjeta de Registro con Franja Vertical de Estado (5px)
+Patrón transversal obligatorio para representar registros con estado (`lib/widgets/inventory_article_tile.dart`, `lib/screens/transfer_approval_screen.dart`):
+```dart
+Card(
+  elevation: 1.5,
+  margin: const EdgeInsets.symmetric(vertical: 4),
+  color: Colors.white,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12),
+    side: BorderSide(color: Colors.grey.shade200, width: 1),
+  ),
+  child: ClipRRect(
+    borderRadius: BorderRadius.circular(12),
+    child: IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Barra vertical de estado
+          Container(width: 5, color: statusColor),
+          // Contenido estructurado
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: ...
+            ),
+          ),
+        ],
+      ),
+    ),
+  ),
+)
+```
+
+### 4.4 Botones de Acción Formales
+* **Botón de Aprobación / Confirmación:**
+  `ElevatedButton` con fondo verde esmeralda `Color(0xFF1B5E20)`, texto e icono en blanco, esquinas `r: 8`, elevación `1.0`.
+* **Botón de Rechazo / Cancelación:**
+  `OutlinedButton` con borde `Colors.red.shade300`, texto e icono en `Colors.red.shade700`, fondo transparente, esquinas `r: 8`.
+* **Botón Secundario Neutro:**
+  `OutlinedButton` con borde `Colors.grey.shade300`, texto e icono en `Colors.grey.shade800`, esquinas `r: 8`.
+
+### 4.5 Diálogos Modales Estándar
+Todo diálogo modal (`showDialog` / `AlertDialog`) debe respetar:
+* `shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))`.
+* Campos de entrada con `OutlineInputBorder(borderRadius: BorderRadius.circular(8))`.
+* Botones de acción alineados al pie con esquinas `r: 8`.
+
+---
+
+## 5. Manejo de Estados Asíncronos Transversales
+
+1. **Estado de Carga (`loading: true`):**
+   * Vista inicial: `Center(child: CircularProgressIndicator())` sobre fondo neutro.
+   * Recarga en segundo plano: Botones de refresco o acciones secundarias inhabilitadas temporalmente (`onPressed: loading ? null : () => ...`).
+2. **Estado Vacío (`items.isEmpty`):**
+   * Contenedor centrado con icono gris temático de tamaño medio (`48px` a `56px`), título en negrita (`16px`, `Colors.grey.shade700`) y subtítulo explicativo conciso en gris.
+3. **Estado de Error (`errorMessage != null`):**
+   * Banner o contenedor con fondo `Colors.red.shade50`, borde `Border.all(color: Colors.red.shade200)`, icono de alerta `Icons.error_outline_rounded` en rojo corporativo y botón formal de "Reintentar".
+
+---
+
+## 6. Anti-Patrones Transversales Prohibidos
+
+> [!CAUTION]
+> Queda estrictamente prohibido introducir en SigoAPP:
+> 1. **Chips estilo píldora desbordados (`BorderRadius.circular(20)` o `30`)** que inflen innecesariamente la altura de paneles y reduzcan la densidad de datos.
+> 2. **AppBars transparentes o en colores pasteles claros** sin contraste sobre el contenido.
+> 3. **Tarjetas sin indicador visual de estado** cuando la entidad posee ciclo de vida (pendientes, aprobados, rechazados, completados).
+> 4. **Sombras difusas desmedidas (`elevation > 3`)** que generen efecto borroso en la interfaz.
+> 5. **Colores pastel sin contraste** para texto o badges operativos que dificulten la lectura en pantallas de dispositivos industriales bajo luz natural.
+
+---
+
+# PARTE II — ESPECIFICACIONES PARTICULARES (POR PANTALLA Y MÓDULO)
+
+Esta sección define las particularidades funcionales, de layout, flujos de interacción y componentes exclusivos para cada módulo y pantalla del proyecto.
+
+---
+
+## Módulo 1: Autenticación y Configuración de Dominio
+
+### Pantallas Involucradas
+* `DomainScannerScreen` (`lib/screens/domain_scanner_screen.dart`)
+* `AuthScreen` (`lib/screens/auth_screen.dart`)
+
+### Especificaciones de Layout y UI/UX
+1. **Pantalla de Autenticación (`AuthScreen`):**
+   * **Layout:** Vista centrada vertical y horizontalmente sobre fondo `Colors.grey.shade50`.
+   * **Tarjeta de Login:** Contenedor central blanco con radio `BorderRadius.circular(16)`, elevación `2.0` y borde sutil `Colors.grey.shade200`. Ancho máximo acotado (máx. 420px en tablets/web).
+   * **Branding:** Logotipo o isotipo institucional en la cabecera del formulario con subtítulo sobrio: `"Sistema de Gestión Operativa"`.
+   * **Campos de Entrada:** `TextFormField` para cédula/usuario y contraseña con `prefixIcon` institucional, borde rectangular `OutlineInputBorder(borderRadius: BorderRadius.circular(8))` y validación en tiempo real.
+   * **Botón Principal:** Botón de acceso con ancho total (`double.infinity`), altura de 48px, fondo primario institucional y esquinas `r: 8`. Al procesar, sustituye el texto por `SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))`.
+   * **Cambio de Servidor / Dominio:** Botón de texto discreto en el pie (`TextButton`) con icono `Icons.qr_code_scanner` para abrir el escáner de dominio.
+2. **Pantalla de Escáner de Dominio (`DomainScannerScreen`):**
+   * **Layout:** Visor de cámara a pantalla completa con máscara oscura y marco de lectura cuadrado centrado con bordes en el color primario corporativo.
+   * **Panel Inferior:** Tarjeta flotante blanca con opción de ingreso manual de URL/dominio mediante campo de texto `r: 8` y botón "Guardar y Conectar".
+
+---
+
+## Módulo 2: Dashboard Principal y Navegación Dinámica
+
+### Pantalla Involucrada
+* `DashboardScreen` (`lib/screens/dashboard_screen.dart`)
+
+### Especificaciones de Layout y UI/UX
+1. **AppBar del Dashboard:**
+   * Título: `"SIGAPP"` con texto institucional en blanco.
+   * Acciones: Botón de refresco manual de permisos y botón de logout institucional (`Icons.logout_rounded`) que invoca `AuthUtils.confirmLogout(context)`.
+2. **Encabezado de Bienvenida:**
+   * Franja superior de fondo blanco con saludo al usuario, cédula y rol actual con tipografía limpia (`fontSize: 14`, negrita en nombre).
+3. **Grid Modular Dinámico:**
+   * `GridView.builder` responsivo (2 columnas en móviles, 3-4 en tablets).
+   * Tarjeta de Módulo: Fondo blanco, esquinas `BorderRadius.circular(12)`, borde fino `Colors.grey.shade200` y elevación suave `1.0`.
+   * Icono del Módulo: Contenedor cuadrado redondeado (`48x48`, `r: 10`) con fondo translúcido del color primario `primary.withValues(alpha: 0.1)` e icono temático en color primario pleno.
+   * Texto del Módulo: Título en negrita centrado o alineado a la izquierda (`13px`), máximo 2 líneas.
+4. **Badges de Notificación sobre Módulos:**
+   * Si un módulo cuenta con tareas pendientes (ej. aprobación de traspasos pendientes `aatr`), se debe posicionar un badge circular rojo o ámbar en la esquina superior derecha de la tarjeta con el conteo numérico de solicitudes pendientes.
+5. **Control de Salida de la App:**
+   * Manejo obligatorio con `PopScope` para interceptar el botón atrás de Android y desplegar diálogo modal institucional de confirmación de salida.
+
+---
+
+## Módulo 3: Inventario, Verificación y Catálogo
+
+### Pantallas y Widgets Involucrados
+* `InventoryScreen` (`lib/screens/inventory_screen.dart`)
+* `AssetVerificationScreen` (`lib/screens/asset_verification_screen.dart`)
+* `GeneratorScreen` (`lib/screens/generator_screen.dart`)
+* `InventoryArticleTile` (`lib/widgets/inventory_article_tile.dart`)
+* `CascadingCatalogsWidget` (`lib/widgets/cascading_catalogs_widget.dart`)
+* `ArticleEditModal` (`lib/widgets/article_edit_modal.dart`)
+
+### Especificaciones de Layout y UI/UX
+1. **Pantalla Principal de Inventario (`InventoryScreen`):**
+   * **AppBar:** Título `"Inventario de Activos"`, botón de búsqueda y acceso directo al escáner de código de barras / QR.
+   * **Filtros en Cascada (`CascadingCatalogsWidget`):** Selectores empresa → bodega → colaborador en contenedor blanco superior delimitado.
+   * **Franja Métrica:** `"Activos en lista: ${articulos.length}"` con separador continuo.
+   * **Tarjeta de Activo (`InventoryArticleTile`):**
+     * Franja vertical de 5px: Verde si el activo ya fue auditado/verificado, gris si está pendiente de conteo, ámbar si tiene solicitud de traspaso en curso.
+     * Placa y Serial: Placa destacada en badge gris claro con fuente monoespacio en negrita (`Placa: ACT-9847`).
+     * Botón de Acción Rápida: Botón de transferencia individual `⇄` en el lateral derecho para abrir directamente la creación de traspaso pre-cargado.
+   * **Modo Selección Múltiple (`_isSelectionMode`):**
+     * Activado desde el Floating Action Button institucional.
+     * Checkboxes integrados en cada tarjeta de activo con animación suave.
+     * Barra inferior fija de acciones: Conteo de seleccionados (`"N seleccionados"`), botón cancelar selección y botón `"Crear Traspaso Múltiple"` en color primario.
+2. **Modal de Edición Rápida de Artículo (`ArticleEditModal`):**
+   * Diálogo modal o modal bottom sheet con esquinas `BorderRadius.circular(12)`.
+   * Secciones bien demarcadas con encabezados en gris oscuro: Datos del activo, Ubicación física, Coordenadas GPS y Evidencia fotográfica.
+3. **Verificación de Activos (`AssetVerificationScreen`):**
+   * Visor de cámara en mitad superior y tarjeta de resultados en mitad inferior.
+   * Badge de GPS satelital: Verde fijo cuando la precisión es `< 10m` con coordenadas visibles, ámbar titilante mientras calcula fijación geográfica.
+
+---
+
+## Módulo 4: Aprobación de Traspasos
+
+### Pantallas y Widgets Involucrados
+* `TransferApprovalScreen` (`lib/screens/transfer_approval_screen.dart`)
+* `TransferFilterPanel` (`lib/widgets/transfer_filter_panel.dart`)
+
+### Especificaciones de Layout y UI/UX
+1. **Panel de Filtros Fijo (`TransferFilterPanel`):**
+   * Ubicación fija bajo el AppBar, fondo blanco plano con borde inferior `Colors.grey.shade200`.
+   * **Botón de Filtros Secundarios:** Selector rectangular `r: 8` a la izquierda con icono `Icons.filter_list_rounded` y badge circular primario con la cantidad de filtros avanzados activos (empresa, bodega, fechas).
+   * **Separador vertical:** `Container(height: 22, width: 1, color: Colors.grey.shade300)`.
+   * **Carrusel de Estados:** Botones rectangulares `r: 8` en scroll horizontal (`Pendientes`, `Procesados`, `Aprobados`, `Rechazados`, `Recibidos`). Estado activo con fondo translúcido `alpha: 0.1` y borde `1.4px` en el color del estado; estado inactivo en fondo neutro con borde `Colors.grey.shade300`.
+2. **Franja Superior de Resumen:**
+   * `"Solicitudes en lista: ${transfers.length}"` en fondo blanco con `Divider(height: 1, thickness: 1)`.
+3. **Tarjeta de Traspaso (`_TransferCard`):**
+   * Franja lateral de 5px con color dinámico según `getStatusColor(transfer.estado)`.
+   * **Fila Superior:** Badge gris con identificador (`Trámite #1234`), identificador de requisición si existe y badge de estado de alto contraste a la derecha.
+   * **Bloque de Trayectoria Origen ➔ Destino (Fila Única):**
+     * Contenedor compacto en fondo `Colors.grey.shade50`, borde `Colors.grey.shade200`, `r: 8`.
+     * Origen: Icono `Icons.storefront_outlined`, nombre de bodega origen en negrita (`12px`), responsable abajo en gris (`11px`).
+     * Centro: Flecha sutil `Icons.arrow_forward_rounded` (`15px`, `Colors.grey.shade400`).
+     * Destino: Icono `Icons.warehouse_outlined` en color primario, bodega destino en negrita (`12px`), responsable abajo en gris (`11px`).
+   * **Desglose de Activos:**
+     * Registro único: Fila con icono de inventario, nombre de activo y badge con número de placa.
+     * Multi-artículo: Acordeón colapsable con badge `"N artículos"`, previsualización del primer activo y lista expandible.
+   * **Observaciones y Motivo de Rechazo:**
+     * Observaciones normales: Bloque gris tenue con icono de comillas `Icons.format_quote_rounded`.
+     * Motivo de rechazo: Bloque de alerta en rojo tenue (`Colors.red.shade50`, borde `Colors.red.shade200`) con icono explicativo.
+4. **Footer de Acciones Operativas:**
+   * Visible únicamente en trámites pendientes (`pe`).
+   * Botón Rechazar: `OutlinedButton` en rojo corporativo (`foregroundColor: Colors.red.shade700`, borde `Colors.red.shade300`, `r: 8`).
+   * Botón Aprobar: `ElevatedButton` en verde esmeralda institucional (`Color(0xFF1B5E20)`, `foregroundColor: Colors.white`, `r: 8`).
+   * **Modal de Rechazo:** Diálogo modal `r: 12` con campo multilínea obligatorio (`TextFormField`) para ingresar el motivo de rechazo; botón de confirmación en rojo corporativo inhabilitado si el motivo está vacío.
+
+---
+
+## Módulo 5: Entrega, Recepción y Captura de Firmas
+
+### Pantallas Involucradas
+* `TransferDeliveryScreen` (`lib/screens/transfer_delivery_screen.dart`)
+* `SignatureCaptureScreen` (`lib/screens/signature_capture_screen.dart`)
+
+### Especificaciones de Layout y UI/UX
+1. **Pantalla de Entrega / Despacho (`TransferDeliveryScreen`):**
+   * Listado de solicitudes en estado aprobado (`ap`) listas para despacho o entrega física.
+   * Tarjeta de trámite con sección de validación de entrega:
+     * Checkbox o verificación de cada activo físico entregado contra lista.
+     * Indicador de Firma de Origen / Despacho: Badge ámbar `"Pendiente firma entrega"` o verde `"Firma entrega registrada"`.
+     * Indicador de Firma de Receptor: Badge ámbar `"Pendiente firma receptor"` o verde `"Firma receptor registrada"`.
+   * Botón de acción con icono de stylus `Icons.draw_rounded` para abrir la captura de firmas.
+2. **Pantalla de Captura de Firma Digital (`SignatureCaptureScreen`):**
+   * **AppBar Sólido:** Título `"Captura de Firma - [Rol]"` (ej. Entrega / Recepción).
+   * **Área de Firma (Canvas):** Fondo blanco puro delimitado por borde `Colors.grey.shade300` con línea horizontal punteada de guía para el trazo.
+   * **Barra Inferior de Acciones Fija:**
+     * Botón `"Limpiar Trazo"` (`OutlinedButton` neutro con icono `Icons.clear_rounded`, esquinas `r: 8`).
+     * Botón `"Confirmar y Guardar Firma"` (`ElevatedButton` en verde esmeralda institucional `Color(0xFF1B5E20)`, esquinas `r: 8`).
+
+---
+
+## Módulo 6: Requisiciones de Inventario
+
+### Pantallas y Tabs Involucrados
+* `RequisitionsScreen` (`lib/screens/requisitions_screen.dart`)
+* `ApprovalTabView` (`lib/screens/tabs/approval_tab_view.dart`)
+* `DeliveryTabView` (`lib/screens/tabs/delivery_tab_view.dart`)
+* `RequisitionActionCard` (`lib/widgets/requisition_action_card.dart`)
+
+### Especificaciones de Layout y UI/UX
+1. **TabBar Institucional:**
+   * Integrado en el AppBar primario con indicador de pestaña blanco nítido (`indicatorColor: Colors.white`).
+   * Pestaña 1: `"Aprobación"` (asociada al permiso `areq`, estado `'in'`).
+   * Pestaña 2: `"Entrega"` (asociada al permiso `aein`, estado `'ap'`).
+2. **Tarjeta de Requisición (`RequisitionActionCard`):**
+   * Franja vertical de 5px indicadora del estado actual de la requisición.
+   * Cabecera con número formal (`Requisición #REQU-XXXX`).
+   * Tabla compacta de artículos solicitados: Descripción, cantidad solicitada y cantidad aprobada/despachada.
+   * Botones de acción acordes a la pestaña: Botón de aprobar/rechazar en pestaña de aprobación, botón de registrar entrega física en pestaña de entrega.
+
+---
+
+## Módulo 7: Conteo Físico Administrativo y en Piso
+
+### Pantallas y Tabs Involucrados
+* `PhysicalCountScreen` (`lib/screens/physical_count_screen.dart`)
+* `PhysicalCountOpeningTab` (`lib/screens/tabs/physical_count_opening_tab.dart`)
+* `PhysicalCountAssignmentTab` (`lib/screens/tabs/physical_count_assignment_tab.dart`)
+* `PhysicalCountClosingTab` (`lib/screens/tabs/physical_count_closing_tab.dart`)
+* `ActiveCountScreen` (`lib/screens/active_count_screen.dart`)
+
+### Especificaciones de Layout y UI/UX
+1. **Administración del Conteo (`PhysicalCountScreen`):**
+   * TabBar dinámico según permisos (`aacf`, `aacu`, `accf`):
+     * **Pestaña Apertura:** Formulario ordenado en tarjetas blancas con selectores estándar en cascada (`DropdownTemplates`) de empresa, bodega y fecha de corte. Botón de apertura destacado al pie.
+     * **Pestaña Asignación:** Selector de conteo activo y lista de colaboradores con casillas de verificación o chips interactivos (`r: 8`).
+     * **Pestaña Cierre:** Panel de resumen con tarjeta semafórica de bodegas pendientes (icono de advertencia ámbar si hay bodegas sin cerrar) y botón de cierre definitivo con confirmación modal obligatoria.
+2. **Ejecución en Piso / Conteo Offline (`ActiveCountScreen`):**
+   * **Cabecera Fija de Sesión:** Contenedor blanco con ID de conteo, nombre de bodega actual y badge de conectividad (`Offline` en gris/ámbar, `Sincronizado` en verde).
+   * **Campo de Captura Rápida:** Campo de texto de alta reactividad con `autofocus: true` persistente para pistolas lectoras de código de barras láser bluetooth.
+   * **Feedback Visual Instantáneo (Flash):**
+     * Lectura exitosa: Borde del contenedor o flash visual de 200ms en verde con confirmación háptica/sonora.
+     * Lectura errónea o activo ajeno a la bodega: Flash visual en rojo corporativo con alerta de advertencia inmediata.
+   * **Franja Métrica Inferior:** Conteo en tiempo real de artículos leídos vs esperados, y botón flotante/fijo de "Cerrar Conteo y Sincronizar".
+
+---
+
+## Módulo 8: Gestión de Cuenta y Utilidades de Diagnóstico
+
+### Pantallas Involucradas
+* `AccountScreen` (`lib/screens/account_screen.dart`)
+* `ScannerScreen` (`lib/screens/scanner_screen.dart`)
+* `HomeScreen` (`lib/screens/home_screen.dart`)
+
+### Especificaciones de Layout y UI/UX
+1. **Pantalla de Cuenta (`AccountScreen`):**
+   * Tarjeta superior con avatar corporativo, nombre completo del colaborador, cédula institucional y versión oficial instalada (`vX.Y.Z (build N)`).
+   * Sección estructurada de permisos asignados con badges informativos grises (`r: 6`) y descripción de cada permiso.
+2. **Módulo Principal de Pruebas / Debug (`HomeScreen`, `ScannerScreen`):**
+   * Visible únicamente cuando `kReleaseMode == false`.
+   * Herramientas de diagnóstico de lectura de hardware y generación de QR de prueba.
+
+---
+
+## 7. Resumen de Referencias Cruzadas en el Código Fuente
+
+Para revisar las implementaciones canónicas vigentes en el código fuente:
+
+| Pantalla / Widget | Archivo | Patrón Destacado |
+|---|---|---|
+| **Aprobación de Traspasos** | `lib/screens/transfer_approval_screen.dart` | AppBar sólido, franja métrica, tarjetas con franja de 5px, flujo en una línea, botones `r: 8`. |
+| **Panel de Filtros** | `lib/widgets/transfer_filter_panel.dart` | Selectores rectangulares `r: 8`, código de color temático por estado, badge de filtros activos. |
+| **Tarjeta de Inventario** | `lib/widgets/inventory_article_tile.dart` | Franja vertical de 5px, badges de placa monoespacio, soporte modo individual y selección múltiple. |
+| **Inventario Principal** | `lib/screens/inventory_screen.dart` | Filtro cascada, barra de búsqueda, franja de resumen, modo selección con barra inferior. |
+| **Dashboard Modular** | `lib/screens/dashboard_screen.dart` | Grid dinámico con permisos, badges de alerta de trámites pendientes, confirmación `PopScope`. |
+| **Entrega y Firmas** | `lib/screens/transfer_delivery_screen.dart`, `lib/screens/signature_capture_screen.dart` | Checklist físico, canvas de firma con guía horizontal punteada y botones de guardado. |
+| **Administración Conteo** | `lib/screens/physical_count_screen.dart` | TabBar modular por permisos, selectores `DropdownTemplates`, semáforo de cierre. |
+| **Conteo en Piso** | `lib/screens/active_count_screen.dart` | Cabecera fija de sesión, campo para lector láser, feedback visual instantáneo (flash). |

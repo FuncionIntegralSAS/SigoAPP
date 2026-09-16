@@ -121,3 +121,67 @@ A continuación, se evidencian las modificaciones arquitectónicas introducidas 
    - **Separación de Llaves de Identidad**: Se estableció `codigoActivo` (`String`) como el identificador único de negocio (referencia visible, etiquetas QR y códigos de barras), mientras que `id` (`int?`) quedó estrictamente restringido como identificador interno de base de datos/geolocalización (`afgeIdre`).
    - **Blindaje de Módulos Operativos**: Se adaptaron y validaron todos los flujos de traslados, conteo físico, apertura, asignación, servicios mock y parsers de QR para garantizar que el atributo `id` no se filtre ni contamine las peticiones REST de negocio, eliminando riesgos de fallas por incompatibilidad de tipos o de esquema en Spring Boot.
 
+## Control de Cambios e Histórico (v2.6 a v2.7)
+
+1. **Búsqueda Dinámica de Personal y Selección Interactiva de Destino**:
+   - **Consumo Real de API**: `HttpCatalogRepository.searchPersons()` migrado para consultar directamente `GET /api/v1/personal/buscar` enviando parámetros opcionales (`nombre`, `apellido`, `cedula`).
+   - **Selección de Candidatos en UI (`TransferFormWidget`)**: Búsqueda por cédula, nombre o apellido con despliegue de diálogo interactivo de selección cuando existen múltiples coincidencias, y auto-completado inequívoco ante coincidencias únicas.
+   - **Carga en Cascada**: Resolución automática de la división del empleado destino y carga de bodegas autorizadas asociadas.
+
+2. **Estandarización de Diálogos de Diagnóstico para Desarrollador (`DialogUtils.showErrorDialog`)**:
+   - **Modal de Diagnóstico**: Se diseñó un diálogo modal con estilo Material estándar que presenta al usuario un mensaje funcional conciso junto a un código de error o estado HTTP, incorporando un acordeón expandible (*"Detalles técnicos para soporte"*) con la ruta (`endpoint`) y la traza técnica retornada por el servidor sin exponer secretos.
+
+3. **Tipado Estructurado de Excepciones y Mapeo en Repositorios**:
+   - **`TransferBusinessException` Enriquecida**: Se añadieron los campos opcionales `statusCode`, `endpoint` y `technicalDetails`.
+   - **Nueva `CatalogBusinessException`**: Excepción de negocio especializada para fallos de consulta en catálogos y personal.
+   - **Blindaje de Repositorios HTTP**: `HttpTransferRepository` y `HttpCatalogRepository` implementaron el helper centralizado `_mapDioException` para capturar respuestas del backend (`response.data['message']`), enriquecer excepciones de negocio y registrar trazas con `AppLogger.e`.
+
+4. **Optimización y Blindaje Asíncrono en Aprobación de Traspasos**:
+   - **Filtrado en Servidor (`GET /api/v1/traspasos/list?estado=pe`)**: `TransferApprovalProvider` ahora envía el parámetro de estado directamente a la API, optimizando el consumo de red y rendimiento al consultar únicamente los pendientes por defecto o el criterio del filtro activo.
+   - **Corrección de Aserciones Asíncronas en UI (`TransferApprovalScreen`)**: Se aseguró el `await` de operaciones `approveTransfer` y `rejectTransfer`, erradicando falsos positivos en notificaciones SnackBar y mostrando retroalimentación real mediante `DialogUtils.showErrorDialog`.
+   - **Prevención de Doble Pulsación (`isProcessing`)**: Registro reactivo de solicitudes en vuelo que bloquea botones de acción y muestra indicadores de carga contextuales por tarjeta.
+   - **Resiliencia de UI**: Incorporación de estado vacío informativo con botón de reintento, indicador lineal de recarga y botón de refresco manual en el `AppBar`.
+
+5. **Documentación Funcional Exhaustiva de Traspasos**:
+   - Se redactó el documento `.context/SigoAPP_Funcional_Traspasos.md` con la máquina de estados completa (`pe` -> `ap`/`na` -> `af` -> `tr`/`ad` -> `co`), detalles de precedencia en firmas manuscritas (`FU` / `DE`), contratos REST y matriz de errores.
+
+## Control de Cambios e Histórico (v2.7 a v2.8)
+
+1. **Adaptación a Arquitectura Multi-Artículo en Traspasos**:
+   - `TransferCreateRequest` refactorizado para enviar el array obligatorio `articulos: [ { "articulo": "...", "placa": "..." } ]` y campos de identificación `personaFuente`, `personaDestino` y `empresa` en formato String.
+   - Creación de `TransferArticleItem` y `TransferFirmItem` como submodelos estructurados en `transfer_request.dart`.
+   - El atributo `id` de las rutas y modelos pasa a representar el `numeroTramite` (`MOTRNUTR`), agrupando todos los activos de una misma solicitud.
+
+2. **Nuevo Ciclo de Vida Simplificado (4 Estados Canónicos)**:
+   - Eliminación de los estados intermedios `af` y `ad` de la tabla `FI_MOVITRAS`.
+   - Estandarización en 4 estados oficiales: `pe` (Pendiente), `ap` (Aprobado), `na` (Rechazado) y `re` (Recibido).
+   - Soporte para consultas de bandeja agrupada con `estado=pr` (agrupa trámites en `ap`, `na` y `re`).
+
+3. **Firmas Digitales Desacopladas (Sin Orden Requerido)**:
+   - Eliminación de la restricción secuencial en `SignatureCaptureScreen` y `TransferDeliveryProvider`.
+   - Despachador Fuente (`FU`) y Receptor Destino (`DE`) pueden firmar en cualquier orden de forma independiente mediante `PUT /api/v1/traspasos/sign/{id}`.
+   - Las firmas se gestionan en la entidad `FI_MOTRFIRM` y no modifican el estado `ap` del trámite.
+
+4. **Afectación Diferida en ERP y Confirmación de Recepción**:
+   - Incorporación del método `confirmReceipt` en `TransferDeliveryProvider` y del botón destacado *"Confirmar Recepción ERP"* en `TransferDeliveryScreen`.
+   - Invocación de `PUT /api/v1/traspasos/recibir/{id}` cuando ambas firmas están registradas (`bothSigned`), asentando las existencias en `DOCUINVE`/`MOVIINVE` y concluyendo el traspaso en estado `re`.
+
+5. **Enriquecimiento Concurrente de Bandeja**:
+   - `HttpTransferRepository.getAllTransfers` enriquece las cabeceras ligeras retornadas por `GET /api/v1/traspasos/list` consultando concurrentemente `GET /api/v1/traspasos/get/{id}` para mostrar artículos, placa y custodios en las tarjetas de interfaz.
+
+## Control de Cambios e Histórico (v2.8 a v2.9)
+
+1. **Flujo Dinámico en Cascada para Creación de Traspasos**:
+   - Rediseño de `TransferFormWidget` y `TransferFormProvider` para guiar al usuario en secuencia interactiva: Empresa -> Bodega Origen -> Colaboradores Fuente -> Activos Asignados -> Bodega Destino -> Colaboradores Destino -> Observación -> Envío.
+2. **Endpoints Auxiliares de Consulta de Colaboradores y Activos**:
+   - Incorporación de `TransferPersonModel` y consumo de `GET /api/v1/traspasos/personas?bodega={bodega}&empresa={empresa}` en `TransferRepository`.
+   - Incorporación de `TransferAssetModel` y consumo de `GET /api/v1/traspasos/activos?persona={persona}&empresa={empresa}` en `TransferRepository`.
+3. **Reglas de Negocio y Compatibilidad Multi-Artículo PL/SQL**:
+   - Bloqueo en tiempo real de activos en trámite (`enTramite: true`) con badge visual informativo.
+   - Aplicación de compatibilidad multi-artículo de `PKG_FI_MOVITRAS`: todos los activos de una misma solicitud deben coincidir en `centroInformacion` y `tercero`. La UI inhabilita dinámicamente aquellos que no coincidan con el primer activo seleccionado.
+   - Validación estricta de diferenciación de colaboradores: `personaDestino.cedula != personaFuente.cedula`.
+4. **Exclusión de Bodegas en el Payload de Creación**:
+   - El payload enviado a `POST /api/v1/traspasos/crear` omite intencionalmente las bodegas (las bodegas se usan exclusivamente en el cliente como filtro para consultar a las personas asociadas).
+
+
+

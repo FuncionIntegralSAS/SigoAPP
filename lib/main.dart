@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:sigo_app/repositories/mock_transfer_repository.dart';
+import 'package:sigo_app/repositories/http_transfer_repository.dart';
 import 'package:sigo_app/services/in_app_notification_service.dart';
 import 'package:sigo_app/services/notification_service.dart';
 
@@ -69,7 +70,10 @@ Future<void> main() async {
   // Inyectamos Dio al repositorio de geolocalización
   final geolocationRepository = HttpGeolocationRepository(backendDio);
 
-  final messengerKey = GlobalKey<ScaffoldMessengerState>();
+  // Repositorio HTTP real para traspasos (aprobación y backend real)
+  final httpTransferRepository = HttpTransferRepository(backendDio);
+
+  final messengerKey = AppConfig.scaffoldMessengerKey;
   final notificationService = InAppNotificationService(messengerKey);
   if (Platform.isWindows || Platform.isLinux) {
     sqfliteFfiInit();
@@ -84,24 +88,37 @@ Future<void> main() async {
         // Providers de dominio
         ChangeNotifierProvider(
           create: (_) =>
-              TransferRequestProvider(transferRepository, notificationService),
+              TransferRequestProvider(httpTransferRepository, notificationService),
         ),
         ChangeNotifierProvider(
-          create: (_) => TransferApprovalProvider(transferRepository),
+          create: (_) => TransferApprovalProvider(
+            httpTransferRepository,
+            catalogRepository: catalogRepository,
+            autoLoad: false,
+          ),
         ),
         ChangeNotifierProvider(
-          create: (_) => TransferDeliveryProvider(transferRepository),
+          create: (_) => TransferDeliveryProvider(
+            transferRepository,
+            catalogRepository: catalogRepository,
+          ),
         ),
         ChangeNotifierProvider(create: (_) => AssetVerificationProvider()),
 
         // Provider de Inventario
         ChangeNotifierProvider(
-          create: (_) => InventoryProvider(inventoryRepository),
+          create: (_) => InventoryProvider(
+            inventoryRepository,
+            transferRepository: httpTransferRepository,
+          ),
         ),
 
         // Provider del formulario de creación de traspasos (carga en cascada)
         ChangeNotifierProvider(
-          create: (_) => TransferFormProvider(catalogRepository),
+          create: (_) => TransferFormProvider(
+            httpTransferRepository,
+            catalogRepository: catalogRepository,
+          ),
         ),
 
         // Registramos el nuevo Provider de Requisiciones
@@ -136,9 +153,9 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  final GlobalKey<ScaffoldMessengerState> messengerKey;
+  final GlobalKey<ScaffoldMessengerState>? messengerKey;
 
-  const MyApp(this.messengerKey, {super.key});
+  const MyApp([this.messengerKey, Key? key]) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -146,8 +163,9 @@ class MyApp extends StatelessWidget {
       title: 'App Gestión Administrativa',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(useMaterial3: true, primarySwatch: Colors.blue),
+      navigatorKey: AppConfig.navigatorKey,
+      scaffoldMessengerKey: messengerKey ?? AppConfig.scaffoldMessengerKey,
       home: const AuthWrapper(),
-      scaffoldMessengerKey: messengerKey,
     );
   }
 }

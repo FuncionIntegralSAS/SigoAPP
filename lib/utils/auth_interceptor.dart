@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'app_logger.dart';
+import 'auth_utils.dart';
 
 /// Interceptor centralizado de autenticación para [Dio].
 ///
@@ -9,6 +10,8 @@ import 'app_logger.dart';
 /// almacenado en [FlutterSecureStorage].
 ///
 /// Excluye rutas públicas de autenticación (ej. `/api/v1/auth/`).
+/// Intercepta respuestas HTTP 401 en endpoints protegidos disparando
+/// automáticamente el flujo de expiración de sesión y expulsión controlada.
 class AuthInterceptor extends Interceptor {
   final FlutterSecureStorage _storage;
 
@@ -44,11 +47,19 @@ class AuthInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     final statusCode = err.response?.statusCode;
-    if (statusCode == 401 || statusCode == 403) {
-      AppLogger.w(
-        'AuthInterceptor: Error de autenticación ($statusCode) en ${err.requestOptions.path}',
-      );
+    final path = err.requestOptions.path;
+
+    if (statusCode == 401) {
+      AppLogger.w('AuthInterceptor: Error 401 (No autorizado) en $path');
+      // No expulsar en endpoints públicos de autenticación (login, etc.) para permitir
+      // mostrar al usuario el mensaje de credenciales incorrectas.
+      if (!_isPublicEndpoint(path)) {
+        AuthUtils.handleSessionExpired();
+      }
+    } else if (statusCode == 403) {
+      AppLogger.w('AuthInterceptor: Error 403 (Acceso prohibido) en $path');
     }
+
     super.onError(err, handler);
   }
 

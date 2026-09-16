@@ -8,6 +8,7 @@ Antes de proponer soluciones técnicas, escribir código o planificar modificaci
 1. `.context/SigoAPP_Arquitectura.md`
 2. `.context/Rules_Networking.md`
 3. `.context/utils_documentation.md`
+4. `.context/SigoAPP_Guia_Estilos_UI.md` (Obligatorio si la tarea involucra pantallas, widgets, componentes visuales o UI/UX. Debe consultarse tanto la Parte I de directrices generales como la Parte II de especificaciones particulares por módulo/pantalla)
 
 **Excepción — Prompt Pre-Contextualizado:** Si el primer mensaje del usuario contiene el encabezado `<!-- MODULE-ROUTER-CONTEXT -->`, significa que el prompt fue generado por el skill *module-router* y ya incluye el contexto arquitectónico, reglas y archivos relevantes pre-digeridos. En ese caso, **omite** la lectura obligatoria de los documentos listados arriba y trabaja directamente con el contexto proporcionado en el prompt. Las reglas de §Sincronización de Documentación siguen aplicando normalmente.
 
@@ -18,7 +19,7 @@ Si el usuario te solicita realizar modificaciones, correcciones o mejoras sobre 
 
 ## Lectura Direccional (Mapa de Módulos)
 Antes de realizar cualquier modificación sobre un módulo existente, **además** de los documentos obligatorios iniciales (§Contexto Obligatorio Inicial), lee:
-4. `.context/SigoAPP_Mapa_Modulos.md` — para identificar **todos** los archivos involucrados en el módulo y evitar omisiones.
+5. `.context/SigoAPP_Mapa_Modulos.md` — para identificar **todos** los archivos involucrados en el módulo y evitar omisiones.
 
 Este documento es la **fuente de verdad** para determinar qué archivos pertenecen a cada módulo de negocio. Consúltalo como primer paso cuando necesites determinar el alcance de un cambio.
 
@@ -40,12 +41,13 @@ En cualquiera de los dos casos, el agente debe:
 
 | Tipo de Cambio | Documentos Afectados |
 |----------------|---------------------|
-| Nuevo módulo/pantalla | `SigoAPP_Mapa_Modulos.md`, `SigoAPP_Arquitectura.md` |
+| Nuevo módulo/pantalla | `SigoAPP_Mapa_Modulos.md`, `SigoAPP_Arquitectura.md`, `SigoAPP_Guia_Estilos_UI.md` |
 | Nuevo provider/repositorio | `SigoAPP_Mapa_Modulos.md`, `SigoAPP_Arquitectura.md` |
 | Nueva utilidad | `utils_documentation.md`, `SigoAPP_Mapa_Modulos.md` |
 | Nuevo permiso | `visualizacion_dinamica_dashboard.md`, `SigoAPP_Mapa_Modulos.md` |
 | Eliminación de archivo | Todos los documentos que lo referencien |
 | Reglas de red | `Rules_Networking.md` |
+| Ajustes visuales / UI/UX / componentes | `SigoAPP_Guia_Estilos_UI.md` |
 | Módulo funcional completo nuevo | Crear `SigoAPP_Funcional_<Modulo>.md`, actualizar `SigoAPP_Mapa_Modulos.md` |
 
 ### Historial de cambios

@@ -35,12 +35,13 @@ Cruza los archivos detectados con la **Tabla de Impacto** de `AGENTS.md`:
 
 | Tipo de Cambio | Documentos Afectados en `.context/` |
 |----------------|-------------------------------------|
-| Nuevo módulo / pantalla | `SigoAPP_Mapa_Modulos.md`, `SigoAPP_Arquitectura.md` |
+| Nuevo módulo / pantalla | `SigoAPP_Mapa_Modulos.md`, `SigoAPP_Arquitectura.md`, `SigoAPP_Guia_Estilos_UI.md` |
 | Nuevo provider / repositorio | `SigoAPP_Mapa_Modulos.md`, `SigoAPP_Arquitectura.md` |
 | Nueva utilidad | `utils_documentation.md`, `SigoAPP_Mapa_Modulos.md` |
 | Nuevo permiso | `visualizacion_dinamica_dashboard.md`, `SigoAPP_Mapa_Modulos.md` |
 | Cambio de endpoints / red | `Rules_Networking.md` |
 | Eliminación de archivo | Todos los documentos que lo referencien |
+| Ajustes visuales / UI/UX / componentes | `SigoAPP_Guia_Estilos_UI.md` |
 | Módulo funcional nuevo | Crear `SigoAPP_Funcional_<Modulo>.md`, actualizar `SigoAPP_Mapa_Modulos.md` |
 | Cambio arquitectónico mayor | `SigoAPP_Historial_Cambios.md` |
 

@@ -6,10 +6,16 @@
 class EmployeeResult {
   final String nombre;
   final String? divisionId;
+  final int? personaId;
+  final String? cedula;
+  final String? correo;
 
   const EmployeeResult({
     required this.nombre,
     this.divisionId,
+    this.personaId,
+    this.cedula,
+    this.correo,
   });
 
   factory EmployeeResult.fromJson(Map<String, dynamic> json) {
@@ -31,9 +37,16 @@ class EmployeeResult {
         json['divisionId'] ??
         json['PERSDIVI'];
 
+    final rawCedula = json['cedula'] ?? json['perscodi'] ?? json['persCodi'] ?? json['nationalId'];
+    final rawId = json['id'] ?? json['persidre'] ?? rawCedula;
+    final personaId = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '');
+
     return EmployeeResult(
       nombre: fullName,
       divisionId: rawDivi?.toString(),
+      personaId: personaId,
+      cedula: rawCedula?.toString(),
+      correo: (json['correo'] ?? json['perscoel'] ?? json['email'])?.toString(),
     );
   }
 }

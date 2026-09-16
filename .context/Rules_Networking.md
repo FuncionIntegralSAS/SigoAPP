@@ -32,16 +32,32 @@ Future<void> searchPerson({String? nombre, String? apellido, String? cedula}) { 
 - **Identificación de Errores y Códigos HTTP:**
   - `204 No Content`: Retornado por endpoints como `/api/v1/empresas/getAll` cuando no existen registros disponibles. Los repositorios deben validar explícitamente `response.statusCode == 204` o `response.data == null`, retornando una colección vacía (`[]`) sin intentar deserializar para evitar errores de casteo (`TypeError: null is not a subtype of List`).
   - `400 Bad Request`: Representan errores de malformación, datos faltantes, o validaciones en donde intervino el usuario. Siempre extraer el string `message` de la API para mostrarlo al usuario.
-  - `401 Unauthorized / 403 Forbidden`: Indican sesión expirada, token inválido o falta de permisos. Deben capturarse en los Providers para transicionar a estado `ERROR` con mensajes claros al usuario invitando a renovar la sesión.
+  - `401 Unauthorized / 403 Forbidden`: Indican sesión expirada, token inválido o falta de permisos. Ante un error `401` en endpoints protegidos, `AuthInterceptor` intercepta automáticamente la respuesta y delega en `AuthUtils.handleSessionExpired()`, ejecutando un cierre de sesión seguro, limpiando credenciales en `FlutterSecureStorage` y Providers en memoria, notificando al usuario mediante `AppConfig.scaffoldMessengerKey` y redirigiendo a `AuthWrapper` vía `AppConfig.navigatorKey`. Cuenta con protección semáforo (`_isLoggingOut`) para evitar tormentas 401 ante fallos simultáneos. En errores `403` (prohibido por permisos), se capturan en los Providers para transicionar a estado `ERROR` informando la falta de privilegios.
   - `409 Conflict`: Casos puntuales en los que reglas lógicas colisionan (ej. bodega ya bloqueada, lote consumido). Siempre informar sobre el conflicto puntual.
   - `500 Internal Server Error`: Errores imprevisibles; la aplicación no debe crashear, sino proveer una advertencia general invirtiendo en logs internos, invitando a intentar más tarde.
 - **Manejo Resiliente:** Toda llamada de red debe ir protegida mediante un bloque `try/catch`. Nunca derivar la excepción cruda a la UI. Capturarla en el Provider y transformarla a un estado `(state == PhysicalCountState.ERROR)` proveyendo un mensaje `errorMessage` humano y amigable.
 
-## 5. Autenticación y Cabeceras Automáticas (AuthInterceptor)
+## 5. Autenticación, Expiración de Sesión y Cabeceras Automáticas (AuthInterceptor)
 - **Inyección Centralizada de Token:** La cabecera `Authorization: Bearer <token>` se inyecta de forma automática en todas las peticiones a endpoints protegidos mediante `AuthInterceptor` en la instancia única de `Dio` (`AppConfig.createDio()`).
-- **Exclusión de Rutas Públicas:** Las rutas públicas de autenticación (`/api/v1/auth/`) se omiten automáticamente del interceptor.
+- **Exclusión de Rutas Públicas:** Las rutas públicas de autenticación (`/api/v1/auth/`) se omiten automáticamente tanto de la inyección de cabecera como de la expulsión por 401, permitiendo que las pantallas de inicio de sesión gestionen directamente los mensajes de credenciales erróneas.
+- **Expulsión Centralizada Desacoplada (401):** Cuando un endpoint protegido responde con 401, `AuthInterceptor.onError` activa `AuthUtils.handleSessionExpired()`, operando de manera totalmente desacoplada del árbol de widgets mediante `AppConfig.navigatorKey` y `AppConfig.scaffoldMessengerKey`.
+- **Prevención de Tormenta 401 (Concurrencia):** Mediante la bandera de exclusión mutua `AuthUtils.isLoggingOut`, múltiples respuestas 401 concurrentes son debounced para asegurar que la limpieza, el SnackBar y el redireccionamiento se ejecuten exactamente una vez.
 - **Desacoplamiento de Providers:** Los constructores de Providers no deben disparar peticiones protegidas durante el arranque global de la aplicación (antes del login). La carga de datos debe vincularse al ciclo de vida de las pantallas correspondientes (`initState` con `WidgetsBinding.instance.addPostFrameCallback`).
 
 ## 6. Pruebas y Simulaciones (Mocks)
 - **Mocks con Latencia:** Al construir un servicio falso (`MockService`), utilizar `Future.delayed` para simular asincronía y asegurar que los *Loading States* (`CircularProgressIndicator`) actúan correctamente en la UI.
 - **Inyección de Errores Intencionales:** Para garantizar la solidez de los Providers, los Mocks deben incluir la bandera intencional de simulación de errores (`throw DioException()`), con el fin de correr pruebas unitarias validando la transición a estado ERROR de sus respectivos flujos.
+
+## 7. Envoltura Estándar de Respuesta (`ObjectResponse`) y Códigos de Negocio
+- **Inspección de `code: 0` vs `code: -1` en HTTP 200:**
+  Muchos endpoints del backend Spring Boot (ej. `/api/v1/traspasos/crear`) responden con status `200 OK` incluso ante fallos de validación previa de negocio, envolviendo el resultado en una estructura estándar:
+  ```json
+  {
+    "code": -1,
+    "msg": "La persona fuente y la persona destino no pueden ser la misma",
+    "object": null
+  }
+  ```
+  **Regla Obligatoria:** Los repositorios jamás deben asumir que `statusCode == 200` implica éxito de la operación. Es obligatorio verificar que `data['code'] == 0`. Si `code != 0`, se debe extraer `data['msg']` y disparar la excepción de negocio tipada (`BusinessException`) con dicho mensaje.
+- **Payloads Limpios sin Metadatos de Filtrado UI:**
+  En solicitudes de creación transaccionales (como la creación de traspasos), el payload enviado debe ceñirse con fidelidad al contrato (`TransferRequest`). Campos utilizados por la interfaz de usuario para filtrado o agrupación local (tales como `bodegaOrigen`, `bodegaDestino`, `centroInformacion` o `tercero`) **no deben ser transmitidos en el body** si no forman parte del modelo de entrada del backend, evitando errores 400 por campos desconocidos o discrepancias con validaciones relacionales en base de datos.

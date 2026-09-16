@@ -43,6 +43,7 @@ Según el tipo de tarea, revisa los documentos adicionales requeridos:
 | Lógica de negocio del conteo físico | `.context/SigoAPP_Funcional_ConteoFisico.md` |
 | Arquitectura general o nuevas capas | `.context/SigoAPP_Arquitectura.md` |
 | Preparación para producción | `.context/SigoAPP_Produccion.md` |
+| Diseño visual, pantallas, widgets o UI/UX | `.context/SigoAPP_Guia_Estilos_UI.md` (Parte I: general y Parte II: por módulo/pantalla) |
 
 ### Paso 3: Inspeccionar archivos clave
 Usa `view_file` para leer las secciones relevantes de los archivos de código identificados en el Paso 1. Extrae:

@@ -9,12 +9,13 @@ import 'catalog_repository.dart';
 class MockCatalogRepository implements CatalogRepository {
   /// Empleados en memoria: cédula → [EmployeeResult].
   static final _employees = <String, EmployeeResult>{
-    '123': const EmployeeResult(nombre: 'Carlos Rodríguez', divisionId: 'D01'),
-    '456': const EmployeeResult(nombre: 'María González', divisionId: 'D02'),
-    '789': const EmployeeResult(nombre: 'Juan Pérez', divisionId: 'D01'),
+    '123': const EmployeeResult(nombre: 'Carlos Rodríguez', divisionId: 'D01', cedula: '123', personaId: 123),
+    '456': const EmployeeResult(nombre: 'María González', divisionId: 'D02', cedula: '456', personaId: 456),
+    '789': const EmployeeResult(nombre: 'Juan Pérez', divisionId: 'D01', cedula: '789', personaId: 789),
+    '101': const EmployeeResult(nombre: 'Carlos Gómez', divisionId: 'D01', cedula: '101', personaId: 101),
   };
 
-  /// Bodegas en memoria: divisionId → List<WarehouseModel>.
+  /// Bodegas en memoria: divisionId → `List<WarehouseModel>`.
   static final _warehouses = <String, List<WarehouseModel>>{
     'D01': const [
       WarehouseModel(codigoBodega: 'B01', descripcionBodega: 'Bodega Principal', estadoBodega: 'A'),
@@ -26,13 +27,37 @@ class MockCatalogRepository implements CatalogRepository {
   };
 
   @override
-  Future<EmployeeResult> findEmployee(String query) async {
-    await Future.delayed(const Duration(milliseconds: 700));
+  Future<List<EmployeeResult>> searchEmployees({
+    String? nombre,
+    String? apellido,
+    String? cedula,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    var list = _employees.values.toList();
 
-    final employee = _employees[query.trim()];
-    if (employee == null) {
-      throw Exception('Empleado no encontrado para el código: $query');
+    if (cedula != null && cedula.trim().isNotEmpty) {
+      list = list.where((e) => (e.cedula ?? '').contains(cedula.trim())).toList();
     }
+    if (nombre != null && nombre.trim().isNotEmpty) {
+      list = list.where((e) => e.nombre.toLowerCase().contains(nombre.trim().toLowerCase())).toList();
+    }
+    if (apellido != null && apellido.trim().isNotEmpty) {
+      list = list.where((e) => e.nombre.toLowerCase().contains(apellido.trim().toLowerCase())).toList();
+    }
+
+    return list;
+  }
+
+  @override
+  Future<EmployeeResult> findEmployee(String query) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    final cleanQuery = query.trim().toLowerCase();
+    final employee = _employees.values.firstWhere(
+      (e) => (e.cedula ?? '').toLowerCase() == cleanQuery ||
+             e.nombre.toLowerCase().contains(cleanQuery),
+      orElse: () => throw Exception('Empleado no encontrado para el código: $query'),
+    );
     return employee;
   }
 

@@ -71,6 +71,10 @@ void main(List<String> args) {
     if (file.contains('/screens/')) {
       affectedDocs.add('.context/SigoAPP_Mapa_Modulos.md');
       affectedDocs.add('.context/SigoAPP_Arquitectura.md');
+      affectedDocs.add('.context/SigoAPP_Guia_Estilos_UI.md');
+    } else if (file.contains('/widgets/')) {
+      affectedDocs.add('.context/SigoAPP_Mapa_Modulos.md');
+      affectedDocs.add('.context/SigoAPP_Guia_Estilos_UI.md');
     } else if (file.contains('/providers/') || file.contains('/repositories/')) {
       affectedDocs.add('.context/SigoAPP_Mapa_Modulos.md');
       affectedDocs.add('.context/SigoAPP_Arquitectura.md');

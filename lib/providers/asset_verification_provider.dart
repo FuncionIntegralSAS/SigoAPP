@@ -26,4 +26,11 @@ class AssetVerificationProvider extends ChangeNotifier {
 
     return articleResponsible != _selectedOwner;
   }
+
+  /// Limpia los filtros y selecciones de verificación al cerrar sesión
+  void reset() {
+    _selectedWarehouse = null;
+    _selectedOwner = null;
+    notifyListeners();
+  }
 }

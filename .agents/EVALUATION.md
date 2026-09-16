@@ -9,11 +9,11 @@ Este documento consolida el estado actual derivado del análisis exhaustivo de a
 | Bloque | Pendientes Técnicos | Pendientes de Definición Funcional | Total Pendientes |
 | :--- | :---: | :---: | :---: |
 | **Fase 2: Alto / Robustez y Ciclo de Vida** | 3 | 0 | 3 |
-| **Fase 3: Medio / Calidad de Código & UX** | 4 | 0 | 4 |
+| **Fase 3: Medio / Calidad de Código & UX** | 5 | 0 | 5 |
 | **Fase 4: Menor / Estandarización** | 1 | 0 | 1 |
 | **Definición de Negocio y Permisos** | 0 | 2 | 2 |
 | **Sincronización de Documentación (`.context/`)** | 3 | 0 | 3 |
-| **Total General** | **11** | **2** | **13** |
+| **Total General** | **12** | **2** | **14** |
 
 ---
 
@@ -76,6 +76,17 @@ Este documento consolida el estado actual derivado del análisis exhaustivo de a
 - **Problema:** En el backend, al aprobar un traspaso (`PUT /api/v1/traspasos/{id}/procesar` con decisión `'ap'`), el cambio de custodia del activo se aplica automáticamente en base de datos. Por ende, el método `applyTransfer` en el contrato es redundante (actualmente solo retorna un `Future.value()`).
 - **Solución requerida:**
   1. Agregar la anotación `@deprecated` formal en el contrato [TransferRepository](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/repositories/transfer_repository.dart) explicando su obsolescencia y preparar su futura extracción sin romper referencias existentes.
+
+#### [PENDIENTE] 3.5 Evaluación de Reemplazo Global de Contenedores de Error por `SessionErrorBanner`
+- **Archivos afectados:**
+  - Pantallas del módulo de inventario ([inventory_screen.dart](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/screens/inventory_screen.dart), [generator_screen.dart](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/screens/generator_screen.dart), etc.)
+  - Pantallas con listas y pestañas ([approval_tab_view.dart](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/screens/tabs/approval_tab_view.dart), etc.)
+- **Problema / Implicación a Evaluar:**
+  Actualmente coexisten contenedores simples de error (`Container` con fondo rojo), diálogos modales (`DialogUtils.showErrorDialog`) y `SnackBar`. Se debe evaluar la conveniencia técnica y de experiencia de usuario antes de reemplazar masivamente estos contenedores por un widget global `SessionErrorBanner`, ponderando:
+  1. Si para sesión expirada (401/403) es más conveniente un banner no bloqueante en la vista o una interrupción modal/diálogo que impida continuar operando con credenciales caducadas.
+  2. Si el interceptor de red ([auth_interceptor.dart](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/utils/auth_interceptor.dart)) o un listener centralizado en `main.dart` debería capturar el 401/403 y redirigir directamente a Login mediante `AuthUtils.logout(context)` en vez de delegar la presentación a cada pantalla individual.
+  3. Consistencia visual entre pantallas con formulario desplazable (`SingleChildScrollView`) vs pantallas basadas en listas (`ListView`).
+- **Estado:** Postergado para evaluación posterior a la implementación de `AuthUtils.logout`.
 
 ---
 

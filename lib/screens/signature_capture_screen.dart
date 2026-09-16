@@ -107,31 +107,35 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
     final bool isReceiver = userIdentifier.isNotEmpty &&
         widget.transfer.responsablePropuesto.toLowerCase().contains(userIdentifier);
 
-    // Según la regla del negocio: "el emisor debe firmar antes de hacer el despacho"
-    final bool dispatcherHasSigned = widget.transfer.firmaDespachadorBase64 != null;
+    final bool sourceHasSigned = widget.transfer.isSourceSigned;
+    final bool targetHasSigned = widget.transfer.isTargetSigned;
 
     bool canSign = false;
     String title = '';
     String instruction = '';
 
     if (isDispatcher) {
-      title = 'Firma del Despachador';
-      instruction = 'Por favor, firma para autorizar el despacho del activo.';
-      canSign = !dispatcherHasSigned;
-      if (dispatcherHasSigned) {
-        instruction = 'Ya has firmado el despacho de este activo.';
-      }
-    } else if (isReceiver) {
-      title = 'Firma del Receptor';
-      if (!dispatcherHasSigned) {
-        instruction = 'El despachador aún no ha firmado la entrega. Debes esperar su firma.';
+      title = 'Firma de Entrega (Fuente)';
+      if (sourceHasSigned) {
+        instruction = 'Ya has firmado la entrega de este traspaso.';
         canSign = false;
       } else {
-        instruction = 'Por favor, firma para confirmar la recepción del activo.';
+        instruction = 'Por favor, firma para autorizar la entrega y salida de los activos.';
+        canSign = true;
+      }
+    } else if (isReceiver) {
+      title = 'Firma de Recepción (Destino)';
+      if (targetHasSigned) {
+        instruction = 'Ya has firmado la recepción de este traspaso.';
+        canSign = false;
+      } else {
+        instruction = 'Por favor, firma para confirmar la recepción de los activos.';
         canSign = true;
       }
     } else {
-      instruction = 'No tienes un rol asignado para firmar este traspaso.';
+      title = 'Captura de Firma';
+      instruction = 'No tienes un rol asignado como fuente o destino para firmar este traspaso.';
+      canSign = false;
     }
 
     return Scaffold(
@@ -195,7 +199,7 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
           ),
           if (provider.loading)
             Container(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               child: const Center(
                 child: CircularProgressIndicator(),
               ),

@@ -3,21 +3,27 @@
 Este documento describe las clases y métodos utilitarios de la carpeta `lib/utils`. Sirve para contextualizar a los asistentes de inteligencia artificial sobre el propósito de cada utilidad y los lugares donde actualmente se usan en el proyecto.
 
 ## `dialog_utils.dart`
-- **Propósito**: Provee métodos estáticos para mostrar cuadros de diálogo reutilizables (*Alerts* / Modales). Por ejemplo, cuenta con `showPendingWarehousesErrorDialog` para mostrar un error estandarizado cuando falla la carga de bodegas pendientes.
+- **Propósito**: Provee métodos estáticos para mostrar cuadros de diálogo reutilizables (*Alerts* / Modales).
+  - `showPendingWarehousesErrorDialog`: Error estandarizado cuando falla la carga de bodegas pendientes en conteo físico.
+  - `showErrorDialog`: Modal de error para el usuario final con redacción concisa, sección expandible de diagnóstico técnico para desarrollador (código HTTP, endpoint, detalles técnicos, botón de copiado al portapapeles) y botones de acción ("Aceptar" / "Reintentar").
 - **Lugares de uso**: 
   - `lib/screens/tabs/physical_count_closing_tab.dart`
+  - `lib/widgets/transfer_form_widget.dart`
 
 ## `app_config.dart`
-- **Propósito**: Maneja la configuración centralizada de la aplicación (clase `AppConfig`). Se encarga de proveer una instancia única de `Dio` pre-configurada (URL base, *timeouts*, interceptores) y de gestionar la persistencia dinámica del dominio mediante `flutter_secure_storage`.
+- **Propósito**: Maneja la configuración centralizada de la aplicación (clase `AppConfig`). Se encarga de proveer una instancia única de `Dio` pre-configurada (URL base, *timeouts*, interceptores), gestionar la persistencia dinámica del dominio mediante `flutter_secure_storage`, y proveer las llaves globales desacopladas `AppConfig.navigatorKey` y `AppConfig.scaffoldMessengerKey` para navegación y notificaciones sin requerir `BuildContext`.
 - **Lugares de uso**:
   - `lib/main.dart`
   - `lib/screens/domain_scanner_screen.dart`
+  - `lib/utils/auth_utils.dart`
 
 ## `app_logger.dart`
 - **Propósito**: Provee un mecanismo de *logging* centralizado (`AppLogger`) garantizando que los logs de consola (debug, info, warn, error) solo se emitan cuando la app corre en modo *debug*, protegiendo la información sensible en producción.
 - **Lugares de uso**:
   - `lib/utils/app_config.dart`
   - `lib/utils/json_interceptor.dart`
+  - `lib/utils/auth_interceptor.dart`
+  - `lib/utils/auth_utils.dart`
   - `lib/repositories/http_physical_count_repository.dart`
 
 ## `article_qr_parser.dart`
@@ -37,6 +43,21 @@ Este documento describe las clases y métodos utilitarios de la carpeta `lib/uti
   - `lib/utils/app_config.dart` (se añade a la instancia global de Dio)
 
 ## `auth_interceptor.dart`
-- **Propósito**: Interceptor de `Dio` encargado de inyectar automáticamente la cabecera `Authorization: Bearer <token>` en todas las peticiones salientes hacia endpoints protegidos, leyendo el token JWT de `FlutterSecureStorage` (clave `'auth_token'`). Excluye de forma automática los endpoints públicos de autenticación (`/api/v1/auth/`) y emite advertencias con `AppLogger` ante errores 401 o 403.
+- **Propósito**: Interceptor de `Dio` encargado de inyectar automáticamente la cabecera `Authorization: Bearer <token>` en todas las peticiones salientes hacia endpoints protegidos leyendo el token JWT de `FlutterSecureStorage` (clave `'auth_token'`). Excluye automáticamente los endpoints públicos de autenticación (`/api/v1/auth/`). Ante respuestas HTTP 401 en endpoints protegidos, intercepta el fallo y dispara de inmediato la expulsión controlada invocando `AuthUtils.handleSessionExpired()`.
 - **Lugares de uso**:
   - `lib/utils/app_config.dart` (se añade a la instancia global de Dio)
+
+## `auth_utils.dart`
+- **Propósito**: Provee métodos estáticos transversales para la gestión, navegación reactiva y expulsión de sesión.
+  - `logout(context)`: Cierra la sesión activa en `AuthProvider` (limpiando credenciales y token JWT en almacenamiento seguro y memoria con concurrencia y timeout), resetea todos los Providers globales (`InventoryProvider`, `TransferFormProvider`, `TransferApprovalProvider`, `TransferDeliveryProvider`, `PhysicalCountProvider`, `ActiveCountProvider`, `RequisitionApprovalProvider`, `AssetVerificationProvider`) y vacía la pila de navegación mediante `pushAndRemoveUntil` (despachado de forma no bloqueante para evitar el congelamiento de `newRoute.popped`) redirigiendo a la pantalla raíz (`AuthWrapper`).
+  - `handleSessionExpired()`: Dispara el cierre de sesión automático desacoplado de `BuildContext` ante errores 401. Muestra un SnackBar flotante formal con `AppConfig.scaffoldMessengerKey` (*"Tu sesión ha expirado. Por favor, inicia sesión de nuevo"*), limpia el storage y los Providers, y redirige a `AuthWrapper` vía `AppConfig.navigatorKey` de forma no bloqueante.
+  - `isLoggingOutNotifier` / `isLoggingOut`: Semáforo reactivo basado en `ValueNotifier<bool>` para debouncing y control de concurrencia, evitando tormentas de expulsión repetidas ante múltiples peticiones 401 simultáneas. Permite a widgets como `DashboardScreen` (`PopScope`) escuchar el estado de salida en tiempo real para neutralizar diálogos modales de confirmación de salida durante la expulsión.
+  - `resetSemaphore()`: Método `@visibleForTesting` para restablecer explícitamente el semáforo a `false` en pruebas unitarias o recuperaciones controladas.
+- **Lugares de uso**:
+  - `lib/utils/auth_interceptor.dart`
+  - `lib/screens/inventory_screen.dart`
+  - `lib/screens/dashboard_screen.dart`
+  - `lib/screens/account_screen.dart`
+  - `lib/screens/home_screen.dart`
+
+
