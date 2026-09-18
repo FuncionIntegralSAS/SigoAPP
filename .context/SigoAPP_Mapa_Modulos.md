@@ -34,16 +34,23 @@ Fecha de actualización: Agosto 2026
 | **Repositorio (contrato)** | `AuthRepository` | `lib/repositories/auth_repository.dart` |
 | **Repositorio (HTTP)** | `HttpAuthRepository` | `lib/repositories/http_auth_repository.dart` |
 | **Repositorio (mock)** | `MockAuthRepository` | `lib/repositories/mock_auth_repository.dart` |
-| **Modelo** | `AuthModel`, `AppPermission`, `Permiso` | `lib/models/auth_model.dart` |
+| **Modelo** | `AuthResponse`, `LoginRequest`, `LoginContadorRequest`, `AppPermission`, `Permiso` | `lib/models/auth_model.dart` |
 | **Modelo** | `UserModel` | `lib/models/user_model.dart` |
 | **Utilidad** | `AppConfig` | `lib/utils/app_config.dart` |
 | **Utilidad** | `PermissionUtils`, `PermissionListExtension` | `lib/utils/permission_utils.dart` |
 | **Utilidad** | `AppLogger` | `lib/utils/app_logger.dart` |
 | **Utilidad** | `JsonInterceptor` (Dio) | `lib/utils/json_interceptor.dart` |
 | **Utilidad** | `AuthInterceptor` (Dio) | `lib/utils/auth_interceptor.dart` |
+| **Utilidad** | `MockHttpInterceptor` (Dio simulación local) | `lib/utils/mock_http_interceptor.dart` |
 | **Utilidad** | `AuthUtils` (Cierre de sesión centralizado) | `lib/utils/auth_utils.dart` |
+| **Test Unitario** | `auth_provider_test.dart` | `test/providers/auth_provider_test.dart` |
 
-**Estados del Provider:** `AuthProvider` mantiene: `isAuthenticated`, `currentToken`, `currentCedula`, `permisos`.
+**Estados del Provider:** `AuthProvider` mantiene: `isAuthenticated`, `isContador` (bandera formal del tipo de sesión), `currentToken`, `currentCedula` (cédula del colaborador), `currentUsername`, `permisos`.
+
+> [!NOTE]
+> **Identificación de Sesión y Enrutamiento Raíz:**
+> 1. **Cédula del Colaborador (`documento`):** En el login administrativo (`POST /api/v1/auth/login`), el backend devuelve el campo `documento` con la cédula del colaborador en nómina (`PERSONAL.PERSCODI`). `AuthResponse` lo expone como `documento` y `AuthProvider` lo almacena en `_cedula` (`currentCedula`), persistido en `FlutterSecureStorage` (`auth_cedula`). Esto permite que módulos dependientes como Entrega/Recepción de Traspasos y Requisiciones validen la identidad del colaborador directamente por su cédula.
+> 2. **Formalización del Tipo de Sesión (`isContador`):** Para evitar proxies ambiguos como `currentCedula == null`, `AuthProvider` gestiona explícitamente el booleano `_isContador` persistido en secure storage (`auth_is_contador`). `AuthWrapper` en `main.dart` evalúa `authProvider.isAuthenticated && !authProvider.isContador` para redirigir al `DashboardScreen` administrativo, permitiendo que las sesiones de contador permanezcan aisladas en el flujo offline de `AccountScreen`.
 
 ---
 
@@ -100,7 +107,7 @@ Fecha de actualización: Agosto 2026
 ### 3.2 Generación de Traspasos
 
 **Permiso:** `agst` (generar traspaso), relacionado con `agqr` (generación QR)  
-**Descripción:** Gestión de inventario con filtrado en cascada Empresa → Bodega → Colaborador (`TransferRepository.getPersonsByWarehouse` y `getAssetsByPerson`) y creación de solicitudes de traspaso diferenciadas: **Traspaso Individual** vía botón de acción rápida `⇄` en cada tarjeta de activo (pre-cargando activo único) y **Traspaso Múltiple** interactivo vía Floating Action Button, el cual activa el modo de selección (`_isSelectionMode`) con casillas de verificación, validación de colaborador responsable único y barra de acciones inferior. Orquestación del flujo en `TransferFormWidget` (modo estándar o modo compacto con preselección e inyección mediante `TransferFormProvider.addPreselectedAsset()`, tarjeta compacta con desplegable interactivo de activos y retorno a inventario) que conecta con backend (`POST /api/v1/traspasos/crear`, `GET /api/v1/traspasos/personas`, `GET /api/v1/traspasos/activos`) con validación de personas distintas y compatibilidad multi-artículo PL/SQL.
+**Descripción:** Gestión de inventario con filtrado en cascada Empresa → Bodega (bodegas tipo personal `'PE'` vía `HttpInventoryRepository.getWarehouses(..., tipo: 'PE')`) → Colaborador (`TransferRepository.getPersonsByWarehouse` con filtro `AND B.BODETIBO = 'PE'` y `getAssetsByPerson`) y creación de solicitudes de traspaso diferenciadas: **Traspaso Individual** vía botón de acción rápida `⇄` en cada tarjeta de activo (pre-cargando activo único) y **Traspaso Múltiple** interactivo vía Floating Action Button, el cual activa el modo de selección (`_isSelectionMode`) con casillas de verificación, validación de colaborador responsable único y barra de acciones inferior. Orquestación del flujo en `TransferFormWidget` (modo estándar o modo compacto con preselección e inyección mediante `TransferFormProvider.addPreselectedAsset()`, tarjeta compacta con desplegable interactivo de activos y retorno a inventario) que conecta con backend (`POST /api/v1/traspasos/crear`, `GET /api/v1/traspasos/personas`, `GET /api/v1/traspasos/activos`) con validación de personas distintas y compatibilidad multi-artículo PL/SQL.
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
@@ -161,24 +168,28 @@ Fecha de actualización: Agosto 2026
 
 ### 3.4 Entrega / Recepción de Traspasos
 
-**Permiso:** Ninguno específico (Filtro por responsable asignado)
-**Descripción:** Paso intermedio tras la aprobación (`ap`). Permite a los responsables del traspaso capturar sus firmas de entrega y recepción, validando la transición de los activos. `TransferDeliveryProvider` cuenta con inyección de `CatalogRepository` para enriquecer concurrentemente nombres y descripciones de artículos con caché local.
+**Permiso:** Ninguno específico (Filtro por responsable asignado)  
+**Descripción:** Paso intermedio tras la aprobación (`ap`). Permite a los responsables del traspaso (despachador `FU` y receptor `DE`) capturar sus firmas de manera desacoplada sin orden estricto mediante canvas interactivo en `SignatureCaptureScreen` (`PUT /api/v1/traspasos/sign/{id}`), y una vez ambas firmas están asentadas, confirmar la recepción en el ERP (`PUT /api/v1/traspasos/recibir/{id}`). `TransferDeliveryProvider` se inyecta con `HttpTransferRepository` y `CatalogRepository`, aplicando enriquecimiento concurrente y preservando los códigos originales de custodios (`personaFuente`, `personaDestino`) para validar la asignación contra la sesión dual (cédula y username).
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
 | **Screen** | `TransferDeliveryScreen` | `lib/screens/transfer_delivery_screen.dart` |
-| **Screen** | `SignatureCaptureScreen` | `lib/screens/signature_capture_screen.dart` |
-| **Provider** | `TransferDeliveryProvider` | `lib/providers/transfer_delivery_provider.dart` |
-| **Repositorio** | `TransferRepository` (compartido con §3.2) | `lib/repositories/transfer_repository.dart` |
-| **Repositorio (catálogos)** | `CatalogRepository` (compartido con §3.2) | `lib/repositories/catalog_repository.dart` |
-| **Modelo** | `TransferRequest` | `lib/models/transfer_request.dart` |
+| **Screen** | `SignatureCaptureScreen` (Canvas interactivo de firma) | `lib/screens/signature_capture_screen.dart` |
+| **Provider** | `TransferDeliveryProvider` (Cotejo dual y firmas desacopladas) | `lib/providers/transfer_delivery_provider.dart` |
+| **Repositorio** | `HttpTransferRepository` (vía contrato `TransferRepository`) | `lib/repositories/http_transfer_repository.dart` |
+| **Repositorio (catálogos)** | `CatalogRepository` / `HttpCatalogRepository` | `lib/repositories/catalog_repository.dart` |
+| **Modelo** | `TransferRequest` (con `personaFuente`/`personaDestino`) | `lib/models/transfer_request.dart` |
 | **Modelo** | `TransferDeliveryRequest` | `lib/models/transfer_delivery_request.dart` |
+| **Excepción** | `TransferBusinessException` (con `friendlyMessage`, `technicalDetails`, `statusCode`) | `lib/exceptions/transfer_business_exception.dart` |
+| **Utilidad** | `DialogUtils` (sanitización de errores y modales responsivos) | `lib/utils/dialog_utils.dart` |
 
 ---
 
 ## 4. Requisiciones
 
-**Descripción:** Gestión de requisiciones de consumo/salida de inventario. Organizada en dos pestañas: Aprobación y Entrega.
+**Documentación Funcional:** [`SigoAPP_Funcional_Requisiciones.md`](./SigoAPP_Funcional_Requisiciones.md)
+
+**Descripción:** Gestión de requisiciones de consumo/salida de inventario. Organizada en dos pestañas: Aprobación y Entrega. Conectado a la API real de Spring Boot (`/api/v1/requisiciones`).
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
@@ -187,9 +198,12 @@ Fecha de actualización: Agosto 2026
 | **Tab** | `DeliveryTabView` | `lib/screens/tabs/delivery_tab_view.dart` |
 | **Provider** | `RequisitionApprovalProvider` | `lib/providers/requisition_approval_provider.dart` |
 | **Repositorio (contrato)** | `RequisitionRepository` | `lib/repositories/requisition_repository.dart` |
-| **Servicio (mock)** | `MockRequisitionService` | `lib/services/mock_requisition_service.dart` |
-| **Modelo** | `RequisitionModel` | `lib/models/requisition_model.dart` |
+| **Repositorio (HTTP)** | `HttpRequisitionRepository` | `lib/repositories/http_requisition_repository.dart` |
+| **Modelo** | `RequisitionModel`, `RequisicionDetalle`, `RequisicionResumen`, `RequisicionLineaItem`, `RequisicionFirma` | `lib/models/requisition_model.dart` |
+| **Modelo** | `CompanyModel` | `lib/models/company_model.dart` |
+| **Excepción** | `RequisitionBusinessException` | `lib/exceptions/requisition_business_exception.dart` |
 | **Widget** | `RequisitionActionCard` | `lib/widgets/requisition_action_card.dart` |
+| **Widget** | `RequisitionFilterHeader` | `lib/widgets/requisition_filter_header.dart` |
 
 **Permisos por pestaña:**
 
@@ -198,7 +212,12 @@ Fecha de actualización: Agosto 2026
 | Aprobación | `areq` | `'in'` |
 | Entrega | `aein` | `'ap'` |
 
-**Comportamiento de Tabs:** `RequisitionsScreen` usa `TabController` con listener. Al cambiar de pestaña, recarga automáticamente las requisiciones con el `status` correspondiente.
+**Filtros y Comportamiento de Tabs:**
+- `RequisitionsScreen` utiliza `TabController` con listener. Al iniciar la pantalla (`initState`), se dispara la carga del catálogo maestro de empresas (`GET /api/v1/empresas/getAll`) mediante `RequisitionApprovalProvider.loadCompanies()`.
+- Ambas pestañas (`ApprovalTabView` y `DeliveryTabView`) incorporan en la parte superior el widget institucional `RequisitionFilterHeader` con dos selectores en orden canónico:
+  1. **Empresa (1° orden):** Menú desplegable con búsqueda interna (`DropdownTemplates.searchData`) y opción de deselección / limpiar.
+  2. **Fecha (2° orden):** Campo táctil de solo lectura que invoca `showDatePicker`, formateando hacia la API en estándar ISO `YYYY-MM-DD`.
+- **Autorrelleno sugerido cruzado:** Si el usuario selecciona Empresa o Fecha en una pestaña y la otra se encuentra vacía, el valor se pre-carga y sugiere automáticamente en la otra pestaña sin bloquear su modificación independiente. Al cambiar de pestaña o modificar un filtro, `loadRequisitions(status)` recarga la lista respetando los filtros vigentes.
 
 ---
 
@@ -209,7 +228,8 @@ Fecha de actualización: Agosto 2026
 ### 5.1 Administración del Conteo (Apertura, Asignación, Cierre)
 
 **Punto de entrada:** `PhysicalCountScreen` → `DashboardScreen` (opción "Conteo Físico")  
-**Condición de visibilidad:** Al menos uno de `aacf`, `aacu` o `accf`.
+**Condición de visibilidad:** Al menos uno de `aacf`, `aacu` o `accf`.  
+**Regla de Bodegas:** La apertura de conteo consulta exclusivamente bodegas de tipo físico (`'FI'`) mediante `HttpPhysicalCountRepository.getWarehouses()` (`GET /api/v1/bodegas/empresa/{empresa}/FI`).
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
@@ -309,6 +329,9 @@ Los siguientes servicios y utilidades son compartidos entre múltiples módulos:
 | `InAppNotificationService` | `lib/services/in_app_notification_service.dart` | Inventario (Traspasos) |
 | `PermissionUtils` | `lib/utils/permission_utils.dart` | Dashboard, PhysicalCountScreen |
 | `AuthProvider` | `lib/providers/auth_provider.dart` | Todos (token JWT, permisos) |
+| `CompanyDropdownField` | `lib/widgets/company_dropdown_field.dart` | Requisiciones, Conteo Físico, Inventario (Selector estándar de Empresas) |
+| `WarehouseDropdownField` | `lib/widgets/warehouse_dropdown_field.dart` | Conteo Físico, Inventario, Traspasos (Selector estándar de Bodegas) |
+| `DropdownTemplates` | `lib/utils/dropdown_template.dart` | Todos los selectores desplegables con búsqueda interna |
 
 ---
 
@@ -330,7 +353,7 @@ main.dart
  │   └── GeolocationProvider              ← HttpGeolocationRepository(backendDio)
  │
  ├── [MÓDULO REQUISICIONES]
- │   └── RequisitionApprovalProvider      ← MockRequisitionService
+ │   └── RequisitionApprovalProvider      ← HttpRequisitionRepository(backendDio)
  │
  ├── [MÓDULO CONTEO FÍSICO]
  │   ├── PhysicalCountProvider            ← HttpPhysicalCountRepository(backendDio)

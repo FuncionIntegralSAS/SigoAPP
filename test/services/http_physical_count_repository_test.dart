@@ -108,4 +108,29 @@ void main() {
       expect(articles[1].nombre, 'Articulo Backend');
     });
   });
+
+  group('HttpPhysicalCountRepository.getWarehouses Tests', () {
+    test('Should call /api/v1/bodegas/empresa/{companyId}/FI and return WarehouseModel list', () async {
+      final fakeDio = FakeDio((options) {
+        expect(options.path, '/api/v1/bodegas/empresa/01/FI');
+        return Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: [
+            {
+              'codigoBodega': 'W01',
+              'descripcionBodega': 'Bodega Central FI',
+              'estadoBodega': 'A',
+            }
+          ],
+        );
+      });
+      final repository = HttpPhysicalCountRepository(fakeDio);
+
+      final warehouses = await repository.getWarehouses('01');
+      expect(warehouses.length, 1);
+      expect(warehouses.first.codigoBodega, 'W01');
+      expect(warehouses.first.descripcionBodega, 'Bodega Central FI');
+    });
+  });
 }

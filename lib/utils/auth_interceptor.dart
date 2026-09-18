@@ -48,12 +48,15 @@ class AuthInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) {
     final statusCode = err.response?.statusCode;
     final path = err.requestOptions.path;
+    final authHeader = err.requestOptions.headers['Authorization']?.toString() ?? '';
+    final isMock = authHeader.contains('mock-token');
 
     if (statusCode == 401) {
       AppLogger.w('AuthInterceptor: Error 401 (No autorizado) en $path');
       // No expulsar en endpoints públicos de autenticación (login, etc.) para permitir
       // mostrar al usuario el mensaje de credenciales incorrectas.
-      if (!_isPublicEndpoint(path)) {
+      // Tampoco expulsar si la sesión activa es una sesión simulada de pruebas (Mock).
+      if (!_isPublicEndpoint(path) && !isMock) {
         AuthUtils.handleSessionExpired();
       }
     } else if (statusCode == 403) {

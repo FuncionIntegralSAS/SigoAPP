@@ -10,7 +10,9 @@ El módulo de inventario tiene como objetivo principal gestionar la visibilidad,
 
 ## 2. Flujo de Consulta y Filtrado en Cascada (`InventoryScreen`)
 1. **Filtro por Empresa:** Selección obligatoria inicial que carga las bodegas autorizadas de la compañía.
-2. **Filtro por Bodega:** Consulta los artículos de la bodega seleccionada y dispara la consulta de colaboradores asociados (`TransferRepository.getPersonsByWarehouse`).
+2. **Filtro por Bodega (Bodegas Personales `PE`):**
+   - La carga de bodegas para inventario y traspasos consulta exclusivamente bodegas de tipo personal (`'PE'`) mediante `InventoryRepository.getWarehouses(companyId, tipo: 'PE')` (`GET /api/v1/bodegas/empresa/{empresa}/PE`). Esta regla garantiza la coherencia con el backend de traspasos (`PKG_FI_MOVITRAS`), el cual exige que las bodegas origen y destino correspondan a custodios individuales (`BODETIBO = 'PE'`).
+   - Al seleccionar la bodega, consulta los artículos asignados y dispara la consulta de colaboradores asociados (`TransferRepository.getPersonsByWarehouse`).
 3. **Filtro por Colaborador / Responsable:**
    - Incluye la opción inicial *"Todos los colaboradores"* para visualizar la bodega completa.
    - Al seleccionar un colaborador específico, filtra los activos en memoria por coincidencia de responsable o consulta los activos asignados al colaborador (`TransferRepository.getAssetsByPerson`) adaptándolos a la vista de inventario.

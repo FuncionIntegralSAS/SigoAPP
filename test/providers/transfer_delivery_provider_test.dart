@@ -3,6 +3,7 @@ import 'package:sigo_app/models/transfer_delivery_request.dart';
 import 'package:sigo_app/models/transfer_request.dart';
 import 'package:sigo_app/models/transfer_person_model.dart';
 import 'package:sigo_app/models/transfer_asset_model.dart';
+import 'package:sigo_app/exceptions/transfer_business_exception.dart';
 import 'package:sigo_app/providers/transfer_delivery_provider.dart';
 import 'package:sigo_app/repositories/transfer_repository.dart';
 
@@ -10,6 +11,7 @@ class FakeTransferRepository implements TransferRepository {
   List<TransferRequest> transfers = [];
   final List<String> calls = [];
   bool shouldThrow = false;
+  Exception? exceptionToThrow;
 
   @override
   Future<void> create(dynamic request) async {
@@ -65,6 +67,9 @@ class FakeTransferRepository implements TransferRepository {
   @override
   Future<void> receiveTransfer(String transferId) async {
     calls.add('receiveTransfer:$transferId');
+    if (exceptionToThrow != null) {
+      throw exceptionToThrow!;
+    }
     if (shouldThrow) {
       throw Exception('Error al recibir');
     }
@@ -223,6 +228,113 @@ void main() {
 
       expect(success, isFalse);
       expect(provider.error, isNotNull);
+      expect(provider.loading, isFalse);
+    });
+
+    test('getAssignedTransfers coteja por personaFuente original aun si responsableActual es nombre enriquecido', () async {
+      repository.transfers = [
+        TransferRequest(
+          id: '101',
+          responsableActual: 'JUAN PEREZ', // Nombre enriquecido sin cédula
+          responsablePropuesto: 'MARIA LOPEZ',
+          personaFuente: '29305194', // Cédula original en nómina
+          personaDestino: '98765432',
+          motivoSolicitud: 'Traslado',
+          fechaSolicitud: DateTime.now(),
+          estado: TransferStatus.approved,
+        ),
+      ];
+
+      await provider.loadTransfers();
+
+      // Debe coincidir por la cédula original de quien entrega
+      final byCedula = provider.getAssignedTransfers('29305194');
+      expect(byCedula.length, 1);
+      expect(byCedula.first.id, '101');
+      expect(byCedula.first.personaFuente, '29305194');
+      expect(byCedula.first.codigoFuente, '29305194');
+
+      // Debe coincidir por la cédula original de quien recibe
+      final byDestino = provider.getAssignedTransfers('98765432');
+      expect(byDestino.length, 1);
+      expect(byDestino.first.id, '101');
+      expect(byDestino.first.personaDestino, '98765432');
+      expect(byDestino.first.codigoDestino, '98765432');
+
+      // Debe coincidir por el nombre enriquecido
+      final byNombre = provider.getAssignedTransfers('JUAN');
+      expect(byNombre.length, 1);
+    });
+
+    test('getAssignedTransfers funciona con userIdentifier y secondaryIdentifier (cédula y username)', () async {
+      repository.transfers = [
+        TransferRequest(
+          id: '102',
+          responsableActual: 'PI26055',
+          responsablePropuesto: 'CARLOS GOMEZ',
+          personaFuente: 'PI26055',
+          personaDestino: '1098765432',
+          motivoSolicitud: 'Asignación',
+          fechaSolicitud: DateTime.now(),
+          estado: TransferStatus.approved,
+        ),
+      ];
+
+      await provider.loadTransfers();
+
+      // Cédula no coincide pero username sí
+      final matched = provider.getAssignedTransfers('55555555', 'PI26055');
+      expect(matched.length, 1);
+      expect(matched.first.id, '102');
+    });
+
+    test('TransferRequest.fromJson extrae fielmente personaFuente y personaDestino', () {
+      final json = {
+        'id': 1045,
+        'estado': 'ap',
+        'empresaDocumento': '01',
+        'tipoDocumento': 'TRS',
+        'numeroDocumento': 85023,
+        'personaFuente': 'PI26055',
+        'personaDestino': '1098765432',
+        'observacion': 'Traspaso de equipos por reubicación',
+        'articulos': [
+          {'articulo': 'COMP-PORT-DELL', 'placa': 'PL-55421'}
+        ],
+        'firmas': [
+          {'posicion': 1, 'tipo': 'FU', 'firmada': false},
+          {'posicion': 2, 'tipo': 'DE', 'firmada': false}
+        ]
+      };
+
+      final transfer = TransferRequest.fromJson(json);
+
+      expect(transfer.id, '1045');
+      expect(transfer.estado, TransferStatus.approved);
+      expect(transfer.personaFuente, 'PI26055');
+      expect(transfer.codigoFuente, 'PI26055');
+      expect(transfer.personaDestino, '1098765432');
+      expect(transfer.codigoDestino, '1098765432');
+      expect(transfer.articulos.length, 1);
+      expect(transfer.articulos.first.articulo, 'COMP-PORT-DELL');
+      expect(transfer.isSourceSigned, isFalse);
+      expect(transfer.isTargetSigned, isFalse);
+    });
+
+    test('confirmReceipt captura TransferBusinessException y desacopla mensaje amigable de detalles técnicos', () async {
+      repository.exceptionToThrow = const TransferBusinessException(
+        'Bodega Destino [2612] o Bodega Fuente [F571] Deben ser de Tipo Personal',
+        technicalDetails: 'Endpoint: PUT /api/v1/traspasos/recibir/1045\nCódigo de negocio: -1\nDetalle del servidor:\nORA-20008...',
+        statusCode: 500,
+        endpoint: 'PUT /api/v1/traspasos/recibir/1045',
+      );
+
+      final success = await provider.confirmReceipt('1045');
+
+      expect(success, isFalse);
+      expect(provider.error, 'Bodega Destino [2612] o Bodega Fuente [F571] Deben ser de Tipo Personal');
+      expect(provider.technicalDetails, contains('ORA-20008'));
+      expect(provider.statusCode, 500);
       expect(provider.loading, isFalse);
     });
   });

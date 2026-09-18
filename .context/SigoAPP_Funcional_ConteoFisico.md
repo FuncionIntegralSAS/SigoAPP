@@ -23,7 +23,7 @@ El Módulo de Conteo Físico permite a las empresas gestionar la auditoría peri
 
 **Criterios de Aceptación Desarrollados (App Frontend):**
 - **Flujo invertido de pestañas**: La pestaña de Selección de Personal es la primera (Tab 1), y la pestaña de Apertura (Empresa, Bodega, Fecha, Artículos) es la segunda (Tab 2), reflejando el orden natural del proceso.
-- Selección dependiente en cascada de la Empresa hacia la Bodega y finalmente los Artículos.
+- Selección dependiente en cascada de la Empresa hacia la Bodega y finalmente los Artículos. La consulta de bodegas filtra obligatoriamente bodegas de tipo físico (`'FI'`) mediante `GET /api/v1/bodegas/empresa/{empresa}/FI`.
 - Soporte para incluir subconjuntos holísticos masivos (Opción: "Todos/Todas" enviando constante `"All"`).
 - Selección de la Fecha esperada de la labor.
 - Bandera de control para priorizar verificación estricta de existencias de sistema o contar desde 0.

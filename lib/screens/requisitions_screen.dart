@@ -5,7 +5,7 @@ import 'tabs/approval_tab_view.dart';
 import 'tabs/delivery_tab_view.dart';
 
 class RequisitionsScreen extends StatefulWidget {
-  const RequisitionsScreen({Key? key}) : super(key: key);
+  const RequisitionsScreen({super.key});
 
   @override
   State<RequisitionsScreen> createState() => _RequisitionsScreenState();
@@ -20,9 +20,11 @@ class _RequisitionsScreenState extends State<RequisitionsScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
-    // Carga inicial: pestaña 0 → aprobación pendiente ('in')
+    // Carga inicial: catálogo maestro de empresas y aprobación pendiente ('in')
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RequisitionApprovalProvider>().loadRequisitions('in');
+      final provider = context.read<RequisitionApprovalProvider>();
+      provider.loadCompanies();
+      provider.loadRequisitions('in');
     });
 
     // Recarga al cambiar de pestaña con el estado correspondiente

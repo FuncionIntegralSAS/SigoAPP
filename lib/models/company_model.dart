@@ -17,8 +17,11 @@ class CompanyModel extends Equatable {
     final code = json['codigo']?.toString() ?? json['id']?.toString() ?? '';
     return CompanyModel(
       codigo: code,
-      descripcion: json['descripcion']?.toString() ?? json['name']?.toString() ?? '',
-      nit: json['nit']?.toString() ?? code,
+      descripcion: json['descripcion']?.toString() ??
+          json['nombre']?.toString() ??
+          json['name']?.toString() ??
+          '',
+      nit: json['nit']?.toString() ?? json['identificacion']?.toString() ?? code,
       estado: json['estado']?.toString() ?? code,
     );
   }

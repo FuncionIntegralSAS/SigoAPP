@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/article_model.dart';
-import '../models/warehouse_model.dart';
-import '../models/company_model.dart';
 import '../providers/inventory_provider.dart';
+import '../widgets/company_dropdown_field.dart';
+import '../widgets/warehouse_dropdown_field.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:pdf/pdf.dart';
@@ -29,11 +29,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   // --- Estado de la Pantalla ---
   ArticleModel? _selectedArticle; // Artículo seleccionado (Filtro 2)
 
-  final TextEditingController _companySearchController = TextEditingController();
-  final TextEditingController _warehouseSearchController = TextEditingController();
   final TextEditingController _articleSearchController = TextEditingController();
-  final ValueNotifier<CompanyModel?> _companyNotifier = ValueNotifier(null);
-  final ValueNotifier<WarehouseModel?> _warehouseNotifier = ValueNotifier(null);
   final ValueNotifier<ArticleModel?> _articleNotifier = ValueNotifier(null);
 
   String _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
@@ -56,28 +52,18 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
 
   @override
   void dispose() {
-    _companySearchController.dispose();
-    _warehouseSearchController.dispose();
     _articleSearchController.dispose();
-    _companyNotifier.dispose();
-    _warehouseNotifier.dispose();
     _articleNotifier.dispose();
     super.dispose();
   }
 
   // Sync notifiers with provider
   void _syncNotifiers(InventoryProvider provider) {
-    if (_companyNotifier.value != provider.selectedCompany) {
-      _companyNotifier.value = provider.selectedCompany;
-    }
-    if (_warehouseNotifier.value != provider.selectedWarehouse) {
-      _warehouseNotifier.value = provider.selectedWarehouse;
-      // Reset article if warehouse changed globally
-      if (_selectedArticle != null && provider.articles.every((a) => a.id != _selectedArticle!.id)) {
-        _selectedArticle = null;
-        _articleNotifier.value = null;
-        _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
-      }
+    // Reset article if warehouse changed globally
+    if (_selectedArticle != null && provider.articles.every((a) => a.id != _selectedArticle!.id)) {
+      _selectedArticle = null;
+      _articleNotifier.value = null;
+      _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
     }
   }
 
@@ -365,85 +351,25 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
 
   // Widget de selección de Empresa
   Widget _buildCompanySelector(InventoryProvider provider) {
-    return DropdownButtonFormField2<CompanyModel>(
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: '1. Seleccione Empresa',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        prefixIcon: Icon(Icons.business, color: primaryColor),
-      ),
-      valueListenable: _companyNotifier,
-      items: provider.companies.map((company) {
-        return DropdownItem(
-          value: company,
-          child: Text(
-            '${company.codigo} - ${company.descripcion}',
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        );
-      }).toList(),
-      onChanged: _isGenerating
-          ? null
-          : (CompanyModel? newValue) {
-              if (newValue != null) {
-                provider.selectCompany(newValue);
-              }
-            },
-      dropdownSearchData: DropdownTemplates.searchData(
-        controller: _companySearchController,
-        hintText: 'Buscar empresa...',
-        searchMatchFn: (item, searchValue) {
-          final comp = item.value!;
-          return comp.descripcion.toLowerCase().contains(searchValue.toLowerCase()) ||
-              comp.codigo.toLowerCase().contains(searchValue.toLowerCase());
-        },
-      ),
-      onMenuStateChange: (isOpen) {
-        if (!isOpen) _companySearchController.clear();
-      },
+    return CompanyDropdownField(
+      value: provider.selectedCompany,
+      companies: provider.companies,
+      isLoading: _isGenerating,
+      isRequired: true,
+      labelText: '1. Seleccione Empresa',
+      onChanged: (c) => provider.selectCompany(c),
     );
   }
 
   // Widget de selección de Bodega
   Widget _buildWarehouseSelector(InventoryProvider provider) {
-    return DropdownButtonFormField2<WarehouseModel>(
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: '2. Seleccione Centro de Costos/Bodega',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        prefixIcon: Icon(Icons.location_city, color: primaryColor),
-      ),
-      valueListenable: _warehouseNotifier,
-      items: provider.warehouses.map((bodega) {
-        return DropdownItem(
-          value: bodega,
-          child: Text(
-            '${bodega.codigoBodega} - ${bodega.descripcionBodega}',
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        );
-      }).toList(),
-      onChanged: _isGenerating
-          ? null
-          : (WarehouseModel? newValue) {
-              if (newValue != null) {
-                provider.selectWarehouse(newValue);
-              }
-            },
-      dropdownSearchData: DropdownTemplates.searchData(
-        controller: _warehouseSearchController,
-        hintText: 'Buscar bodega...',
-        searchMatchFn: (item, searchValue) {
-          final wh = item.value!;
-          return wh.descripcionBodega.toLowerCase().contains(searchValue.toLowerCase()) ||
-              wh.codigoBodega.toLowerCase().contains(searchValue.toLowerCase());
-        },
-      ),
-      onMenuStateChange: (isOpen) {
-        if (!isOpen) _warehouseSearchController.clear();
-      },
+    return WarehouseDropdownField(
+      value: provider.selectedWarehouse,
+      warehouses: provider.warehouses,
+      isLoading: _isGenerating,
+      isRequired: true,
+      labelText: '2. Seleccione Centro de Costos/Bodega',
+      onChanged: (w) => provider.selectWarehouse(w),
     );
   }
 
@@ -535,7 +461,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
+              color: Colors.grey.withValues(alpha: 0.3),
               spreadRadius: 2,
               blurRadius: 5,
               offset: const Offset(0, 3),

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/employee_result.dart';
 import '../models/transfer_asset_model.dart';
 import '../models/transfer_request.dart';
+import '../exceptions/transfer_business_exception.dart';
 import '../repositories/transfer_repository.dart';
 import '../repositories/catalog_repository.dart';
+import '../utils/dialog_utils.dart';
 
 class TransferDeliveryProvider extends ChangeNotifier {
   final TransferRepository repository;
@@ -40,8 +42,12 @@ class TransferDeliveryProvider extends ChangeNotifier {
       // Consultamos trámites aprobados habilitados para firmas
       final rawTransfers = await repository.getAllTransfers(estado: 'ap');
       _transfers = await _enrichTransfers(rawTransfers);
+    } on TransferBusinessException catch (e) {
+      _error = e.message;
+      _technicalDetails = e.technicalDetails;
+      _statusCode = e.statusCode;
     } catch (e) {
-      _error = e.toString().replaceAll('Exception: ', '');
+      _error = DialogUtils.extractFriendlyMessage(e.toString().replaceAll('Exception: ', ''));
       _technicalDetails = e.toString();
     } finally {
       _loading = false;
@@ -55,7 +61,7 @@ class TransferDeliveryProvider extends ChangeNotifier {
     if (list.isEmpty) return list;
 
     final uniquePersons = list
-        .expand((t) => [t.responsableActual, t.responsablePropuesto])
+        .expand((t) => [t.codigoFuente, t.codigoDestino])
         .map((p) => p.trim())
         .where((p) => p.isNotEmpty && p != 'Sin responsable')
         .toSet();
@@ -69,15 +75,15 @@ class TransferDeliveryProvider extends ChangeNotifier {
 
     final enrichedList = <TransferRequest>[];
     for (final transfer in list) {
-      final resolvedFuente =
-          _personsNameCache[transfer.responsableActual.trim()] ??
-              transfer.responsableActual;
-      final resolvedDestino =
-          _personsNameCache[transfer.responsablePropuesto.trim()] ??
-              transfer.responsablePropuesto;
+      final srcCode = transfer.codigoFuente;
+      final destCode = transfer.codigoDestino;
 
-      final sourceAssets =
-          _assetsByPersonCache[transfer.responsableActual.trim()] ?? [];
+      final resolvedFuente =
+          _personsNameCache[srcCode] ?? transfer.responsableActual;
+      final resolvedDestino =
+          _personsNameCache[destCode] ?? transfer.responsablePropuesto;
+
+      final sourceAssets = _assetsByPersonCache[srcCode] ?? [];
       final enrichedArticulos = transfer.articulos.map((art) {
         if (art.nombre != null && art.nombre!.trim().isNotEmpty) {
           return art;
@@ -101,6 +107,8 @@ class TransferDeliveryProvider extends ChangeNotifier {
         transfer.copyWith(
           responsableActual: resolvedFuente,
           responsablePropuesto: resolvedDestino,
+          personaFuente: transfer.personaFuente,
+          personaDestino: transfer.personaDestino,
           articulos: enrichedArticulos,
         ),
       );
@@ -109,16 +117,15 @@ class TransferDeliveryProvider extends ChangeNotifier {
     return enrichedList;
   }
 
-  Future<String> _resolvePersonName(String personQuery) async {
+  Future<String?> _resolvePersonName(String personQuery) async {
     final clean = personQuery.trim();
-    if (clean.isEmpty || clean == 'Sin responsable') return personQuery;
+    if (clean.isEmpty || clean == 'Sin responsable') return null;
 
     if (_personsNameCache.containsKey(clean)) {
-      return _personsNameCache[clean]!;
+      return _personsNameCache[clean];
     }
     if (catalogRepository == null) {
-      _personsNameCache[clean] = clean;
-      return clean;
+      return null;
     }
 
     try {
@@ -148,8 +155,7 @@ class TransferDeliveryProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    _personsNameCache[clean] = clean;
-    return clean;
+    return null;
   }
 
   Future<List<TransferAssetModel>> _resolvePersonAssets(String personQuery) async {
@@ -171,7 +177,20 @@ class TransferDeliveryProvider extends ChangeNotifier {
   }
 
   /// Retorna los traspasos asignados al usuario (como fuente o destino)
-  List<TransferRequest> getAssignedTransfers([String? userIdentifier]) {
+  ///
+  /// Permite filtrar por [userIdentifier] (ej. cédula) y opcionalmente
+  /// un [secondaryIdentifier] (ej. username de red).
+  List<TransferRequest> getAssignedTransfers([
+    String? userIdentifier,
+    String? secondaryIdentifier,
+  ]) {
+    final identifiers = <String>[
+      if (userIdentifier != null && userIdentifier.trim().isNotEmpty)
+        userIdentifier.trim().toLowerCase(),
+      if (secondaryIdentifier != null && secondaryIdentifier.trim().isNotEmpty)
+        secondaryIdentifier.trim().toLowerCase(),
+    ];
+
     return _transfers.where((t) {
       // Mostramos los que están en estado aprobado ('ap')
       if (t.estado != TransferStatus.approved &&
@@ -180,14 +199,35 @@ class TransferDeliveryProvider extends ChangeNotifier {
         return false;
       }
 
-      // Si no se especifica identificador o viene vacío, mostramos todos
-      if (userIdentifier == null || userIdentifier.trim().isEmpty) {
+      // Si no se especifica ningún identificador, mostramos todos
+      if (identifiers.isEmpty) {
         return true;
       }
 
-      final query = userIdentifier.trim().toLowerCase();
-      return t.responsableActual.toLowerCase().contains(query) ||
-          t.responsablePropuesto.toLowerCase().contains(query);
+      for (final query in identifiers) {
+        // Cotejar contra código original o cédula
+        final matchFuenteCode = t.codigoFuente.toLowerCase().contains(query) ||
+            (t.personaFuente != null &&
+                t.personaFuente!.toLowerCase().contains(query));
+        final matchDestinoCode = t.codigoDestino.toLowerCase().contains(query) ||
+            (t.personaDestino != null &&
+                t.personaDestino!.toLowerCase().contains(query));
+
+        // Cotejar contra nombre completo enriquecido
+        final matchFuenteText =
+            t.responsableActual.toLowerCase().contains(query);
+        final matchDestinoText =
+            t.responsablePropuesto.toLowerCase().contains(query);
+
+        if (matchFuenteCode ||
+            matchDestinoCode ||
+            matchFuenteText ||
+            matchDestinoText) {
+          return true;
+        }
+      }
+
+      return false;
     }).toList();
   }
 
@@ -235,8 +275,15 @@ class TransferDeliveryProvider extends ChangeNotifier {
 
       await loadTransfers();
       return true;
+    } on TransferBusinessException catch (e) {
+      _error = e.message;
+      _technicalDetails = e.technicalDetails ?? e.toString();
+      _statusCode = e.statusCode;
+      _loading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
-      _error = e.toString().replaceAll('Exception: ', '');
+      _error = DialogUtils.extractFriendlyMessage(e.toString().replaceAll('Exception: ', ''));
       _technicalDetails = e.toString();
       _loading = false;
       notifyListeners();
@@ -256,8 +303,15 @@ class TransferDeliveryProvider extends ChangeNotifier {
       await repository.receiveTransfer(transferId);
       await loadTransfers();
       return true;
+    } on TransferBusinessException catch (e) {
+      _error = e.message;
+      _technicalDetails = e.technicalDetails ?? e.toString();
+      _statusCode = e.statusCode;
+      _loading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
-      _error = e.toString().replaceAll('Exception: ', '');
+      _error = DialogUtils.extractFriendlyMessage(e.toString().replaceAll('Exception: ', ''));
       _technicalDetails = e.toString();
       _loading = false;
       notifyListeners();

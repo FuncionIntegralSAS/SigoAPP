@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter/material.dart';
-import 'package:sigo_app/repositories/mock_transfer_repository.dart';
 import 'package:sigo_app/repositories/http_transfer_repository.dart';
 import 'package:sigo_app/services/in_app_notification_service.dart';
 import 'package:sigo_app/services/notification_service.dart';
@@ -16,7 +15,7 @@ import 'package:sigo_app/providers/asset_verification_provider.dart';
 
 // Imports para el módulo de Requisiciones
 import 'package:sigo_app/providers/requisition_approval_provider.dart';
-import 'package:sigo_app/services/mock_requisition_service.dart';
+import 'package:sigo_app/repositories/http_requisition_repository.dart';
 
 // Imports para el módulo de Conteo Físico
 import 'package:sigo_app/providers/physical_count_provider.dart';
@@ -33,9 +32,6 @@ import 'package:sigo_app/utils/app_config.dart';
 import 'package:sigo_app/repositories/http_geolocation_repository.dart';
 import 'package:sigo_app/providers/geolocation_provider.dart';
 
-// Services
-import 'services/mock_inventory_service.dart';
-
 // Screens
 import 'screens/auth_screen.dart';
 import 'package:sigo_app/screens/dashboard_screen.dart';
@@ -48,14 +44,11 @@ Future<void> main() async {
   // Inicializamos la configuración de la app (ej. cargar dominio guardado)
   await AppConfig.init();
 
-  final inventoryService = MockInventoryService();
-  final transferRepository = MockTransferRepository(inventoryService);
-
-  // Instanciamos el servicio mock de requisiciones
-  final requisitionService = MockRequisitionService();
-
   // Instancia centralizada de Dio con configuración de producción
   final backendDio = AppConfig.createDio();
+
+  // Repositorio HTTP real para requisiciones
+  final httpRequisitionRepository = HttpRequisitionRepository(backendDio);
 
   final physicalCountRepository = HttpPhysicalCountRepository(backendDio);
   
@@ -71,7 +64,10 @@ Future<void> main() async {
   final geolocationRepository = HttpGeolocationRepository(backendDio);
 
   // Repositorio HTTP real para traspasos (aprobación y backend real)
-  final httpTransferRepository = HttpTransferRepository(backendDio);
+  final httpTransferRepository = HttpTransferRepository(
+    backendDio,
+    catalogRepository: catalogRepository,
+  );
 
   final messengerKey = AppConfig.scaffoldMessengerKey;
   final notificationService = InAppNotificationService(messengerKey);
@@ -99,7 +95,7 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => TransferDeliveryProvider(
-            transferRepository,
+            httpTransferRepository,
             catalogRepository: catalogRepository,
           ),
         ),
@@ -121,9 +117,9 @@ Future<void> main() async {
           ),
         ),
 
-        // Registramos el nuevo Provider de Requisiciones
+        // Registramos el Provider de Requisiciones conectado a Spring Boot
         ChangeNotifierProvider(
-          create: (_) => RequisitionApprovalProvider(requisitionService),
+          create: (_) => RequisitionApprovalProvider(httpRequisitionRepository),
         ),
 
         // Registramos el nuevo Provider de Conteo Físico (Apertura)
@@ -185,11 +181,11 @@ class AuthWrapper extends StatelessWidget {
 
         return Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
-            if (authProvider.isAuthenticated &&
-                authProvider.currentCedula == null) {
-              // Si está autenticado y no es un contador (no tiene cédula), va al dashboard
+            if (authProvider.isAuthenticated && !authProvider.isContador) {
+              // Sesión administrativa: Redirigir al Dashboard principal
               return const DashboardScreen();
             } else {
+              // No autenticado o sesión de contador: Permanece en AuthScreen
               return const AuthScreen();
             }
           },

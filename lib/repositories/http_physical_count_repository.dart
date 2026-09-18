@@ -22,7 +22,7 @@ class HttpPhysicalCountRepository implements PhysicalCountRepository {
 
   @override
   Future<List<WarehouseModel>> getWarehouses(String companyId) async {
-    final response = await _dio.get('/api/v1/bodegas/empresa/$companyId');
+    final response = await _dio.get('/api/v1/bodegas/empresa/$companyId/FI');
     final List<dynamic> data = response.data;
     return data.map((json) => WarehouseModel.fromJson(json)).toList();
   }

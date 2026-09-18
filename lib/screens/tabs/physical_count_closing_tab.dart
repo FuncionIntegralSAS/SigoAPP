@@ -8,6 +8,7 @@ import 'package:sigo_app/models/company_model.dart';
 import 'package:sigo_app/utils/dropdown_template.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:sigo_app/utils/dialog_utils.dart';
+import 'package:sigo_app/widgets/company_dropdown_field.dart';
 
 class PhysicalCountClosingTab extends StatefulWidget {
   const PhysicalCountClosingTab({super.key});
@@ -20,24 +21,21 @@ class PhysicalCountClosingTab extends StatefulWidget {
 class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
   final TextEditingController _warehouseCodeController =
       TextEditingController();
-  final TextEditingController _companySearchController = TextEditingController();
   final TextEditingController _warehouseSearchController = TextEditingController();
-  final ValueNotifier<CompanyModel?> _companyNotifier = ValueNotifier(null);
   final ValueNotifier<PendingCountWarehouseModel?> _warehouseNotifier =
       ValueNotifier(null);
 
   PhysicalCountState? _lastHandledCloseState;
 
   Timer? _debounce;
+  CompanyModel? _selectedCompany;
   PendingCountWarehouseModel? _selectedWarehouse;
 
   @override
   void dispose() {
     _debounce?.cancel();
     _warehouseCodeController.dispose();
-    _companySearchController.dispose();
     _warehouseSearchController.dispose();
-    _companyNotifier.dispose();
     _warehouseNotifier.dispose();
     super.dispose();
   }
@@ -50,7 +48,7 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
 
   void _showSuccessDialog(PhysicalCountProvider provider) {
     final message = provider.closeSuccessMessage ??
-        'Se ha cerrado exitosamente el conteo físico para la bodega "${_warehouseCodeController.text.trim()}" de la empresa "${_companySearchController.text.trim()}".';
+        'Se ha cerrado exitosamente el conteo físico para la bodega "${_warehouseCodeController.text.trim()}" de la empresa "${_selectedCompany?.descripcion ?? ''}".';
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -81,9 +79,9 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
             onPressed: () {
               Navigator.of(context).pop();
               _warehouseCodeController.clear();
-              _companyNotifier.value = null;
               _warehouseNotifier.value = null;
               setState(() {
+                _selectedCompany = null;
                 _selectedWarehouse = null;
               });
               provider.resetCloseForm();
@@ -99,8 +97,8 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
   }
 
   Future<void> _confirmAndClose(PhysicalCountProvider provider) async {
-    final empresa = _companyNotifier.value?.codigo.trim() ?? '';
-    final bodega = _warehouseCodeController.text.trim();
+    final empresa = _selectedCompany?.codigo.trim() ?? '';
+    final bodega = _selectedWarehouse?.bodega ?? _warehouseCodeController.text.trim();
 
     if (empresa.isEmpty) {
       _showErrorSnackBar('Debe ingresar el código de la empresa.');
@@ -185,11 +183,11 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
   }
 
   void _onCompanySelected(CompanyModel? value, PhysicalCountProvider provider) async {
-    _companyNotifier.value = value;
-    _warehouseNotifier.value = null;
     setState(() {
+      _selectedCompany = value;
       _selectedWarehouse = null;
     });
+    _warehouseNotifier.value = null;
     _warehouseCodeController.clear();
     
     if (value != null) {
@@ -263,38 +261,12 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
                     style: TextStyle(color: Colors.grey, fontSize: 14),
                   ),
                   const SizedBox(height: 24),
-                  DropdownButtonFormField2<CompanyModel>(
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Empresa',
-                      border: OutlineInputBorder(),
-                    ),
-                    valueListenable: _companyNotifier,
-                    items: provider.companies.map((company) {
-                      return DropdownItem(
-                        value: company,
-                        child: Text(
-                          '${company.codigo} - ${company.descripcion}',
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: isLoading
-                        ? null
-                        : (val) => _onCompanySelected(val, provider),
-                    dropdownSearchData: DropdownTemplates.searchData(
-                      controller: _companySearchController,
-                      hintText: 'Buscar empresa...',
-                      searchMatchFn: (item, searchValue) {
-                        return item.value!.descripcion.toLowerCase().contains(
-                          searchValue.toLowerCase(),
-                        );
-                      },
-                    ),
-                    onMenuStateChange: (isOpen) {
-                      if (!isOpen) _companySearchController.clear();
-                    },
+                  CompanyDropdownField(
+                    value: _selectedCompany,
+                    companies: provider.companies,
+                    isLoading: isLoading,
+                    isRequired: true,
+                    onChanged: (c) => _onCompanySelected(c, provider),
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField2<PendingCountWarehouseModel>(

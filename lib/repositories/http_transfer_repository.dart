@@ -10,6 +10,7 @@ import '../models/transfer_asset_model.dart';
 import '../repositories/catalog_repository.dart';
 import '../repositories/transfer_repository.dart';
 import '../utils/app_logger.dart';
+import '../utils/dialog_utils.dart';
 
 /// Implementación HTTP real del [TransferRepository] adaptada a la especificación
 /// del backend Spring Boot refactorizado.
@@ -23,13 +24,19 @@ class HttpTransferRepository implements TransferRepository {
     if (data is Map<String, dynamic> && data.containsKey('code')) {
       final code = data['code'];
       if (code != null && code != 0) {
-        final msg = data['msg']?.toString() ?? fallbackError;
+        final rawMsg = data['msg']?.toString() ?? fallbackError;
+        final friendlyMsg = DialogUtils.extractFriendlyMessage(rawMsg);
+        final techDetails = [
+          if (endpoint != null) 'Endpoint: $endpoint',
+          'Código de negocio: $code',
+          'Detalle del servidor:\n$rawMsg',
+        ].join('\n');
+
         throw TransferBusinessException(
-          msg,
+          friendlyMsg,
           statusCode: code is int ? code : null,
           endpoint: endpoint,
-          technicalDetails:
-              'Código de negocio: $code\nMensaje: $msg${endpoint != null ? '\nEndpoint: $endpoint' : ''}',
+          technicalDetails: techDetails,
         );
       }
     }
@@ -51,7 +58,7 @@ class HttpTransferRepository implements TransferRepository {
 
     final String userMsg;
     if (serverMsg != null && serverMsg.trim().isNotEmpty) {
-      userMsg = serverMsg.trim();
+      userMsg = DialogUtils.extractFriendlyMessage(serverMsg.trim());
     } else if (statusCode == 500) {
       userMsg = 'Error interno en el servidor al procesar el traspaso.';
     } else if (statusCode == 404) {
@@ -69,7 +76,7 @@ class HttpTransferRepository implements TransferRepository {
       'Endpoint: $endpoint',
       if (statusCode != null) 'Código HTTP: $statusCode',
       if (serverMsg != null && serverMsg.trim().isNotEmpty)
-        'Respuesta del servidor: $serverMsg',
+        'Respuesta del servidor:\n$serverMsg',
       if (e.message != null && e.message!.isNotEmpty)
         'Detalle Dio: ${e.message}',
     ].join('\n');
@@ -158,14 +165,27 @@ class HttpTransferRepository implements TransferRepository {
       _checkResponseCode(response.data, 'Error al listar traspasos',
           endpoint: endpoint);
 
-      final dynamic rawList = response.data is Map<String, dynamic>
-          ? (response.data['list'] ?? response.data['data'] ?? [])
-          : (response.data is List ? response.data : []);
+      dynamic extracted = response.data;
+      if (extracted is Map) {
+        extracted = extracted['data'] ??
+            extracted['list'] ??
+            extracted['object'] ??
+            extracted['content'] ??
+            extracted;
+      }
+      if (extracted is Map) {
+        extracted = extracted['data'] ??
+            extracted['list'] ??
+            extracted['content'] ??
+            extracted['object'] ??
+            [];
+      }
 
-      final List<dynamic> dataList = rawList as List<dynamic>;
+      final List<dynamic> dataList = extracted is List ? extracted : [];
       final basicList = dataList
+          .whereType<Map>()
           .map((json) =>
-              TransferRequest.fromJson(json as Map<String, dynamic>))
+              TransferRequest.fromJson(Map<String, dynamic>.from(json)))
           .toList();
 
       // Enriquecimiento concurrente de detalles si está habilitado
@@ -174,7 +194,8 @@ class HttpTransferRepository implements TransferRepository {
           try {
             final detail = await getTransferById(item.id);
             return detail ?? item;
-          } catch (_) {
+          } catch (e) {
+            AppLogger.w('No fue posible enriquecer trámite ID="${item.id}": $e');
             return item;
           }
         }));
@@ -192,6 +213,8 @@ class HttpTransferRepository implements TransferRepository {
   @override
   Future<TransferRequest?> getTransferById(String id) async {
     final endpoint = 'GET /api/v1/traspasos/get/$id';
+    // ignore: avoid_print
+    print('>>> [HttpTransferRepository] Consultando firmas y detalle -> Enviando trámite ID: "$id" ($endpoint)');
     try {
       final response = await dio.get(
         '/api/v1/traspasos/get/$id',
@@ -202,17 +225,19 @@ class HttpTransferRepository implements TransferRepository {
           response.data, 'Error al consultar detalle del traspaso',
           endpoint: endpoint);
 
-      final dynamic rawObject = response.data is Map<String, dynamic>
-          ? (response.data['object'] ??
-              response.data['data'] ??
+      final dynamic rawObject = response.data is Map
+          ? (response.data['data'] ??
+              response.data['object'] ??
+              response.data['item'] ??
               response.data)
           : response.data;
 
-      if (rawObject == null || rawObject is! Map<String, dynamic>) {
+      if (rawObject == null || rawObject is! Map) {
         return null;
       }
 
-      final parsed = TransferRequest.fromJson(rawObject);
+      final parsed = TransferRequest.fromJson(Map<String, dynamic>.from(rawObject));
+
       if (catalogRepository != null) {
         return _enrichTransferDetail(parsed);
       }
@@ -225,11 +250,14 @@ class HttpTransferRepository implements TransferRepository {
 
   Future<TransferRequest> _enrichTransferDetail(TransferRequest transfer) async {
     try {
+      final sourceQuery = transfer.codigoFuente;
+      final destQuery = transfer.codigoDestino;
+
       final results = await Future.wait([
-        _resolvePersonName(transfer.responsableActual),
-        _resolvePersonName(transfer.responsablePropuesto),
+        _resolvePersonName(sourceQuery, transfer.responsableActual),
+        _resolvePersonName(destQuery, transfer.responsablePropuesto),
         getAssetsByPerson(
-          persona: transfer.responsableActual,
+          persona: sourceQuery,
           empresa: transfer.empresaDocumento,
         ).catchError((_) => <TransferAssetModel>[]),
       ]);
@@ -257,6 +285,8 @@ class HttpTransferRepository implements TransferRepository {
       return transfer.copyWith(
         responsableActual: fuente,
         responsablePropuesto: destino,
+        personaFuente: transfer.personaFuente,
+        personaDestino: transfer.personaDestino,
         articulos: enrichedArticles,
       );
     } catch (_) {
@@ -264,10 +294,10 @@ class HttpTransferRepository implements TransferRepository {
     }
   }
 
-  Future<String> _resolvePersonName(String personQuery) async {
+  Future<String> _resolvePersonName(String personQuery, [String? fallbackName]) async {
     final clean = personQuery.trim();
-    if (clean.isEmpty || clean == 'Sin responsable') return personQuery;
-    if (catalogRepository == null) return personQuery;
+    if (clean.isEmpty || clean == 'Sin responsable') return fallbackName ?? personQuery;
+    if (catalogRepository == null) return fallbackName ?? personQuery;
 
     try {
       final isNumeric = RegExp(r'^\d+$').hasMatch(clean);
@@ -294,7 +324,9 @@ class HttpTransferRepository implements TransferRepository {
       }
     } catch (_) {}
 
-    return clean;
+    return (fallbackName != null && fallbackName.trim().isNotEmpty)
+        ? fallbackName
+        : clean;
   }
 
   // --- 4. APROBAR (POST /api/v1/traspasos/process/{id} con estado='ap') ---

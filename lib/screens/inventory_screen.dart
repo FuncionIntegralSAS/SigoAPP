@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import '../models/article_model.dart';
 import '../models/warehouse_model.dart';
-import '../models/company_model.dart';
 import '../models/transfer_person_model.dart';
 import 'package:provider/provider.dart';
 import '../providers/inventory_provider.dart';
@@ -14,6 +13,8 @@ import '../utils/dropdown_template.dart';
 import '../utils/permission_utils.dart';
 import '../models/auth_model.dart';
 import '../utils/auth_utils.dart';
+import '../widgets/company_dropdown_field.dart';
+import '../widgets/warehouse_dropdown_field.dart';
 
 const WarehouseModel _allWarehousesFilter = WarehouseModel(
   codigoBodega: 'ALL',
@@ -42,11 +43,7 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen> {
   final Color primaryColor = Colors.deepPurple;
 
-  final ValueNotifier<CompanyModel?> _companyNotifier = ValueNotifier(null);
-  final ValueNotifier<WarehouseModel?> _warehouseNotifier = ValueNotifier(null);
   final ValueNotifier<TransferPersonModel?> _collaboratorNotifier = ValueNotifier(null);
-  final TextEditingController _companySearchController = TextEditingController();
-  final TextEditingController _warehouseSearchController = TextEditingController();
   final TextEditingController _collaboratorSearchController = TextEditingController();
 
   bool _isSelectionMode = false;
@@ -87,22 +84,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   void dispose() {
-    _companyNotifier.dispose();
-    _warehouseNotifier.dispose();
     _collaboratorNotifier.dispose();
-    _companySearchController.dispose();
-    _warehouseSearchController.dispose();
     _collaboratorSearchController.dispose();
     super.dispose();
   }
 
   void _syncNotifiers(InventoryProvider provider) {
-    if (_companyNotifier.value != provider.selectedCompany) {
-      _companyNotifier.value = provider.selectedCompany;
-    }
-    if (_warehouseNotifier.value != provider.selectedWarehouse) {
-      _warehouseNotifier.value = provider.selectedWarehouse;
-    }
     if (_collaboratorNotifier.value != provider.selectedCollaborator) {
       _collaboratorNotifier.value = provider.selectedCollaborator;
     }
@@ -480,89 +467,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildCompanySelector(InventoryProvider provider) {
-    return DropdownButtonFormField2<CompanyModel>(
-      isExpanded: true,
-      valueListenable: _companyNotifier,
-      decoration: InputDecoration(
-        labelText: 'Filtrar por Empresa',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      items: provider.companies
-          .map(
-            (c) => DropdownItem<CompanyModel>(
-              value: c,
-              child: Text(
-                '${c.codigo} - ${c.descripcion}',
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ),
-          )
-          .toList(),
-      onChanged: (v) {
-        if (v != null) {
-          provider.selectCompany(v);
-        }
-      },
-      dropdownSearchData: DropdownTemplates.searchData(
-        controller: _companySearchController,
-        hintText: 'Buscar empresa...',
-        searchMatchFn: (item, searchValue) {
-          final comp = item.value!;
-          return comp.descripcion.toLowerCase().contains(
-                searchValue.toLowerCase(),
-              ) ||
-              comp.codigo.toLowerCase().contains(searchValue.toLowerCase());
-        },
-      ),
-      onMenuStateChange: (isOpen) {
-        if (!isOpen) _companySearchController.clear();
-      },
+    return CompanyDropdownField(
+      value: provider.selectedCompany,
+      companies: provider.companies,
+      isLoading: provider.state == InventoryState.loading && provider.companies.isEmpty,
+      allowClear: true,
+      labelText: 'Filtrar por Empresa',
+      onChanged: (v) => provider.selectCompany(v),
     );
   }
 
   Widget _buildWarehouseSelector(InventoryProvider provider) {
     final List<WarehouseModel> whOptions = [_allWarehousesFilter, ...provider.warehouses];
 
-    return DropdownButtonFormField2<WarehouseModel>(
-      isExpanded: true,
-      valueListenable: _warehouseNotifier,
-      decoration: InputDecoration(
-        labelText: 'Filtrar por Bodega',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      items: whOptions
-          .map(
-            (w) => DropdownItem<WarehouseModel>(
-              value: w,
-              child: Text(
-                w.codigoBodega == 'ALL'
-                    ? w.descripcionBodega
-                    : '${w.codigoBodega} - ${w.descripcionBodega}',
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ),
-          )
-          .toList(),
+    return WarehouseDropdownField(
+      value: provider.selectedWarehouse,
+      warehouses: whOptions,
+      isLoading: provider.state == InventoryState.loading && provider.selectedCompany != null && provider.warehouses.isEmpty,
+      allowClear: false,
+      labelText: 'Filtrar por Bodega',
+      hintText: provider.selectedCompany == null ? 'Seleccione primero una empresa' : null,
       onChanged: (v) {
         if (v != null) {
           provider.selectWarehouse(v);
         }
-      },
-      dropdownSearchData: DropdownTemplates.searchData(
-        controller: _warehouseSearchController,
-        hintText: 'Buscar bodega...',
-        searchMatchFn: (item, searchValue) {
-          final wh = item.value!;
-          return wh.descripcionBodega.toLowerCase().contains(
-                searchValue.toLowerCase(),
-              ) ||
-              wh.codigoBodega.toLowerCase().contains(searchValue.toLowerCase());
-        },
-      ),
-      onMenuStateChange: (isOpen) {
-        if (!isOpen) _warehouseSearchController.clear();
       },
     );
   }

@@ -46,7 +46,8 @@ Cada valor del Enum se asocia con el código de "forma":
 
 ### 1. Modelo de Datos (`Permiso` y `AuthResponse`)
 - La clase `Permiso` en `lib/models/auth_model.dart` representa cada elemento del array `permisos` retornado por la API (`usuario`, `forma`, `tipoRol`, `tipoForma`, `producto`).
-- `AuthResponse.fromJson` parsea la lista completa de objetos `Permiso` y la expone en el modelo de autenticación.
+- `AuthResponse.fromJson` parsea la lista completa de objetos `Permiso`, así como las credenciales y el campo `documento` (cédula del colaborador en nómina `PERSONAL.PERSCODI` retornada en el login administrativo `/login`).
+- `AuthProvider` almacena este valor en `_cedula` (`currentCedula`), permitiendo que módulos dependientes como Entrega / Recepción de Traspasos y Requisiciones identifiquen al usuario directamente por su cédula oficial sin requerir consultas adicionales.
 
 ### 2. Desacoplamiento y Utilitarios (`PermissionUtils`)
 Para mantener el `AuthProvider` limpio y enfocado exclusivamente en la gestión del estado de la sesión, la lógica de transformación y verificación de permisos se encuentra centralizada en `lib/utils/permission_utils.dart`:
@@ -67,15 +68,30 @@ bool hasPermission(AppPermission permission) {
 
 ---
 
-## Persistencia y Consumo en UI
+## Persistencia, Enrutamiento Raíz y Consumo en UI
 
-### Estrategia de Persistencia
+### Estrategia de Persistencia y Tipo de Sesión
 - Al iniciar sesión en `AuthProvider`, la lista completa de objetos `Permiso` se serializa con `PermissionUtils.encodePermissions` y se guarda en `FlutterSecureStorage` bajo la clave `'auth_permissions'`.
-- Al restaurar la sesión (`_checkSavedSession`), se recupera dicha clave y se reconstruye la lista en memoria usando `PermissionUtils.parsePermissions`.
+- La cédula se persiste en `'auth_cedula'`, el token JWT en `'auth_token'` y el usuario en `'auth_username'`.
+- **Formalización del Tipo de Sesión (`isContador`):** Para evitar ambigüedades en la identificación del rol, `AuthProvider` gestiona la bandera booleana `_isContador` (persistida en secure storage bajo `'auth_is_contador'`). Se establece en `false` para inicios de sesión administrativos (`login`) y en `true` para inicios de sesión de contadores físicos (`loginContador`).
+- Al restaurar la sesión (`_checkSavedSession`), se recuperan todas estas claves para reconstruir el estado completo en memoria.
+
+### Enrutamiento Raíz (`AuthWrapper` en `main.dart`)
+El acceso al `DashboardScreen` está estrictamente controlado por el tipo de sesión activa:
+```dart
+if (authProvider.isAuthenticated && !authProvider.isContador) {
+  // Sesión administrativa: Redirigir al Dashboard principal
+  return const DashboardScreen();
+} else {
+  // No autenticado o sesión de contador: Permanece en AuthScreen
+  return const AuthScreen();
+}
+```
+Esto garantiza que los contadores físicos permanezcan aislados en su pantalla operativa (`AccountScreen` / `ActiveCountScreen`) sin acceder al dashboard administrativo.
 
 ### Configuración del `DashboardScreen`
 Se mantiene un `GridView` plano. Cada acceso principal comprueba si el usuario tiene permiso consultando la lista a través de la extensión: `auth.permisos.hasPermission(AppPermission.x)` (o `hasAnyPermission` para módulos con submódulos agrupados) antes de renderizar el `_DashboardItem`.
-- **Entrega / Recepción:** Opción disponible para todo usuario autenticado sin requerir un permiso RBAC específico. Su vista interna filtra los traspasos pendientes según la cédula/identificador del usuario asignado.
+- **Entrega / Recepción:** Opción disponible para todo usuario autenticado sin requerir un permiso RBAC específico. Su vista interna filtra los traspasos pendientes según la cédula (`currentCedula`) o usuario (`currentUsername`) del colaborador asignado.
 - **Módulo Principal:** Es independiente del backend. Solo se muestra a desarrolladores cuando `!kReleaseMode`.
 
 ### Configuración de Sub-Módulos (`PhysicalCountScreen`)

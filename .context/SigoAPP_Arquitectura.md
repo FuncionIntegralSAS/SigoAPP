@@ -100,9 +100,21 @@ Implementación en memoria que utiliza `MockInventoryService` como fuente de dat
 Implementación HTTP real que conecta con los endpoints del backend Spring Boot utilizando `Dio`. Lanza `TransferBusinessException` cuando ocurren errores de red o respuestas no exitosas del servidor.
 
 ### 3.2 RequisitionRepository
-Contrato que define el acceso a las requisiciones de consumo.
-* getRequisitionsByStatus(String status): Consulta filtrada de requerimientos.
-* processBatch(Map<String, int> selectedItems, String targetStatus): Envío de múltiples identificadores y cantidades en bloque para optimización de transacciones.
+Contrato que define el acceso a las requisiciones de consumo y despacho de inventario (`lib/repositories/requisition_repository.dart`).
+* `getCompanies()`: Consulta el catálogo maestro de empresas disponibles (`GET /api/v1/empresas/getAll`).
+* `getDocumentTypes()`: Consulta tipos de requisición autorizados (`GET /api/v1/requisiciones/tipos`).
+* `getRequisitions(...)`: Consulta la bandeja de requisiciones filtrada por estado y parámetros (`GET /api/v1/requisiciones`).
+* `getRequisitionDetail(empresa, tipoDocumento, numero)`: Detalle completo de cabecera, líneas y firmas (`GET /api/v1/requisiciones/{empresa}/{tipo}/{num}`).
+* `getRequisitionsByStatus(status)`: Consulta y enriquece concurrentemente las líneas de la requisición para la UI.
+* `approveLines(...)`: Autoriza cantidades de una o más líneas (`PUT /api/v1/requisiciones/.../aprobar`).
+* `deliverLines(...)`: Sella entrega física y asigna placas manuales o FIFO (`PUT /api/v1/requisiciones/.../entregar`).
+* `annulLines(...)`: Anula saldo aprobado sin entrega (`PUT /api/v1/requisiciones/.../anular`).
+* `signRequisition(...)`: Registra firma manuscrita digital SA o RE (`PUT /api/v1/requisiciones/.../firmar`).
+* `registerExit(...)`: Asienta la salida formal en ERP (`DOCUINVE`/`MOVIINVE`) exigiendo ambas firmas (`PUT /api/v1/requisiciones/.../registrar`).
+* `processBatch(selectedItems, targetStatus)`: Agrupa dinámicamente por terna `(empresa, tipoDocumento, numero)` para aprobación o entrega masiva.
+
+#### 3.2.1 HttpRequisitionRepository
+Implementación HTTP real que conecta con los endpoints de Spring Boot bajo `/api/v1/requisiciones` usando `Dio`. Valida `code == 0` y lanza `RequisitionBusinessException` en fallos lógicos (`code != 0`) o errores de conectividad.
 
 ### 3.3 GeolocationRepository
 Contrato abstracto para la persistencia y consulta de geolocalización de activos físicos (`lib/repositories/geolocation_repository.dart`).
@@ -127,9 +139,18 @@ Implementación concreta que utiliza `Dio`. Conecta con `/api/v1/personal/buscar
 #### 3.4.2 MockCatalogRepository
 Implementación en memoria para desarrollo offline y pruebas unitarias, con latencia simulada y filtrado dinámico por cédula, nombre o apellido.
 
+### 3.5 InventoryRepository
+Contrato abstracto para el módulo de Inventario de Activos y Traspasos (`lib/repositories/inventory_repository.dart`).
+* `getCompanies()`: Obtiene el listado de empresas disponibles (`GET /api/v1/empresas/getAll`).
+* `getWarehouses(String companyId, {String tipo = 'PE'})`: Carga bodegas asociadas a una empresa (`GET /api/v1/bodegas/empresa/{empresa}/{tipo}`). Por defecto consulta bodegas de tipo personal (`'PE'`) requeridas por el módulo de Inventario de Activos y creación de traspasos.
+* `getArticles(String idBodega, [String? companyId])`: Obtiene los activos asignados a una bodega (`GET /api/v1/articulos/asignados/{bodega}/{empresa}`).
+
+#### 3.5.1 HttpInventoryRepository
+Implementación HTTP real que utiliza `Dio`. Conecta con los endpoints de empresas, bodegas parametrizadas por tipo y artículos asignados, procesando respuestas 204 o nulas de forma segura.
+
 ## 4. Lógica de Negocio y Servicios (lib/services/)
-### 4.1 mock_inventory_service.dart y mock_requisition_service.dart
-Servicios que simulan las respuestas del servidor para habilitar el desarrollo frontend y pruebas offline, implementando latencia artificial.
+### 4.1 mock_inventory_service.dart
+Servicio que simula las respuestas del servidor para habilitar el desarrollo frontend y pruebas offline en inventario, implementando latencia artificial.
 
 ### 4.2 mock_auth_service.dart y mock_account_service.dart
 Servicios mock para autenticación de usuarios y gestión de cuentas respectivamente.
@@ -152,11 +173,11 @@ Sistema de notificaciones in-app basado en contrato abstracto (`NotificationServ
 Capa de conexión real hacia los endpoints desarrollados en Spring Boot. 
 Toda la comunicación de red, gestión de interceptores (Dio), manejo de excepciones y convenciones de payload está delegada y estandarizada en nuestro archivo de reglas. Para más detalles, consultar imperativamente **[Rules_Networking.md](./Rules_Networking.md)**.
 
-### 4.6 physical_count_service.dart
-Servicio HTTP real para el módulo de Conteo Físico. Conecta con el backend Spring Boot a través de `Dio` para las siguientes operaciones:
-* `getCompanies()` → `GET /api/v1/empresas`: Carga el catálogo de empresas.
-* `getWarehouses(companyId)` → `GET /api/v1/bodegas/{empresa}`: Carga bodegas por empresa.
-* `getArticles(warehouseId, companyId)` → `GET /api/v1/bodegas/asignados/{bodega}/{empresa}`: Carga artículos asignados a una bodega. Implementa fallback a datos mock cuando `companyId` es nulo/vacío o cuando el backend lanza `DioException`. Antepone la opción `"Todos"` (id: `'All'`) al resultado exitoso del backend.
+### 4.6 physical_count_service.dart / HttpPhysicalCountRepository
+Servicio / Repositorio HTTP real para el módulo de Conteo Físico. Conecta con el backend Spring Boot a través de `Dio` para las siguientes operaciones:
+* `getCompanies()` → `GET /api/v1/empresas/getAll`: Carga el catálogo de empresas.
+* `getWarehouses(companyId)` → `GET /api/v1/bodegas/empresa/{empresa}/FI`: Carga bodegas físicas (`'FI'`) asociadas a la empresa para la apertura de conteo físico.
+* `getArticles(warehouseId, companyId)` → `GET /api/v1/articulos/asignados/{bodega}/{empresa}`: Carga artículos asignados a una bodega física. Implementa fallback a datos mock cuando `companyId` es nulo/vacío o cuando el backend lanza `DioException`. Antepone la opción `"Todos"` (id: `'All'`) al resultado exitoso del backend.
 * `searchPersons({nombre, apellido, cedula})` → `GET /api/v1/personal/buscar`: Búsqueda de personal por coincidencia. Envía los query params con las llaves exactas del backend (`nombre`, `apellido`, `cedula`). Lanza `DioException` 400 de forma local si no se provee ningún parámetro, sin consumir recursos de red.
 * `createPhysicalCount(request)` → `POST /api/v1/conteo-fisico/registrar`: Crea la apertura del conteo físico.
 * `assignArticles(request)` → `POST /api/v1/conteo-fisico/asignar_articulos`: Asigna los contadores seleccionados al conteo abierto.
@@ -200,7 +221,11 @@ Excepción tipada para errores de negocio y conectividad en las operaciones de g
 * Extrae el campo `message` y `code` enviados en la respuesta JSON estructurada del backend (`{success: false, message: ...}`).
 * Proporciona mensajes claros para la capa de presentación cuando las peticiones REST de ubicación fallan.
 
-**Patrón recomendado para extensión**: Si se requieren excepciones para otros módulos, seguir la convención `<módulo>_business_exception.dart` (ej. `requisition_business_exception.dart`, `count_business_exception.dart`).
+### 6.3 requisition_business_exception.dart
+Excepción tipada para errores de negocio y de red en el módulo de Requisiciones (`HttpRequisitionRepository`).
+* Extrae el campo `msg` ante fallos de validación lógica de negocio (`code != 0`) y encapsula códigos HTTP y detalles técnicos para diagnóstico sin exponerlos directamente en la UI.
+
+**Patrón recomendado para extensión**: Si se requieren excepciones para otros módulos, seguir la convención `<módulo>_business_exception.dart` (ej. `count_business_exception.dart`).
 
 ## 7. Utilidades (lib/utils/)
 ### 7.1 article_qr_parser.dart

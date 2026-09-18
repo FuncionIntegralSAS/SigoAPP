@@ -51,6 +51,62 @@ class DialogUtils {
     );
   }
 
+  /// Extrae un mensaje amigable y conciso a partir de una traza cruda de error
+  /// proveniente de la base de datos (Oracle / PL/SQL) o de Spring Boot / JDBC.
+  static String extractFriendlyMessage(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return 'Ha ocurrido un error inesperado.';
+
+    // 1. Detectar error ORA con pipe de negocio (ej: 121|Bodega Destino [2612] o Bodega Fuente [F571] Deben ser de Tipo Personal)
+    final pipeRegex = RegExp(
+      r'ORA-\d{5}:.*?\|\s*(.+?)(?=\s+ORA-\d{5}|\s+https?:\/\/|\]\s*\[Hikari|\r?\n|$)',
+      dotAll: true,
+    );
+    final pipeMatch = pipeRegex.firstMatch(trimmed);
+    if (pipeMatch != null) {
+      final candidate = pipeMatch.group(1)?.trim();
+      if (candidate != null && candidate.isNotEmpty) {
+        return candidate;
+      }
+    }
+
+    // 2. Detectar error ORA-20xxx estándar (errores de aplicación de negocio)
+    final appErrorRegex = RegExp(
+      r'ORA-20\d{3}:(?:\s*(?:package body|line|línea)\s+[^:]+?:)?\s*(?:.*?\d+\|)?\s*(.+?)(?=\s+ORA-\d{5}|\s+https?:\/\/|\]\s*\[Hikari|\r?\n|$)',
+      dotAll: true,
+    );
+    final appMatch = appErrorRegex.firstMatch(trimmed);
+    if (appMatch != null) {
+      final candidate = appMatch.group(1)?.trim();
+      if (candidate != null && candidate.isNotEmpty) {
+        return candidate;
+      }
+    }
+
+    // 3. Detectar cualquier otro ORA-xxxxx
+    final anyOraRegex = RegExp(
+      r'(ORA-\d{5}:\s*.+?)(?=\s+ORA-\d{5}|\s+https?:\/\/|\]\s*\[Hikari|\r?\n|$)',
+      dotAll: true,
+    );
+    final anyOraMatch = anyOraRegex.firstMatch(trimmed);
+    if (anyOraMatch != null) {
+      final candidate = anyOraMatch.group(1)?.trim();
+      if (candidate != null && candidate.isNotEmpty) {
+        return candidate;
+      }
+    }
+
+    // 4. Limpieza de prefijos técnicos comunes de Spring Boot / JDBC / CallableStatement
+    var cleaned = trimmed;
+    cleaned = cleaned.replaceAll(RegExp(r'^Error al realizar el proceso:\s*', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'^Error ejecutando [^:]+:\s*', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'^Error calling CallableStatement[^:]*:\s*', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'\[HikariProxyCallableStatement[^\]]*\]', caseSensitive: false), '');
+
+    cleaned = cleaned.trim();
+    return cleaned.isNotEmpty ? cleaned : 'Ha ocurrido un error en la operación.';
+  }
+
   /// Muestra un modal de error amigable y conciso para el usuario final,
   /// incorporando una sección expandible con el código de error y los detalles
   /// técnicos identificables para el desarrollador, junto con la opción de copiar.
@@ -66,6 +122,23 @@ class DialogUtils {
     VoidCallback? onRetry,
   }) async {
     bool isExpanded = false;
+
+    final displayFriendlyMessage = extractFriendlyMessage(message);
+    final bool isTechnicalError = displayFriendlyMessage != message.trim();
+
+    final effectiveTechnicalDetails = technicalDetails ??
+        (isTechnicalError
+            ? [
+                if (endpoint != null) 'Endpoint: $endpoint',
+                if (statusCode != null) 'Código HTTP: $statusCode',
+                'Detalle técnico:\n$message',
+              ].join('\n')
+            : (statusCode != null || endpoint != null
+                ? [
+                    if (endpoint != null) 'Endpoint: $endpoint',
+                    if (statusCode != null) 'Código HTTP: $statusCode',
+                  ].join('\n')
+                : null));
 
     await showDialog(
       context: context,
@@ -108,11 +181,11 @@ class DialogUtils {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  message,
+                  displayFriendlyMessage,
                   style: const TextStyle(fontSize: 15, height: 1.4),
                 ),
                 if (statusCode != null ||
-                    technicalDetails != null ||
+                    effectiveTechnicalDetails != null ||
                     endpoint != null) ...[
                   const SizedBox(height: 16),
                   InkWell(
@@ -125,6 +198,7 @@ class DialogUtils {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -132,36 +206,18 @@ class DialogUtils {
                             color: Colors.grey.shade700,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            isExpanded
-                                ? 'Ocultar detalles técnicos'
-                                : 'Ver detalles técnicos (Desarrollador)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade800,
+                          Flexible(
+                            child: Text(
+                              isExpanded
+                                  ? 'Ocultar detalles técnicos'
+                                  : 'Ver detalles técnicos (Desarrollador)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade800,
+                              ),
                             ),
                           ),
-                          if (statusCode != null) ...[
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade50,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: Colors.red.shade200),
-                              ),
-                              child: Text(
-                                'HTTP $statusCode',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.red.shade800,
-                                ),
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -180,7 +236,7 @@ class DialogUtils {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           SelectableText(
-                            technicalDetails ??
+                            effectiveTechnicalDetails ??
                                 'Endpoint: ${endpoint ?? "N/A"}\nCódigo: ${statusCode ?? "N/A"}',
                             style: const TextStyle(
                               fontFamily: 'monospace',
@@ -201,7 +257,7 @@ class DialogUtils {
                               label: const Text('Copiar detalle',
                                   style: TextStyle(fontSize: 11)),
                               onPressed: () {
-                                final textToCopy = technicalDetails ??
+                                final textToCopy = effectiveTechnicalDetails ??
                                     'Endpoint: ${endpoint ?? "N/A"}\nCódigo: ${statusCode ?? "N/A"}';
                                 Clipboard.setData(
                                     ClipboardData(text: textToCopy));

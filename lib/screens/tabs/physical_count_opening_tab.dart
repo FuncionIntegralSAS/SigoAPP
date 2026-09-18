@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:sigo_app/providers/physical_count_provider.dart';
-import 'package:sigo_app/models/company_model.dart';
-import 'package:sigo_app/models/warehouse_model.dart';
 import 'package:sigo_app/models/article_model.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:sigo_app/utils/dropdown_template.dart';
+import 'package:sigo_app/widgets/company_dropdown_field.dart';
+import 'package:sigo_app/widgets/warehouse_dropdown_field.dart';
 
 class PhysicalCountOpeningTab extends StatefulWidget {
   const PhysicalCountOpeningTab({super.key});
@@ -21,32 +21,20 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
   static final _dateFormat = DateFormat('dd/MM/yyyy');
   PhysicalCountState? _lastHandledState;
 
-  final TextEditingController _companySearchController =
-      TextEditingController();
-  final TextEditingController _warehouseSearchController =
-      TextEditingController();
   final TextEditingController _articleSearchController =
       TextEditingController();
 
-  late final ValueNotifier<CompanyModel?> _companyNotifier;
-  late final ValueNotifier<WarehouseModel?> _warehouseNotifier;
   late final ValueNotifier<ArticleModel?> _articleNotifier;
 
   @override
   void initState() {
     super.initState();
-    _companyNotifier = ValueNotifier<CompanyModel?>(null);
-    _warehouseNotifier = ValueNotifier<WarehouseModel?>(null);
     _articleNotifier = ValueNotifier<ArticleModel?>(null);
   }
 
   @override
   void dispose() {
-    _companySearchController.dispose();
-    _warehouseSearchController.dispose();
     _articleSearchController.dispose();
-    _companyNotifier.dispose();
-    _warehouseNotifier.dispose();
     _articleNotifier.dispose();
     super.dispose();
   }
@@ -114,13 +102,7 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
           }
         }
 
-        // Sincronizar notifiers con el estado del provider
-        if (_companyNotifier.value != provider.selectedCompany) {
-          _companyNotifier.value = provider.selectedCompany;
-        }
-        if (_warehouseNotifier.value != provider.selectedWarehouse) {
-          _warehouseNotifier.value = provider.selectedWarehouse;
-        }
+        // Sincronizar notifier de artículo con el estado del provider
         if (_articleNotifier.value != provider.selectedArticle) {
           _articleNotifier.value = provider.selectedArticle;
         }
@@ -136,75 +118,20 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    DropdownButtonFormField2<CompanyModel>(
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Empresa',
-                        border: OutlineInputBorder(),
-                      ),
-                      valueListenable: _companyNotifier,
-                      items: provider.companies.map((company) {
-                        return DropdownItem(
-                          value: company,
-                          child: Text(
-                            '${company.codigo} - ${company.descripcion}',
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: isLoading
-                          ? null
-                          : (val) => provider.selectCompany(val),
-                      dropdownSearchData: DropdownTemplates.searchData(
-                        controller: _companySearchController,
-                        hintText: 'Buscar empresa...',
-                        searchMatchFn: (item, searchValue) {
-                          return item.value!.descripcion.toLowerCase().contains(
-                            searchValue.toLowerCase(),
-                          );
-                        },
-                      ),
-                      onMenuStateChange: (isOpen) {
-                        if (!isOpen) _companySearchController.clear();
-                      },
+                    CompanyDropdownField(
+                      value: provider.selectedCompany,
+                      companies: provider.companies,
+                      isLoading: isLoading,
+                      isRequired: true,
+                      onChanged: (c) => provider.selectCompany(c),
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField2<WarehouseModel>(
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Bodega',
-                        border: OutlineInputBorder(),
-                      ),
-                      valueListenable: _warehouseNotifier,
-                      items: provider.warehouses.map((wh) {
-                        return DropdownItem(
-                          value: wh,
-                          child: Text(
-                            '${wh.codigoBodega}-${wh.descripcionBodega}',
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: isLoading || provider.warehouses.isEmpty
-                          ? null
-                          : (val) => provider.selectWarehouse(val),
-                      dropdownSearchData: DropdownTemplates.searchData(
-                        controller: _warehouseSearchController,
-                        hintText: 'Buscar bodega...',
-                        searchMatchFn: (item, searchValue) {
-                          return item.value!.descripcionBodega.toLowerCase().contains(
-                                searchValue.toLowerCase(),
-                              ) ||
-                              item.value!.codigoBodega.toLowerCase().contains(
-                                searchValue.toLowerCase(),
-                              );
-                        },
-                      ),
-                      onMenuStateChange: (isOpen) {
-                        if (!isOpen) _warehouseSearchController.clear();
-                      },
+                    WarehouseDropdownField(
+                      value: provider.selectedWarehouse,
+                      warehouses: provider.warehouses,
+                      isLoading: isLoading,
+                      isRequired: true,
+                      onChanged: (w) => provider.selectWarehouse(w),
                     ),
                     const SizedBox(height: 16),
                     InkWell(

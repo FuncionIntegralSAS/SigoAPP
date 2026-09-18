@@ -12,6 +12,7 @@ class MockAuthRepository implements AuthRepository {
         refreshToken: 'mock-admin-refresh-456',
         type: 'Bearer',
         username: 'admin',
+        documento: 'PI26055',
         expiresIn: 3600,
       );
     }

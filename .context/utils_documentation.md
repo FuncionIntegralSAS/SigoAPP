@@ -3,15 +3,20 @@
 Este documento describe las clases y métodos utilitarios de la carpeta `lib/utils`. Sirve para contextualizar a los asistentes de inteligencia artificial sobre el propósito de cada utilidad y los lugares donde actualmente se usan en el proyecto.
 
 ## `dialog_utils.dart`
-- **Propósito**: Provee métodos estáticos para mostrar cuadros de diálogo reutilizables (*Alerts* / Modales).
+- **Propósito**: Provee métodos estáticos para mostrar cuadros de diálogo reutilizables (*Alerts* / Modales) y sanitización inteligente de errores de servidor y base de datos.
   - `showPendingWarehousesErrorDialog`: Error estandarizado cuando falla la carga de bodegas pendientes en conteo físico.
-  - `showErrorDialog`: Modal de error para el usuario final con redacción concisa, sección expandible de diagnóstico técnico para desarrollador (código HTTP, endpoint, detalles técnicos, botón de copiado al portapapeles) y botones de acción ("Aceptar" / "Reintentar").
+  - `showErrorDialog`: Modal de error para el usuario final con redacción concisa y amigable. Si el mensaje recibido contiene volcados de base de datos o stack traces, invoca automáticamente `extractFriendlyMessage` para presentar únicamente la causa funcional en el cuerpo principal, y resguarda la traza técnica completa (`technicalDetails`, código HTTP, endpoint y botón de copiado al portapapeles) dentro del acordeón expandible para desarrollador, garantizando adaptabilidad responsiva sin desbordamientos visuales.
+  - `extractFriendlyMessage`: Método utilitario que procesa cadenas crudas de error provenientes de Oracle PL/SQL (`ORA-20xxx`), extrayendo el mensaje de negocio tras pipes (`121|...`), limpiando prefijos de JDBC/Spring Boot (`CallableStatement`, `HikariProxy`, etc.) y retornando una descripción clara para el usuario final.
 - **Lugares de uso**: 
   - `lib/screens/tabs/physical_count_closing_tab.dart`
   - `lib/widgets/transfer_form_widget.dart`
+  - `lib/screens/transfer_delivery_screen.dart`
+  - `lib/screens/transfer_approval_screen.dart`
+  - `lib/repositories/http_transfer_repository.dart`
+  - `lib/providers/transfer_delivery_provider.dart`
 
 ## `app_config.dart`
-- **Propósito**: Maneja la configuración centralizada de la aplicación (clase `AppConfig`). Se encarga de proveer una instancia única de `Dio` pre-configurada (URL base, *timeouts*, interceptores), gestionar la persistencia dinámica del dominio mediante `flutter_secure_storage`, y proveer las llaves globales desacopladas `AppConfig.navigatorKey` y `AppConfig.scaffoldMessengerKey` para navegación y notificaciones sin requerir `BuildContext`.
+- **Propósito**: Maneja la configuración centralizada de la aplicación (clase `AppConfig`). Se encarga de proveer una instancia única de `Dio` pre-configurada (URL base, *timeouts*, interceptores como `AuthInterceptor`, `MockHttpInterceptor` y `JsonInterceptor`), gestionar la persistencia dinámica del dominio mediante `flutter_secure_storage`, y proveer las llaves globales desacopladas `AppConfig.navigatorKey` y `AppConfig.scaffoldMessengerKey` para navegación y notificaciones sin requerir `BuildContext`.
 - **Lugares de uso**:
   - `lib/main.dart`
   - `lib/screens/domain_scanner_screen.dart`
@@ -23,6 +28,7 @@ Este documento describe las clases y métodos utilitarios de la carpeta `lib/uti
   - `lib/utils/app_config.dart`
   - `lib/utils/json_interceptor.dart`
   - `lib/utils/auth_interceptor.dart`
+  - `lib/utils/mock_http_interceptor.dart`
   - `lib/utils/auth_utils.dart`
   - `lib/repositories/http_physical_count_repository.dart`
 
@@ -32,8 +38,10 @@ Este documento describe las clases y métodos utilitarios de la carpeta `lib/uti
   - `lib/screens/scanner_screen.dart`
 
 ## `dropdown_template.dart`
-- **Propósito**: Proporciona plantillas de configuración (como el método `DropdownTemplates.searchData`) para la construcción estandarizada de menús desplegables con barra de búsqueda interna, utilizando el paquete `dropdown_button2`.
-- **Lugares de uso**:
+- **Propósito**: Proporciona plantillas de configuración (como el método `DropdownTemplates.searchData`) para la construcción estandarizada de menús desplegables con barra de búsqueda interna, utilizando el paquete `dropdown_button2`. Es la base para los widgets canónicos transversales `CompanyDropdownField` y `WarehouseDropdownField`.
+- **Lugares de uso**: 
+  - `lib/widgets/company_dropdown_field.dart`
+  - `lib/widgets/warehouse_dropdown_field.dart`
   - `lib/screens/tabs/physical_count_opening_tab.dart`
   - `lib/screens/tabs/physical_count_closing_tab.dart`
 
@@ -42,8 +50,13 @@ Este documento describe las clases y métodos utilitarios de la carpeta `lib/uti
 - **Lugares de uso**:
   - `lib/utils/app_config.dart` (se añade a la instancia global de Dio)
 
+## `mock_http_interceptor.dart`
+- **Propósito**: Interceptor de `Dio` para simulación local cuando la sesión activa pertenece al "Entorno de Pruebas (MOCK)". Detecta si la cabecera `Authorization` contiene `mock-token` y resuelve las peticiones en `onRequest` directamente con código 200 OK y payloads simulados coherentes (empresas, bodegas, artículos, traspasos, personas, requisiciones y transacciones `code: 0`), sin enviar tráfico a la red y previniendo caídas o bloqueos de UI.
+- **Lugares de uso**:
+  - `lib/utils/app_config.dart` (se añade a la instancia global de Dio)
+
 ## `auth_interceptor.dart`
-- **Propósito**: Interceptor de `Dio` encargado de inyectar automáticamente la cabecera `Authorization: Bearer <token>` en todas las peticiones salientes hacia endpoints protegidos leyendo el token JWT de `FlutterSecureStorage` (clave `'auth_token'`). Excluye automáticamente los endpoints públicos de autenticación (`/api/v1/auth/`). Ante respuestas HTTP 401 en endpoints protegidos, intercepta el fallo y dispara de inmediato la expulsión controlada invocando `AuthUtils.handleSessionExpired()`.
+- **Propósito**: Interceptor de `Dio` encargado de inyectar automáticamente la cabecera `Authorization: Bearer <token>` en todas las peticiones salientes hacia endpoints protegidos leyendo el token JWT de `FlutterSecureStorage` (clave `'auth_token'`). Excluye automáticamente los endpoints públicos de autenticación (`/api/v1/auth/`). Ante respuestas HTTP 401 en endpoints protegidos, valida que no sea una sesión mock y dispara de inmediato la expulsión controlada invocando `AuthUtils.handleSessionExpired()`.
 - **Lugares de uso**:
   - `lib/utils/app_config.dart` (se añade a la instancia global de Dio)
 

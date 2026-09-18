@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sigo_app/utils/json_interceptor.dart';
 import 'package:sigo_app/utils/auth_interceptor.dart';
+import 'package:sigo_app/utils/mock_http_interceptor.dart';
 import 'app_logger.dart';
 
 /// Configuración centralizada de la aplicación.
@@ -69,6 +70,9 @@ class AppConfig {
 
     // Interceptor centralizado de autenticación para adjuntar token JWT
     _dioInstance!.interceptors.add(AuthInterceptor());
+
+    // Interceptor para simulación de respuestas en entorno de pruebas (Mock)
+    _dioInstance!.interceptors.add(MockHttpInterceptor());
 
     // Interceptor para decodificar respuestas JSON con Content-Type incorrecto
     _dioInstance!.interceptors.add(JsonInterceptor());

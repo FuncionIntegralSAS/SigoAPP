@@ -196,11 +196,70 @@ Card(
 * **Botón Secundario Neutro:**
   `OutlinedButton` con borde `Colors.grey.shade300`, texto e icono en `Colors.grey.shade800`, esquinas `r: 8`.
 
-### 4.5 Diálogos Modales Estándar
+### 4.5 Diálogos Modales Estándar y Modales de Error
 Todo diálogo modal (`showDialog` / `AlertDialog`) debe respetar:
 * `shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))`.
 * Campos de entrada con `OutlineInputBorder(borderRadius: BorderRadius.circular(8))`.
 * Botones de acción alineados al pie con esquinas `r: 8`.
+
+#### Directrices para Diálogos de Error (`DialogUtils.showErrorDialog`)
+1. **Desacoplamiento Funcional vs Técnico:**
+   * **Cuerpo Principal:** Debe mostrar exclusivamente un mensaje amigable y conciso para el operador final (procesado con `DialogUtils.extractFriendlyMessage`), libre de volcados de JDBC, ORA de base de datos o stack traces crudos.
+   * **Sección de Diagnóstico Expandible:** El acordeón "Ver detalles técnicos (Desarrollador)" aloja la información completa de depuración (código HTTP, endpoint consultado, traza del servidor y botón de copiado al portapapeles) en un contenedor monoespaciado (`11px`) con fondo `Colors.grey.shade100` y borde sutil.
+2. **Prevención Estricta de Desbordamientos Visuales (`Overflow`):**
+   * La fila del encabezado del acordeón desplegable debe utilizar `MainAxisSize.min` y envolver el texto explicativo con `Flexible` para evitar errores de renderizado (`RenderFlex overflowed`) en ventanas compactas de Windows o dispositivos móviles.
+   * Queda prohibido ubicar badges adicionales (ej. chips de método o código HTTP) en la misma fila horizontal del toggle desplegable; dichos metadatos deben residir estructurados dentro del área expandida.
+
+### 4.6 Selectores Desplegables de Catálogo (Empresas y Bodegas)
+
+Para garantizar consistencia visual y operativa en toda la aplicación, queda prohibido maquetar selectores de empresas o bodegas con implementaciones ad-hoc dispersas. Se deben utilizar obligatoriamente los widgets estandarizados del proyecto:
+
+* **Empresas:** [`CompanyDropdownField`](../lib/widgets/company_dropdown_field.dart)
+* **Bodegas:** [`WarehouseDropdownField`](../lib/widgets/warehouse_dropdown_field.dart)
+
+#### Anatomía y Convenciones Obligatorias:
+1. **Tipado de Dominio Estricto:** Operan exclusivamente con los modelos de datos inmutables del dominio (`CompanyModel` y `WarehouseModel`), previniendo desalineaciones por strings crudos o nulos imprevistos.
+2. **Iconografía Institucional:**
+   - Selector de Empresas: `prefixIcon: const Icon(Icons.business_outlined, size: 20)`.
+   - Selector de Bodegas: `prefixIcon: const Icon(Icons.storefront_outlined, size: 20)`.
+3. **Control de Esquinas y Espaciado:**
+   - Borde rectangular estandarizado: `OutlineInputBorder(borderRadius: BorderRadius.circular(8))`.
+   - Padding interno compacto: `contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12)`.
+4. **Búsqueda Interna Bimodal:**
+   - Integran `DropdownTemplates.searchData` permitiendo al operador buscar en tiempo real tanto por **código** como por **descripción** (ambos normalizados a minúsculas).
+5. **Manejo Reactivo de Estados Asíncronos:**
+   - Inhabilitación automática (`onChanged: null`) cuando `isLoading == true` o la lista de catálogos esté vacía.
+   - Textos guía (`hintText`) contextuales y dinámicos:
+     - En carga: `"Cargando empresas..."` / `"Cargando bodegas..."`.
+     - Lista vacía: `"No hay empresas disponibles"` / `"No hay bodegas disponibles"`.
+     - Inactivo opcional: `"Todas las empresas"` / `"Todas las bodegas"` (cuando `allowClear: true`).
+     - Formulario obligatorio: `"Seleccione una empresa"` / `"Seleccione una bodega"`.
+6. **Formato de Renderizado del Ítem:**
+   - Etiqueta de una sola línea con elipsis: `'${item.codigo} - ${item.descripcion}'` (`maxLines: 1`, `overflow: TextOverflow.ellipsis`).
+7. **Deselección / Limpieza Rápida (`allowClear: true`):**
+   - En paneles de filtros o consultas opcionales, al activar `allowClear: true`, el selector despliega automáticamente un botón `IconButton(Icons.clear)` como `suffixIcon` cuando hay un valor seleccionado, permitiendo regresar a estado nulo en un toque.
+
+#### Ejemplo de Instanciación Canónica:
+
+```dart
+// Selector de Empresa (en formulario obligatorio)
+CompanyDropdownField(
+  value: provider.selectedCompany,
+  companies: provider.companies,
+  isLoading: provider.isLoadingCompanies,
+  isRequired: true,
+  onChanged: (CompanyModel? company) => provider.selectCompany(company),
+)
+
+// Selector de Bodega (en panel de filtros con deselección permitida)
+WarehouseDropdownField(
+  value: provider.selectedWarehouse,
+  warehouses: provider.warehouses,
+  isLoading: provider.isLoadingWarehouses,
+  allowClear: true,
+  onChanged: (WarehouseModel? bodega) => provider.selectWarehouse(bodega),
+)
+```
 
 ---
 
@@ -354,6 +413,8 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
 ### Especificaciones de Layout y UI/UX
 1. **Pantalla de Entrega / Despacho (`TransferDeliveryScreen`):**
    * Listado de solicitudes en estado aprobado (`ap`) listas para despacho o entrega física.
+   * **Título de la Tarjeta (`_DeliveryCard`):** Cuando el trámite contenga más de 1 artículo (`request.articulos.length > 1`), el título principal de la tarjeta muestra exclusivamente `-cantidad- artículos` (ej. `'2 artículos'`). Si es un solo artículo, muestra el nombre individual del activo.
+   * **Subtítulo Multi-Artículo:** Debajo del título, cuando hay múltiples artículos, se detalla la lista de activos incluidos (*"Artículos incluidos: [Nombre] ([Código]), ..."*).
    * Tarjeta de trámite con sección de validación de entrega:
      * Checkbox o verificación de cada activo físico entregado contra lista.
      * Indicador de Firma de Origen / Despacho: Badge ámbar `"Pendiente firma entrega"` o verde `"Firma entrega registrada"`.
@@ -374,6 +435,7 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
 * `RequisitionsScreen` (`lib/screens/requisitions_screen.dart`)
 * `ApprovalTabView` (`lib/screens/tabs/approval_tab_view.dart`)
 * `DeliveryTabView` (`lib/screens/tabs/delivery_tab_view.dart`)
+* `RequisitionFilterHeader` (`lib/widgets/requisition_filter_header.dart`)
 * `RequisitionActionCard` (`lib/widgets/requisition_action_card.dart`)
 
 ### Especificaciones de Layout y UI/UX
@@ -381,11 +443,17 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
    * Integrado en el AppBar primario con indicador de pestaña blanco nítido (`indicatorColor: Colors.white`).
    * Pestaña 1: `"Aprobación"` (asociada al permiso `areq`, estado `'in'`).
    * Pestaña 2: `"Entrega"` (asociada al permiso `aein`, estado `'ap'`).
-2. **Tarjeta de Requisición (`RequisitionActionCard`):**
+2. **Cabecera de Filtros Institucional (`RequisitionFilterHeader`):**
+   * **Superficie y Borde:** Contenedor superior con fondo blanco puro delimitado por `Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1))`.
+   * **Persistencia Visual:** Se ubica como primer elemento dentro de la `Column` principal de cada pestaña, permaneciendo visible y operativo durante estados de carga (`CircularProgressIndicator`), errores de red o bandeja vacía.
+   * **Orden Canónico de Controles:**
+     - **1° Selector de Empresa:** `DropdownButtonFormField2<CompanyModel>` idéntico funcionalmente a Conteo Físico (opera con instancias `CompanyModel`, búsqueda interna mediante `DropdownTemplates.searchData` y control de carga reactivo), conservando la estética institucional de Requisiciones: esquinas `BorderRadius.circular(8)`, icono de negocio, botón de limpieza `clear` para deseleccionar y padding compacto.
+     - **2° Selector de Fecha Inicial ("Desde"):** `TextFormField` de solo lectura con icono `Icons.calendar_today_outlined` que despliega `showDatePicker`. Muestra la fecha en formato legible `dd/MM/yyyy`, botón `clear` de limpieza y esquinas `r: 8`. Formatea internamente hacia la API en estándar estricto ISO `YYYY-MM-DD`.
+3. **Tarjeta de Requisición (`RequisitionActionCard`):**
    * Franja vertical de 5px indicadora del estado actual de la requisición.
    * Cabecera con número formal (`Requisición #REQU-XXXX`).
    * Tabla compacta de artículos solicitados: Descripción, cantidad solicitada y cantidad aprobada/despachada.
-   * Botones de acción acordes a la pestaña: Botón de aprobar/rechazar en pestaña de aprobación, botón de registrar entrega física en pestaña de entrega.
+   * Botones de acción acordes a la pestaña: Botón de procesar aprobación en pestaña de aprobación, botón de registrar entrega física en pestaña de entrega.
 
 ---
 

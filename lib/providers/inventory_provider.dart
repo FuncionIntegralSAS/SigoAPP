@@ -53,7 +53,7 @@ class InventoryProvider extends ChangeNotifier {
     }
   }
 
-  void selectCompany(CompanyModel? company) {
+  void selectCompany(CompanyModel? company, {String tipo = 'PE'}) {
     selectedCompany = company;
     selectedWarehouse = null;
     selectedCollaborator = null;
@@ -64,14 +64,14 @@ class InventoryProvider extends ChangeNotifier {
     notifyListeners();
 
     if (company != null) {
-      _loadWarehouses(company.codigo);
+      loadWarehouses(company.codigo, tipo: tipo);
     }
   }
 
-  Future<void> _loadWarehouses(String companyId) async {
+  Future<void> loadWarehouses(String companyId, {String tipo = 'PE'}) async {
     _setState(InventoryState.loading);
     try {
-      warehouses = await _repository.getWarehouses(companyId);
+      warehouses = await _repository.getWarehouses(companyId, tipo: tipo);
       _setState(InventoryState.success);
     } catch (e) {
       if (e is DioException &&

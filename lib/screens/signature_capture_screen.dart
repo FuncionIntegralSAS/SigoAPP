@@ -99,39 +99,60 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<TransferDeliveryProvider>();
     final auth = context.watch<AuthProvider>();
-    final userIdentifier =
-        (auth.currentUsername ?? auth.currentCedula ?? '').trim().toLowerCase();
 
-    final bool isDispatcher = userIdentifier.isNotEmpty &&
-        widget.transfer.responsableActual.toLowerCase().contains(userIdentifier);
-    final bool isReceiver = userIdentifier.isNotEmpty &&
-        widget.transfer.responsablePropuesto.toLowerCase().contains(userIdentifier);
+    final cedula = auth.currentCedula?.trim().toLowerCase() ?? '';
+    final username = auth.currentUsername?.trim().toLowerCase() ?? '';
+
+    bool matchesPerson(String? code, String name) {
+      final c = code?.trim().toLowerCase() ?? '';
+      final n = name.trim().toLowerCase();
+      for (final id in [cedula, username]) {
+        if (id.isEmpty) continue;
+        if (c.isNotEmpty && (c == id || c.contains(id) || id.contains(c))) {
+          return true;
+        }
+        if (n.isNotEmpty && n.contains(id)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    final bool isDispatcher = matchesPerson(
+      widget.transfer.personaFuente ?? widget.transfer.codigoFuente,
+      widget.transfer.responsableActual,
+    );
+    final bool isReceiver = matchesPerson(
+      widget.transfer.personaDestino ?? widget.transfer.codigoDestino,
+      widget.transfer.responsablePropuesto,
+    );
 
     final bool sourceHasSigned = widget.transfer.isSourceSigned;
     final bool targetHasSigned = widget.transfer.isTargetSigned;
 
     bool canSign = false;
+    bool signAsDispatcher = false;
     String title = '';
     String instruction = '';
 
-    if (isDispatcher) {
+    if (isDispatcher && !sourceHasSigned) {
       title = 'Firma de Entrega (Fuente)';
-      if (sourceHasSigned) {
-        instruction = 'Ya has firmado la entrega de este traspaso.';
-        canSign = false;
-      } else {
-        instruction = 'Por favor, firma para autorizar la entrega y salida de los activos.';
-        canSign = true;
-      }
-    } else if (isReceiver) {
+      instruction = 'Por favor, firma para autorizar la entrega y salida de los activos.';
+      canSign = true;
+      signAsDispatcher = true;
+    } else if (isReceiver && !targetHasSigned) {
       title = 'Firma de Recepción (Destino)';
-      if (targetHasSigned) {
-        instruction = 'Ya has firmado la recepción de este traspaso.';
-        canSign = false;
-      } else {
-        instruction = 'Por favor, firma para confirmar la recepción de los activos.';
-        canSign = true;
-      }
+      instruction = 'Por favor, firma para confirmar la recepción de los activos.';
+      canSign = true;
+      signAsDispatcher = false;
+    } else if (isDispatcher && sourceHasSigned) {
+      title = 'Firma de Entrega (Fuente)';
+      instruction = 'Ya has firmado la entrega de este traspaso.';
+      canSign = false;
+    } else if (isReceiver && targetHasSigned) {
+      title = 'Firma de Recepción (Destino)';
+      instruction = 'Ya has firmado la recepción de este traspaso.';
+      canSign = false;
     } else {
       title = 'Captura de Firma';
       instruction = 'No tienes un rol asignado como fuente o destino para firmar este traspaso.';
@@ -187,7 +208,7 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
                     ),
-                    onPressed: provider.loading ? null : () => _submitSignature(isDispatcher),
+                    onPressed: provider.loading ? null : () => _submitSignature(signAsDispatcher),
                     child: const Text(
                       'Guardar y Finalizar',
                       style: TextStyle(fontSize: 18),

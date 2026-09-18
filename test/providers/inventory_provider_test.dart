@@ -366,7 +366,7 @@ class _MockInventoryRepo implements InventoryRepository {
   }
 
   @override
-  Future<List<WarehouseModel>> getWarehouses(String companyId) async {
+  Future<List<WarehouseModel>> getWarehouses(String companyId, {String tipo = 'PE'}) async {
     if (errorToThrow != null) throw errorToThrow!;
     return warehousesToReturn;
   }

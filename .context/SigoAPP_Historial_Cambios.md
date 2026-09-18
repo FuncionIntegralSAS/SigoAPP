@@ -183,5 +183,37 @@ A continuación, se evidencian las modificaciones arquitectónicas introducidas 
 4. **Exclusión de Bodegas en el Payload de Creación**:
    - El payload enviado a `POST /api/v1/traspasos/crear` omite intencionalmente las bodegas (las bodegas se usan exclusivamente en el cliente como filtro para consultar a las personas asociadas).
 
+## Control de Cambios e Histórico (v2.9 a v3.0)
 
+1. **Inyección de Dependencias y Consumo HTTP en Entrega/Recepción**:
+   - Corrección en `main.dart` para inyectar la instancia compartida `httpTransferRepository` en `TransferDeliveryProvider`, eliminando el uso inadvertido de `MockTransferRepository`.
+2. **Preservación de Códigos Originales de Custodios (`TransferRequest`)**:
+   - Incorporación de `personaFuente` y `personaDestino` en `TransferRequest` para retener las cédulas enviadas por el backend y evitar su destrucción durante el enriquecimiento con `CatalogRepository`.
+   - Implementación de getters inteligentes `codigoFuente` y `codigoDestino` con fallback seguro a `responsableActual` y `responsablePropuesto`.
+3. **Identificación Dual de Sesión y Firmas Desacopladas**:
+   - Soporte para cotejo simultáneo de cédula (`currentCedula`) y usuario de sesión (`currentUsername`) en `TransferDeliveryProvider.getAssignedTransfers`.
+   - Habilitación interactiva del canvas de firmas en `SignatureCaptureScreen` (`canSign = true`) permitiendo el registro desacoplado de firmas de entrega (`FU`) y recepción (`DE`) mediante `PUT /api/v1/traspasos/sign/{id}`.
+4. **Composición de Identificador de Trámite y Limpieza de Trazas**:
+   - `HttpTransferRepository.getTransferById` compuesto para enviar como path parameter el ID real del trámite (`MOTRNUTR`), tolerando respuestas envueltas en `data`.
+   - Depuración y limpieza de logs redundantes en consola durante eventos de redimensión de ventana, preservando exclusivamente la traza de consulta de firmas.
+5. **Sanitización Inteligente de Errores y Diagnóstico Técnico en Modales (`DialogUtils`)**:
+   - Creación del método `DialogUtils.extractFriendlyMessage(String raw)` para procesar excepciones crudas de Oracle PL/SQL (`ORA-20xxx`), aislando el mensaje de negocio tras pipes (`121|...`) y filtrando prefijos de infraestructura Spring/JDBC (`CallableStatement`, `HikariProxy`, etc.).
+   - Refactorización de `DialogUtils.showErrorDialog` para presentar en el cuerpo principal un mensaje comprensible para el usuario final, resguardando la traza técnica completa (`technicalDetails`), código HTTP y endpoint dentro de una sección expandible para desarrollador con botón de copiado.
+   - Ajuste de responsividad y eliminación de desbordamientos visuales (overflow de 7.3px corregido al remover el badge HTTP de la fila del toggle y envolver el texto con `Flexible` y `MainAxisSize.min`).
+   - Propagación desacoplada en `TransferBusinessException` (`friendlyMessage`, `technicalDetails`, `statusCode`) consumida por `TransferDeliveryProvider` y visualizada en `TransferDeliveryScreen`.
 
+## Control de Cambios e Histórico (v3.0 a v3.1)
+
+1. **Migración a HTTP Real del Módulo de Requisiciones**:
+   - Reemplazo definitivo de `MockRequisitionService` (eliminado) por `HttpRequisitionRepository` en `main.dart` inyectado en `RequisitionApprovalProvider`.
+   - Conexión con los endpoints oficiales de Spring Boot (`/api/v1/requisiciones/**`) para consulta por terna (`empresa`, `tipoDocumento`, `numero`), aprobación de cantidades, entrega física de activos y consulta de firmas.
+   - Creación de la excepción de negocio tipada `RequisitionBusinessException` (`lib/exceptions/requisition_business_exception.dart`) para encapsular códigos de retorno PL/SQL (`code != 0`), mensajes funcionales y detalles técnicos.
+   - Formalización del documento funcional [`SigoAPP_Funcional_Requisiciones.md`](./SigoAPP_Funcional_Requisiciones.md) detallando la máquina de estados derivada (`in`, `ap`, `en`, `ae`, `rg`) y contratos REST.
+
+2. **Simulación Local Inteligente (`MockHttpInterceptor`)**:
+   - Creación de `MockHttpInterceptor` (`lib/utils/mock_http_interceptor.dart`) agregado a la instancia centralizada de `Dio` en `AppConfig`.
+   - Permite el desarrollo y pruebas de interfaz bajo el perfil "Entorno de Pruebas (MOCK)" resolviendo peticiones salientes con `Authorization: mock-token` directamente en memoria con código 200 OK y payloads simulados coherentes (empresas, bodegas, artículos, personal, requisiciones), evitando envíos de tráfico fallido a red o caídas por servidor inalcanzable.
+
+3. **Estandarización de Identificación de Sesión y Enrutamiento Raíz**:
+   - `AuthResponse` incorpora el atributo `documento` (cédula del colaborador en nómina) propagado a `_cedula` (`currentCedula`) y persistido en `FlutterSecureStorage` (`auth_cedula`).
+   - `AuthProvider` formaliza la bandera `isContador` persistida en `'auth_is_contador'`, permitiendo que `AuthWrapper` en `main.dart` direccione limpiamente al `DashboardScreen` (`isAuthenticated && !isContador`) o mantenga el aislamiento de contadores físicos en `AuthScreen`.

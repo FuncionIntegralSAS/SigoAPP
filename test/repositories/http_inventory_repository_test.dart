@@ -9,10 +9,12 @@ void main() {
     late HttpInventoryRepository repository;
     int mockStatusCode = 200;
     String mockResponseBody = '[]';
+    String lastRequestedPath = '';
 
     setUp(() {
       dio = Dio(BaseOptions(baseUrl: 'https://test.sigo.com'));
       dio.httpClientAdapter = _MockHttpAdapter((options) {
+        lastRequestedPath = options.path;
         return ResponseBody.fromString(
           mockResponseBody,
           mockStatusCode,
@@ -54,6 +56,34 @@ void main() {
 
       final companies = await repository.getCompanies();
       expect(companies, isEmpty);
+    });
+
+    test('getWarehouses() consulta por defecto la ruta /api/v1/bodegas/empresa/EMP1/PE', () async {
+      mockStatusCode = 200;
+      mockResponseBody = '''
+      [
+        {"codigoBodega": "B01", "descripcionBodega": "Bodega PE 1", "estadoBodega": "A"}
+      ]
+      ''';
+
+      final warehouses = await repository.getWarehouses('EMP1');
+      expect(lastRequestedPath, '/api/v1/bodegas/empresa/EMP1/PE');
+      expect(warehouses.length, 1);
+      expect(warehouses.first.codigoBodega, 'B01');
+    });
+
+    test('getWarehouses() con tipo FI consulta la ruta /api/v1/bodegas/empresa/EMP1/FI', () async {
+      mockStatusCode = 200;
+      mockResponseBody = '''
+      [
+        {"codigoBodega": "B02", "descripcionBodega": "Bodega FI 1", "estadoBodega": "A"}
+      ]
+      ''';
+
+      final warehouses = await repository.getWarehouses('EMP1', tipo: 'FI');
+      expect(lastRequestedPath, '/api/v1/bodegas/empresa/EMP1/FI');
+      expect(warehouses.length, 1);
+      expect(warehouses.first.codigoBodega, 'B02');
     });
 
     test('getWarehouses() retorna lista vacía si status 204 o data nula', () async {

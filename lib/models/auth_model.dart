@@ -103,6 +103,7 @@ class AuthResponse extends Equatable {
   final String? refreshToken;
   final String? type;
   final String? username;
+  final String? documento;
   final int? expiresIn;
   final List<Permiso>? permisos;
 
@@ -111,6 +112,7 @@ class AuthResponse extends Equatable {
     this.refreshToken,
     this.type,
     this.username,
+    this.documento,
     this.expiresIn,
     this.permisos,
   });
@@ -121,6 +123,7 @@ class AuthResponse extends Equatable {
       refreshToken: json['refreshToken'] as String?,
       type: json['type'] as String?,
       username: json['username'] as String?,
+      documento: json['documento'] as String?,
       expiresIn: json['expiresIn'] as int?,
       permisos: json['permisos'] != null
           ? (json['permisos'] as List)
@@ -131,5 +134,5 @@ class AuthResponse extends Equatable {
   }
 
   @override
-  List<Object?> get props => [token, refreshToken, type, username, expiresIn, permisos];
+  List<Object?> get props => [token, refreshToken, type, username, documento, expiresIn, permisos];
 }

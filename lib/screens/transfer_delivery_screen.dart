@@ -28,20 +28,10 @@ class _TransferDeliveryScreenState extends State<TransferDeliveryScreen> {
     final provider = context.watch<TransferDeliveryProvider>();
     final auth = context.watch<AuthProvider>();
 
-    final userIdentifier = auth.currentUsername ?? auth.currentCedula ?? '';
+    final cedula = auth.currentCedula?.trim() ?? '';
+    final username = auth.currentUsername?.trim() ?? '';
 
-    // ignore: avoid_print
-    print('======================================================');
-    // ignore: avoid_print
-    print('>>> [Entrega/Recepción] CÉDULA AUTENTICADA: ${auth.currentCedula}');
-    // ignore: avoid_print
-    print('>>> [Entrega/Recepción] USERNAME: ${auth.currentUsername}');
-    // ignore: avoid_print
-    print('>>> [Entrega/Recepción] IDENTIFICADOR ACTIVO: $userIdentifier');
-    // ignore: avoid_print
-    print('======================================================');
-
-    final transfers = provider.getAssignedTransfers(userIdentifier);
+    final transfers = provider.getAssignedTransfers(cedula, username);
 
     return Scaffold(
       appBar: AppBar(
@@ -150,13 +140,33 @@ class _DeliveryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<TransferDeliveryProvider>();
     final auth = context.watch<AuthProvider>();
-    final userIdentifier =
-        (auth.currentUsername ?? auth.currentCedula ?? '').trim().toLowerCase();
 
-    final bool isDispatcher = userIdentifier.isNotEmpty &&
-        request.responsableActual.toLowerCase().contains(userIdentifier);
-    final bool isReceiver = userIdentifier.isNotEmpty &&
-        request.responsablePropuesto.toLowerCase().contains(userIdentifier);
+    final cedula = auth.currentCedula?.trim().toLowerCase() ?? '';
+    final username = auth.currentUsername?.trim().toLowerCase() ?? '';
+
+    bool matchesPerson(String? code, String name) {
+      final c = code?.trim().toLowerCase() ?? '';
+      final n = name.trim().toLowerCase();
+      for (final id in [cedula, username]) {
+        if (id.isEmpty) continue;
+        if (c.isNotEmpty && (c == id || c.contains(id) || id.contains(c))) {
+          return true;
+        }
+        if (n.isNotEmpty && n.contains(id)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    final bool isDispatcher = matchesPerson(
+      request.personaFuente ?? request.codigoFuente,
+      request.responsableActual,
+    );
+    final bool isReceiver = matchesPerson(
+      request.personaDestino ?? request.codigoDestino,
+      request.responsablePropuesto,
+    );
 
     final bool canUserSign = (isDispatcher && !request.isSourceSigned) ||
         (isReceiver && !request.isTargetSigned);
@@ -174,7 +184,9 @@ class _DeliveryCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    request.nombreArticulo,
+                    request.articulos.length > 1
+                        ? '${request.articulos.length} artículos'
+                        : request.nombreArticulo,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -270,6 +282,7 @@ class _DeliveryCard extends StatelessWidget {
                                 message: provider.error ??
                                     'No fue posible registrar la recepción en el ERP.',
                                 technicalDetails: provider.technicalDetails,
+                                statusCode: provider.statusCode,
                                 buttonText: 'Aceptar',
                               );
                             }
@@ -282,7 +295,7 @@ class _DeliveryCard extends StatelessWidget {
                       foregroundColor: Colors.white,
                     ),
                     icon: const Icon(Icons.draw),
-                    label: Text(isDispatcher
+                    label: Text(isDispatcher && !request.isSourceSigned
                         ? 'Firmar Entrega (FU)'
                         : 'Firmar Recepción (DE)'),
                     onPressed: () async {

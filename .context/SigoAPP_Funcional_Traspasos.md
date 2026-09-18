@@ -24,7 +24,7 @@ El acceso a las distintas etapas se rige dinámicamente por los permisos del usu
 |---|---|---|---|
 | **Generación de Traspasos** | Solicitar traspaso | `agst` | `InventoryScreen` -> `TransferFormWidget` |
 | **Aprobación de Traspasos** | Aprobar / rechazar solicitudes | `aatr` | `TransferApprovalScreen` |
-| **Entrega y Recepción** | Usuario asignado como entrega (FU) o recibe (DE) | Sesión activa (`AuthProvider.currentCedula`) | `TransferDeliveryScreen` -> `SignatureCaptureScreen` |
+| **Entrega y Recepción** | Usuario asignado como entrega (FU) o recibe (DE) | Sesión activa (`AuthProvider.currentCedula ?? AuthProvider.currentUsername`) | `TransferDeliveryScreen` -> `SignatureCaptureScreen` |
 
 ---
 
@@ -145,20 +145,28 @@ stateDiagram-v2
 **Punto de Entrada:** Tarjeta *"Entrega / Recepción"* en el Dashboard.
 
 **Comportamiento y Reglas:**
-1. **Listado de Asignados y Enriquecimiento:**
-   - Lista traspasos en estado `ap` asociados a la cédula del usuario en sesión (`responsableActual` o `responsablePropuesto`).
-   - `TransferDeliveryProvider` cuenta con inyección de `CatalogRepository` y aplica el mismo mecanismo de enriquecimiento concurrente y caché en memoria, resolviendo nombres completos y descripciones de artículos.
-   - La cabecera de la tarjeta muestra el título amigable derivado de `request.nombreArticulo` (descripción del primer artículo).
-   - En trámites multi-artículo, muestra el listado con formato `${art.nombre} (${art.articulo})`.
+1. **Listado de Asignados, Desacoplamiento de Identificadores y Enriquecimiento:**
+   - Lista traspasos en estado `ap` asociados al usuario autenticado.
+   - **Preservación de Custodios Originales**: `TransferRequest` deserializa y preserva `personaFuente` y `personaDestino` (cédulas de los colaboradores de la entidad `FI_MOVITRAS`), manteniendo expuestos los getters `codigoFuente` y `codigoDestino` para evitar que la resolución posterior de nombres en `responsableActual` y `responsablePropuesto` destruya los códigos numéricos originales.
+   - **Identificación Dual del Colaborador en Sesión**: Para determinar la asignación del trámite y habilitar las firmas (`isDispatcher` para entrega o `isReceiver` para recepción en `TransferDeliveryScreen` y `SignatureCaptureScreen`), la aplicación evalúa conjuntamente `auth.currentCedula` y `auth.currentUsername`. El método `TransferDeliveryProvider.getAssignedTransfers(cedula, username)` coteja ambos identificadores contra las cédulas originales (`personaFuente`, `personaDestino`, `codigoFuente`, `codigoDestino`) y contra los nombres amigables resueltos.
+   - **Consumo HTTP Real y Composición de ID**: `TransferDeliveryProvider` consume `HttpTransferRepository`, el cual consulta la bandeja `GET /api/v1/traspasos/list?estado=ap` y enriquece concurrentemente cada ítem invocando `GET /api/v1/traspasos/get/{id}` utilizando el ID único del trámite (`MOTRNUTR`), tolerando respuestas envueltas en `data`, `object` o directas, y poblando los detalles de artículos y firmas de la base de datos.
+   - La cabecera de la tarjeta muestra `-cantidad- artículos` cuando el trámite contiene más de 1 artículo (ej. `'2 artículos'`), o el nombre oficial del activo cuando es un artículo individual.
+   - En trámites multi-artículo, muestra debajo el listado de artículos incluidos con formato `${art.nombre} (${art.articulo})`.
    - Muestra los nombres resueltos en Entrega (Fuente) y Recibe (Destino).
-2. **Firmas sin Orden Requerido:**
+2. **Firmas sin Orden Requerido y Habilitación de Canvas:**
    - Cualquiera de las partes puede firmar primero.
+   - En `SignatureCaptureScreen`, si el usuario en sesión califica como despachador o receptor y aún no ha firmado, se habilita interactivamente el canvas manuscrito (`canSign = true`).
    - La parte despachadora registra su firma manuscrita con `tipoFirma: "FU"` (`PUT /api/v1/traspasos/sign/{id}`).
    - La parte receptora registra su firma manuscrita con `tipoFirma: "DE"` (`PUT /api/v1/traspasos/sign/{id}`).
    - Las firmas se gestionan en la entidad `FI_MOTRFIRM` y no modifican el estado `ap` del trámite.
 3. **Recepción Final en ERP (`re`):**
    - Una vez que ambas firmas están capturadas (`bothSigned: true`), la UI habilita el botón destacado **"Confirmar Recepción ERP"**.
    - Invoca `PUT /api/v1/traspasos/recibir/{id}`, asentando cabeceras en `DOCUINVE` y líneas en `MOVIINVE`, cambiando el estado a `re`.
+   - **Regla de Bodegas de Tipo Personal (`PE`)**: En el procedimiento de base de datos Oracle (`PKG_FI_MOVITRAS`), la afectación de existencias exige que tanto la bodega fuente como la bodega destino sean de tipo Personal (`PE`) (custodios individuales). Si alguna bodega asociada es de tipo físico (`FI`), la base de datos abortará con `ORA-20008: ... Bodega Destino [...] o Bodega Fuente [...] Deben ser de Tipo Personal`.
+   - **Sanitización Inteligente y Desacoplamiento de Errores**: Si la confirmación de recepción falla por validación de Oracle o error de servidor, `HttpTransferRepository` procesa la respuesta en una `TransferBusinessException` desacoplando dos mensajes:
+     - `friendlyMessage`: Extrae mediante `DialogUtils.extractFriendlyMessage` la causa concisa de negocio (ej. `"Bodega Destino [2612] o Bodega Fuente [F571] Deben ser de Tipo Personal"`), presentándola en el cuerpo principal del modal.
+     - `technicalDetails`: Almacena la traza cruda completa (código ORA, stack trace de base de datos).
+     - La pantalla `TransferDeliveryScreen` despliega `DialogUtils.showErrorDialog`, manteniendo la interfaz responsiva y resguardando la traza técnica y el código HTTP dentro del acordeón expandible para desarrollador.
 
 ---
 
@@ -168,7 +176,8 @@ Todos los endpoints requieren cabecera `Authorization: Bearer <token>`.
 
 | Operación | Método | Endpoint | Parámetros / Body | Respuestas |
 |---|:---:|---|---|---|
-| **Colaboradores por Bodega** | `GET` | `/api/v1/traspasos/personas` | Query: `?bodega={BOD}&empresa={EMP}` | `200 OK` `{ "list": [ { "cedula": "...", "nombre": "...", "apellido": "..." } ] }` |
+| **Bodegas Personales** | `GET` | `/api/v1/bodegas/empresa/{empresa}/PE` | Path: `{empresa}` (código empresa)<br>Path: `PE` (tipo personal obligatorio) | `200 OK` `List<WarehouseModel>` (`codigoBodega`, `descripcionBodega`, `estadoBodega`) |
+| **Colaboradores por Bodega** | `GET` | `/api/v1/traspasos/personas` | Query: `?bodega={BOD}&empresa={EMP}`<br>*(Regla: exige bodega tipo `'PE'`; si se envía bodega física `'FI'` retorna `[]` por filtro SQL `AND B.BODETIBO = 'PE'`)* | `200 OK` `{ "list": [ { "cedula": "...", "nombre": "...", "apellido": "..." } ] }` |
 | **Activos por Responsable** | `GET` | `/api/v1/traspasos/activos` | Query: `?persona={CED}&empresa={EMP}` | `200 OK` `{ "list": [ { "articulo": "...", "placa": "...", "nombre": "...", "centroInformacion": "...", "tercero": "...", "enTramite": bool } ] }` |
 | **Crear Traspaso** | `POST` | `/api/v1/traspasos/crear` | Body: `TransferRequest` (JSON multi-artículo) | `200 OK` `{ "code": 0, "msg": "...", "object": { "id": 1045, "numeroDocumento": 85023, ... } }`<br>`200 OK` con `code: -1` (validación de negocio)<br>`400 Bad Request` |
 | **Bandeja de Trámites** | `GET` | `/api/v1/traspasos/list` | Query: `?estado={pe|pr}&empresa={EMP}&bodega={BOD}` | `200 OK` (lista ligera `ObjectListResponse` con `id`, `tipoDocumento`, `numeroDocumento`, `fechaCreacion`) |
@@ -207,7 +216,11 @@ Todos los endpoints requieren cabecera `Authorization: Bearer <token>`.
 - `placa` (`String?`): Placa física del artículo (opcional).
 - `nombre` (`String?`): Descripción amigable y oficial del artículo (opcional). Soporta mapeo tolerante desde `nombre`, `descripcion` y `nombreElemento` en `fromJson`.
 
-#### Getters Inteligentes en `TransferRequest`
+#### Estructura y Getters Inteligentes en `TransferRequest`
+- `personaFuente` (`String?`): Cédula o identificador original del colaborador que entrega (`PERSCODI`), deserializado y preservado de la entidad `FI_MOVITRAS`.
+- `personaDestino` (`String?`): Cédula o identificador original del colaborador que recibe, deserializado y preservado de la entidad `FI_MOVITRAS`.
+- `codigoFuente`: Getter que retorna prioritariamente `personaFuente` o en su defecto `responsableActual`.
+- `codigoDestino`: Getter que retorna prioritariamente `personaDestino` o en su defecto `responsablePropuesto`.
 - `nombreArticulo`: Prioriza la descripción oficial del primer artículo (`articulos.first.nombre`), retornando `${displayFirst} (+N artículos más)` para trámites multi-artículo o la descripción directa para trámites unitarios. Mantiene fallbacks para trámites legacy o números de documento.
 - `idArticulo`: Código de activo del primer ítem o ID de trámite como fallback.
 - `placa`: Placa física del primer artículo si existe.

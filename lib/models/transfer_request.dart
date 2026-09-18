@@ -119,6 +119,12 @@ class TransferRequest {
   final int? numeroDocumento;
   final String responsableActual; // personaFuente
   final String responsablePropuesto; // personaDestino
+  /// Código o cédula original de quien entrega (personaFuente en backend/ERP)
+  final String? personaFuente;
+
+  /// Código o cédula original de quien recibe (personaDestino en backend/ERP)
+  final String? personaDestino;
+
   final String bodegaActual;
   final String bodegaPropuesta;
   final String motivoSolicitud; // observacion
@@ -150,6 +156,8 @@ class TransferRequest {
     String? nombreArticulo,
     this.responsableActual = '',
     this.responsablePropuesto = '',
+    String? personaFuente,
+    String? personaDestino,
     this.bodegaActual = '',
     this.bodegaPropuesta = '',
     this.motivoSolicitud = '',
@@ -169,11 +177,29 @@ class TransferRequest {
     this.firmaDespachadorBase64,
     this.firmaReceptorBase64,
     String? placa,
-  })  : _legacyIdArticulo = idArticulo,
+  })  : personaFuente = (personaFuente != null && personaFuente.trim().isNotEmpty)
+            ? personaFuente.trim()
+            : (responsableActual.trim().isNotEmpty ? responsableActual.trim() : null),
+        personaDestino = (personaDestino != null && personaDestino.trim().isNotEmpty)
+            ? personaDestino.trim()
+            : (responsablePropuesto.trim().isNotEmpty ? responsablePropuesto.trim() : null),
+        _legacyIdArticulo = idArticulo,
         _legacyNombreArticulo = nombreArticulo,
         _legacyPlaca = placa;
 
   // --- GETTERS INTELIGENTES PARA UI Y COMPATIBILIDAD ---
+
+  /// Código o cédula de quien entrega con fallback a responsableActual
+  String get codigoFuente =>
+      (personaFuente != null && personaFuente!.trim().isNotEmpty)
+          ? personaFuente!.trim()
+          : responsableActual.trim();
+
+  /// Código o cédula de quien recibe con fallback a responsablePropuesto
+  String get codigoDestino =>
+      (personaDestino != null && personaDestino!.trim().isNotEmpty)
+          ? personaDestino!.trim()
+          : responsablePropuesto.trim();
 
   /// Código del primer artículo o del legacy si no hay lista
   String get idArticulo =>
@@ -252,6 +278,8 @@ class TransferRequest {
     String? bodegaPropuesta,
     String? responsableActual,
     String? responsablePropuesto,
+    String? personaFuente,
+    String? personaDestino,
   }) {
     return TransferRequest(
       id: id,
@@ -259,6 +287,8 @@ class TransferRequest {
       nombreArticulo: _legacyNombreArticulo,
       responsableActual: responsableActual ?? this.responsableActual,
       responsablePropuesto: responsablePropuesto ?? this.responsablePropuesto,
+      personaFuente: personaFuente ?? this.personaFuente,
+      personaDestino: personaDestino ?? this.personaDestino,
       bodegaActual: bodegaActual ?? this.bodegaActual,
       bodegaPropuesta: bodegaPropuesta ?? this.bodegaPropuesta,
       motivoSolicitud: motivoSolicitud,
@@ -368,7 +398,17 @@ class TransferRequest {
         ? rawNumDoc
         : (int.tryParse(rawNumDoc?.toString() ?? ''));
 
-    final String idStr = (json['id'] ?? '').toString();
+    final dynamic rawId = json['id'] ??
+        json['numeroTramite'] ??
+        json['tramite'] ??
+        json['motrnutr'] ??
+        json['MOTRNUTR'];
+    final String idStr = (rawId ?? '').toString();
+
+    final String rawFuente =
+        (json['personaFuente'] ?? json['responsableActual'] ?? '').toString();
+    final String rawDestino =
+        (json['personaDestino'] ?? json['responsablePropuesto'] ?? '').toString();
 
     return TransferRequest(
       id: idStr,
@@ -377,8 +417,14 @@ class TransferRequest {
       numeroDocumento: parsedNumDoc,
       idArticulo: (json['elemento'] ?? json['idArticulo'] ?? (parsedArticulos.isNotEmpty ? parsedArticulos.first.articulo : idStr)).toString(),
       nombreArticulo: (json['nombreElemento'] ?? json['nombreArticulo'])?.toString(),
-      responsableActual: (json['personaFuente'] ?? json['responsableActual'] ?? '').toString(),
-      responsablePropuesto: (json['personaDestino'] ?? json['responsablePropuesto'] ?? '').toString(),
+      responsableActual: rawFuente,
+      responsablePropuesto: rawDestino,
+      personaFuente: (json['personaFuente']?.toString().isNotEmpty == true)
+          ? json['personaFuente'].toString()
+          : (rawFuente.isNotEmpty ? rawFuente : null),
+      personaDestino: (json['personaDestino']?.toString().isNotEmpty == true)
+          ? json['personaDestino'].toString()
+          : (rawDestino.isNotEmpty ? rawDestino : null),
       bodegaActual: (json['bodegaFuente'] ?? json['bodegaOrigen'] ?? json['bodegaActual'] ?? json['bodega'] ?? '').toString(),
       bodegaPropuesta: (json['bodegaDestino'] ?? json['bodegaPropuesta'] ?? '').toString(),
       motivoSolicitud: (json['observacion'] ?? json['motivoSolicitud'] ?? '').toString(),
@@ -404,8 +450,12 @@ class TransferRequest {
       if (empresaDocumento != null) 'empresaDocumento': empresaDocumento,
       if (tipoDocumento != null) 'tipoDocumento': tipoDocumento,
       if (numeroDocumento != null) 'numeroDocumento': numeroDocumento,
-      'personaFuente': responsableActual,
-      'personaDestino': responsablePropuesto,
+      'personaFuente': (personaFuente != null && personaFuente!.isNotEmpty)
+          ? personaFuente
+          : responsableActual,
+      'personaDestino': (personaDestino != null && personaDestino!.isNotEmpty)
+          ? personaDestino
+          : responsablePropuesto,
       'bodegaFuente': bodegaActual,
       'bodegaDestino': bodegaPropuesta,
       'observacion': motivoSolicitud,

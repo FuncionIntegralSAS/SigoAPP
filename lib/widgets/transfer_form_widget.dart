@@ -11,6 +11,8 @@ import '../providers/inventory_provider.dart';
 import '../providers/transfer_form_provider.dart';
 import '../providers/transfer_request_provider.dart';
 import '../utils/dropdown_template.dart';
+import 'company_dropdown_field.dart';
+import 'warehouse_dropdown_field.dart';
 
 /// Formulario interactivo para la creación de solicitudes de traspaso multi-artículo
 /// estructurado en flujo dinámico:
@@ -46,12 +48,6 @@ class TransferFormWidget extends StatefulWidget {
 
 class _TransferFormWidgetState extends State<TransferFormWidget> {
   // Controladores de búsqueda para dropdowns
-  final TextEditingController _companySearchController =
-      TextEditingController();
-  final TextEditingController _originWarehouseSearchController =
-      TextEditingController();
-  final TextEditingController _targetWarehouseSearchController =
-      TextEditingController();
   final TextEditingController _originPersonSearchController =
       TextEditingController();
   final TextEditingController _targetPersonSearchController =
@@ -59,13 +55,6 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
   final TextEditingController _notesController = TextEditingController();
 
   // ValueNotifiers para DropdownButton2
-  final ValueNotifier<CompanyModel?> _companyNotifier = ValueNotifier(null);
-  final ValueNotifier<WarehouseModel?> _originWarehouseNotifier = ValueNotifier(
-    null,
-  );
-  final ValueNotifier<WarehouseModel?> _targetWarehouseNotifier = ValueNotifier(
-    null,
-  );
   final ValueNotifier<TransferPersonModel?> _originPersonNotifier =
       ValueNotifier(null);
   final ValueNotifier<TransferPersonModel?> _targetPersonNotifier =
@@ -110,11 +99,15 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
 
       if (companyToSelect != null) {
         _selectedCompany = companyToSelect;
-        _companyNotifier.value = companyToSelect;
         formProvider.setEmpresa(companyToSelect.codigo);
         if (inventoryProvider.selectedCompany?.codigo !=
             companyToSelect.codigo) {
-          inventoryProvider.selectCompany(companyToSelect);
+          inventoryProvider.selectCompany(companyToSelect, tipo: 'PE');
+        } else {
+          await inventoryProvider.loadWarehouses(
+            companyToSelect.codigo,
+            tipo: 'PE',
+          );
         }
       }
 
@@ -138,12 +131,22 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
             widget.initialWarehouse ?? inventoryProvider.selectedWarehouse;
         if (originWarehouseToSelect != null &&
             originWarehouseToSelect.codigoBodega != 'ALL') {
-          _selectedOriginWarehouse = originWarehouseToSelect;
-          _originWarehouseNotifier.value = originWarehouseToSelect;
-          await formProvider.selectOriginBodega(
-            originWarehouseToSelect.codigoBodega,
-            empresa: _selectedCompany?.codigo ?? '01',
-          );
+          final matchedOriginWarehouse = (widget.warehouses ??
+                  inventoryProvider.warehouses)
+              .where(
+                (w) =>
+                    w.codigoBodega.trim().toLowerCase() ==
+                    originWarehouseToSelect.codigoBodega.trim().toLowerCase(),
+              )
+              .firstOrNull;
+
+          if (matchedOriginWarehouse != null) {
+            _selectedOriginWarehouse = matchedOriginWarehouse;
+            await formProvider.selectOriginBodega(
+              matchedOriginWarehouse.codigoBodega,
+              empresa: _selectedCompany?.codigo ?? '01',
+            );
+          }
 
           if (!mounted) return;
 
@@ -235,7 +238,6 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
 
     if (matchedWarehouse != null) {
       _selectedOriginWarehouse = matchedWarehouse;
-      _originWarehouseNotifier.value = matchedWarehouse;
       await formProvider.selectOriginBodega(
         matchedWarehouse.codigoBodega,
         empresa: _selectedCompany?.codigo ?? '01',
@@ -327,16 +329,10 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
 
   @override
   void dispose() {
-    _companySearchController.dispose();
-    _originWarehouseSearchController.dispose();
-    _targetWarehouseSearchController.dispose();
     _originPersonSearchController.dispose();
     _targetPersonSearchController.dispose();
     _notesController.dispose();
 
-    _companyNotifier.dispose();
-    _originWarehouseNotifier.dispose();
-    _targetWarehouseNotifier.dispose();
     _originPersonNotifier.dispose();
     _targetPersonNotifier.dispose();
 
@@ -458,55 +454,25 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                   const SizedBox(height: 10),
 
                   // Selector de Bodega Destino
-                  DropdownButtonFormField2<WarehouseModel>(
-                    isExpanded: true,
-                    valueListenable: _targetWarehouseNotifier,
-                    decoration: const InputDecoration(
-                      labelText: 'Bodega Destino',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.domain_outlined),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 12,
-                      ),
-                    ),
-                    hint: availableWarehouses.isEmpty
-                        ? const Text('Sin bodegas disponibles')
-                        : const Text('Seleccione la bodega destino'),
-                    items: availableWarehouses.map((w) {
-                      return DropdownItem<WarehouseModel>(
-                        value: w,
-                        child: Text(
-                          '${w.codigoBodega} - ${w.descripcionBodega}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      );
-                    }).toList(),
+                  WarehouseDropdownField(
+                    value: _selectedTargetWarehouse,
+                    warehouses: availableWarehouses,
+                    labelText: 'Bodega Destino',
+                    hintText: availableWarehouses.isEmpty
+                        ? 'Sin bodegas disponibles'
+                        : 'Seleccione la bodega destino',
+                    isRequired: true,
                     onChanged: availableWarehouses.isEmpty
                         ? null
                         : (WarehouseModel? warehouse) {
                             setState(() {
                               _selectedTargetWarehouse = warehouse;
-                              _targetWarehouseNotifier.value = warehouse;
                             });
                             formProvider.selectDestinationBodega(
                               warehouse?.codigoBodega,
                               empresa: _selectedCompany?.codigo ?? '01',
                             );
                           },
-                    dropdownSearchData: DropdownTemplates.searchData(
-                      controller: _targetWarehouseSearchController,
-                      hintText: 'Buscar bodega destino...',
-                      searchMatchFn: (item, searchValue) {
-                        final wh = item.value!;
-                        return wh.descripcionBodega.toLowerCase().contains(
-                              searchValue.toLowerCase(),
-                            ) ||
-                            wh.codigoBodega.toLowerCase().contains(
-                              searchValue.toLowerCase(),
-                            );
-                      },
-                    ),
                   ),
                   const SizedBox(height: 12),
 
@@ -1388,98 +1354,43 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        DropdownButtonFormField2<CompanyModel>(
-          isExpanded: true,
-          valueListenable: _companyNotifier,
-          decoration: const InputDecoration(
-            labelText: 'Empresa',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.business_outlined),
-            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-          ),
-          hint: const Text('Seleccione la empresa'),
-          items: inventoryProvider.companies.map((company) {
-            return DropdownItem<CompanyModel>(
-              value: company,
-              child: Text(
-                '${company.codigo} - ${company.descripcion}',
-                overflow: TextOverflow.ellipsis,
-              ),
-            );
-          }).toList(),
+        CompanyDropdownField(
+          value: _selectedCompany,
+          companies: inventoryProvider.companies,
+          labelText: 'Empresa',
+          isRequired: true,
           onChanged: (CompanyModel? company) {
             if (company == null) return;
             setState(() {
               _selectedCompany = company;
-              _companyNotifier.value = company;
               _selectedOriginWarehouse = null;
-              _originWarehouseNotifier.value = null;
               _selectedTargetWarehouse = null;
-              _targetWarehouseNotifier.value = null;
             });
             formProvider.setEmpresa(company.codigo);
-            inventoryProvider.selectCompany(company);
+            inventoryProvider.selectCompany(company, tipo: 'PE');
           },
-          dropdownSearchData: DropdownTemplates.searchData(
-            controller: _companySearchController,
-            hintText: 'Buscar empresa...',
-            searchMatchFn: (item, searchValue) {
-              final comp = item.value!;
-              return comp.descripcion.toLowerCase().contains(
-                    searchValue.toLowerCase(),
-                  ) ||
-                  comp.codigo.toLowerCase().contains(searchValue.toLowerCase());
-            },
-          ),
         ),
         const SizedBox(height: 12),
 
-        DropdownButtonFormField2<WarehouseModel>(
-          isExpanded: true,
-          valueListenable: _originWarehouseNotifier,
-          decoration: const InputDecoration(
-            labelText: 'Bodega Origen',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.warehouse_outlined),
-            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-          ),
-          hint: availableWarehouses.isEmpty
-              ? const Text('Sin bodegas disponibles')
-              : const Text('Seleccione la bodega origen'),
-          items: availableWarehouses.map((w) {
-            return DropdownItem<WarehouseModel>(
-              value: w,
-              child: Text(
-                '${w.codigoBodega} - ${w.descripcionBodega}',
-                overflow: TextOverflow.ellipsis,
-              ),
-            );
-          }).toList(),
+        WarehouseDropdownField(
+          value: _selectedOriginWarehouse,
+          warehouses: availableWarehouses,
+          labelText: 'Bodega Origen',
+          hintText: availableWarehouses.isEmpty
+              ? 'Sin bodegas disponibles'
+              : 'Seleccione la bodega origen',
+          isRequired: true,
           onChanged: availableWarehouses.isEmpty
               ? null
               : (WarehouseModel? warehouse) {
                   setState(() {
                     _selectedOriginWarehouse = warehouse;
-                    _originWarehouseNotifier.value = warehouse;
                   });
                   formProvider.selectOriginBodega(
                     warehouse?.codigoBodega,
                     empresa: _selectedCompany?.codigo ?? '01',
                   );
                 },
-          dropdownSearchData: DropdownTemplates.searchData(
-            controller: _originWarehouseSearchController,
-            hintText: 'Buscar bodega origen...',
-            searchMatchFn: (item, searchValue) {
-              final wh = item.value!;
-              return wh.descripcionBodega.toLowerCase().contains(
-                    searchValue.toLowerCase(),
-                  ) ||
-                  wh.codigoBodega.toLowerCase().contains(
-                    searchValue.toLowerCase(),
-                  );
-            },
-          ),
         ),
         const SizedBox(height: 12),
 

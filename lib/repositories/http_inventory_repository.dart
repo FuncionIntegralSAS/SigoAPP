@@ -21,8 +21,8 @@ class HttpInventoryRepository implements InventoryRepository {
   }
 
   @override
-  Future<List<WarehouseModel>> getWarehouses(String companyId) async {
-    final response = await _dio.get('/api/v1/bodegas/empresa/$companyId');
+  Future<List<WarehouseModel>> getWarehouses(String companyId, {String tipo = 'PE'}) async {
+    final response = await _dio.get('/api/v1/bodegas/empresa/$companyId/$tipo');
     if (response.statusCode == 204 || response.data == null || response.data is! List) {
       return [];
     }
