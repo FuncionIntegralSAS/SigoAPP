@@ -11,10 +11,17 @@ class RequisitionApprovalProvider extends ChangeNotifier {
 
   RequisitionApprovalProvider(this._repository);
 
-  List<RequisitionModel> _pendingRequisitions = [];
+  // Nivel 1: Bandeja de Documentos de Requisición
+  List<RequisicionResumen> _documents = [];
   bool _isLoading = false;
   String? _errorMessage;
+  String? _processErrorMessage;
   String _currentStatus = 'in';
+
+  // Nivel 2: Caché de Detalle y Movimientos de Requisición por terna
+  final Map<String, RequisicionDetalle> _documentDetails = {};
+  final Map<String, bool> _loadingDetails = {};
+  final Map<String, String?> _errorDetails = {};
 
   // Catálogo maestro de empresas
   List<CompanyModel> _companies = [];
@@ -31,11 +38,38 @@ class RequisitionApprovalProvider extends ChangeNotifier {
   // Estado para las selecciones en bloque: { ID : Cantidad }
   final Map<String, int> _selectedItems = {};
 
-  List<RequisitionModel> get pendingRequisitions => _pendingRequisitions;
+  List<RequisicionResumen> get documents => _documents;
+
+  /// Compatibilidad regresiva: expone líneas de los detalles cargados en memoria
+  List<RequisitionModel> get pendingRequisitions {
+    final lines = <RequisitionModel>[];
+    for (final detail in _documentDetails.values) {
+      for (final linea in detail.lineas) {
+        lines.add(RequisitionModel.fromDetalleLinea(detalle: detail, linea: linea));
+      }
+    }
+    return lines;
+  }
+
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get processErrorMessage => _processErrorMessage;
   String get currentStatus => _currentStatus;
   int get selectedCount => _selectedItems.length;
+
+  /// Retorna la cantidad de documentos únicos que tienen movimientos seleccionados o modificados
+  int get selectedDocumentsCount {
+    final docKeys = <String>{};
+    for (final key in _selectedItems.keys) {
+      final parts = key.split('_');
+      if (parts.length >= 3) {
+        docKeys.add('${parts[0]}_${parts[1]}_${parts[2]}');
+      }
+    }
+    return docKeys.length;
+  }
+
+  Map<String, int> get selectedItems => _selectedItems;
 
   List<CompanyModel> get companies => _companies;
   bool get isLoadingCompanies => _isLoadingCompanies;
@@ -75,10 +109,8 @@ class RequisitionApprovalProvider extends ChangeNotifier {
     _companiesErrorMessage = null;
     notifyListeners();
 
-    AppLogger.i('[RequisitionApprovalProvider] Solicitando catálogo de empresas...');
     try {
       _companies = await _repository.getCompanies();
-      AppLogger.i('[RequisitionApprovalProvider] Catálogo de empresas cargado: ${_companies.length} empresas encontradas.');
     } catch (e) {
       _companiesErrorMessage = 'Error al cargar empresas: $e';
       AppLogger.e('Error al cargar empresas en RequisitionApprovalProvider', e);
@@ -144,8 +176,58 @@ class RequisitionApprovalProvider extends ChangeNotifier {
     return '$year-$month-$day';
   }
 
-  /// Carga la lista de requisiciones según el estado correspondiente ('in', 'ap', etc.).
-  /// Si no se especifican [empresa] o [desde], toma los filtros guardados para la pestaña activa.
+  String _docKey(String empresa, String tipoDoc, dynamic num) => '$empresa|$tipoDoc|$num';
+
+  /// Obtiene el detalle cargado en memoria para una terna específica si existe.
+  RequisicionDetalle? getDetail(String empresa, String tipoDoc, dynamic numero) =>
+      _documentDetails[_docKey(empresa, tipoDoc, numero)];
+
+  /// Indica si el detalle de la terna se encuentra actualmente en proceso de carga.
+  bool isDetailLoading(String empresa, String tipoDoc, dynamic numero) =>
+      _loadingDetails[_docKey(empresa, tipoDoc, numero)] == true;
+
+  /// Retorna el error producido al intentar cargar el detalle de la terna, si existe.
+  String? getDetailError(String empresa, String tipoDoc, dynamic numero) =>
+      _errorDetails[_docKey(empresa, tipoDoc, numero)];
+
+  /// Consulta bajo demanda el detalle específico de un documento (Nivel 2)
+  /// invocando GET /api/v1/requisiciones/{empresa}/{tipoDocumento}/{numero}.
+  Future<void> fetchDocumentDetail(
+    String empresa,
+    String tipoDocumento,
+    dynamic numero, {
+    bool force = false,
+  }) async {
+    final key = _docKey(empresa, tipoDocumento, numero);
+    if (!force && (_documentDetails.containsKey(key) || _loadingDetails[key] == true)) {
+      return;
+    }
+
+    _loadingDetails[key] = true;
+    _errorDetails[key] = null;
+    notifyListeners();
+
+    try {
+      final detail = await _repository.getRequisitionDetail(
+        empresa,
+        tipoDocumento,
+        numero.toString(),
+      );
+      _documentDetails[key] = detail;
+    } catch (e) {
+      _errorDetails[key] = 'Error al consultar movimientos: $e';
+      AppLogger.w('Error al cargar detalle de requisición ($key): $e');
+    } finally {
+      _loadingDetails[key] = false;
+      notifyListeners();
+    }
+  }
+
+  /// Carga la lista de documentos de requisición (Nivel 1) según el estado ('in' o 'ap').
+  ///
+  /// Regla de protección de red (Fail-Fast UI / Lazy Fetch):
+  /// Si [desde] (o la fecha activa de la pestaña) es nula o vacía, NO emite peticiones
+  /// hacia el backend y deja la lista de documentos en estado inicial vacío sin error.
   Future<void> loadRequisitions(
     String status, {
     String? empresa,
@@ -154,30 +236,39 @@ class RequisitionApprovalProvider extends ChangeNotifier {
     String? desde,
   }) async {
     _currentStatus = status;
-    _isLoading = true;
-    _errorMessage = null;
-    _selectedItems.clear();
-    notifyListeners();
 
     final effectiveEmpresa = empresa ?? getEmpresaForStatus(status);
     final effectiveDesde = desde ?? _formatIsoDate(getDesdeForStatus(status));
 
-    AppLogger.i('----------------------------------------------------------------');
-    AppLogger.i('[RequisitionApprovalProvider] Solicitando requisiciones desde la UI:');
-    AppLogger.i('  Pestaña/Estado : ${status == 'in' ? 'Aprobación (in)' : 'Entrega (ap)'}');
-    AppLogger.i('  Filtro Empresa : ${effectiveEmpresa ?? "(Ninguna / Todas)"}');
-    AppLogger.i('  Filtro Desde   : ${effectiveDesde ?? "(Sin filtro de fecha)"}');
-    AppLogger.i('----------------------------------------------------------------');
+    // Bloqueo de consulta sin fecha: prevenir escaneo masivo sobre MOVIRESU
+    if (effectiveDesde == null || effectiveDesde.trim().isEmpty) {
+      _documents = [];
+      _documentDetails.clear();
+      _loadingDetails.clear();
+      _errorDetails.clear();
+      _selectedItems.clear();
+      _isLoading = false;
+      _errorMessage = null;
+      notifyListeners();
+      return;
+    }
+
+    _isLoading = true;
+    _errorMessage = null;
+    _selectedItems.clear();
+    _documentDetails.clear();
+    _loadingDetails.clear();
+    _errorDetails.clear();
+    notifyListeners();
 
     try {
-      _pendingRequisitions = await _repository.getRequisitionsByStatus(
-        status,
+      _documents = await _repository.getRequisitions(
+        estado: status,
         empresa: effectiveEmpresa,
         tipoDocumento: tipoDocumento,
         bodega: bodega,
         desde: effectiveDesde,
       );
-      AppLogger.i('[RequisitionApprovalProvider] Requisiciones cargadas exitosamente: ${_pendingRequisitions.length} líneas.');
     } on RequisitionBusinessException catch (e) {
       _errorMessage = e.message;
     } catch (e) {
@@ -188,7 +279,7 @@ class RequisitionApprovalProvider extends ChangeNotifier {
     }
   }
 
-  /// Agrega o quita ítems de la selección actual
+  /// Agrega o quita ítems de la selección actual para procesamiento en lote
   void toggleSelection(String id, bool isSelected, int quantity) {
     if (isSelected && quantity > 0) {
       _selectedItems[id] = quantity;
@@ -198,21 +289,74 @@ class RequisitionApprovalProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Retorna si un movimiento específico está seleccionado
+  bool isItemSelected(String id) => _selectedItems.containsKey(id);
+
+  /// Retorna la cantidad seleccionada para un movimiento
+  int getSelectedItemQuantity(String id) => _selectedItems[id] ?? 0;
+
+  /// Selecciona todas las líneas autorizables de un documento con su cantidad máxima
+  void selectAllForDocument(RequisicionDetalle detail, String currentTabStatus) {
+    for (final linea in detail.lineas) {
+      final int maxAllowed = currentTabStatus == 'in'
+          ? linea.solicitada.round()
+          : linea.aprobada.round();
+      if (maxAllowed > 0) {
+        final id =
+            '${detail.empresa}_${detail.tipoDocumento}_${detail.numero}_${linea.bodega}_${linea.articulo}_${linea.secuencia}';
+        _selectedItems[id] = maxAllowed;
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Deselecciona todas las líneas de un documento
+  void deselectAllForDocument(RequisicionDetalle detail) {
+    deselectDocumentByTerna(detail.empresa, detail.tipoDocumento, detail.numero);
+  }
+
+  /// Deselecciona todas las líneas de un documento a partir de su terna identificadora
+  void deselectDocumentByTerna(String empresa, String tipoDocumento, dynamic numero) {
+    final prefix = '${empresa}_${tipoDocumento}_${numero}_';
+    _selectedItems.removeWhere((key, _) => key.startsWith(prefix));
+    notifyListeners();
+  }
+
+  /// Retorna si al menos un movimiento del documento está seleccionado o modificado
+  bool isDocumentModified(String empresa, String tipoDocumento, dynamic numero) {
+    final prefix = '${empresa}_${tipoDocumento}_${numero}_';
+    return _selectedItems.keys.any((key) => key.startsWith(prefix));
+  }
+
+  /// Retorna la cantidad de líneas seleccionadas para un documento específico
+  int countSelectedLinesForDocument(String empresa, String tipoDocumento, dynamic numero) {
+    final prefix = '${empresa}_${tipoDocumento}_${numero}_';
+    return _selectedItems.keys.where((key) => key.startsWith(prefix)).length;
+  }
+
   /// Ejecuta el procesamiento masivo (Aprobar o Entregar) según la pestaña activa
   Future<bool> processBatchSelection(String currentTabStatus) async {
     if (_selectedItems.isEmpty) return false;
 
     _isLoading = true;
-    _errorMessage = null;
+    _processErrorMessage = null;
     notifyListeners();
 
     try {
       final String targetStatus = currentTabStatus == 'in' ? 'ap' : 'en';
 
+      // Reconstruimos los modelos detallados a partir de los documentos consultados en memoria
+      final allLoadedLines = <RequisitionModel>[];
+      for (final detail in _documentDetails.values) {
+        for (final linea in detail.lineas) {
+          allLoadedLines.add(RequisitionModel.fromDetalleLinea(detalle: detail, linea: linea));
+        }
+      }
+
       final success = await _repository.processBatch(
         _selectedItems,
         targetStatus,
-        requisitions: _pendingRequisitions,
+        requisitions: allLoadedLines,
       );
 
       if (success) {
@@ -222,29 +366,39 @@ class RequisitionApprovalProvider extends ChangeNotifier {
       }
       return false;
     } on RequisitionBusinessException catch (e) {
-      _errorMessage = e.message;
+      _processErrorMessage = e.message;
       _isLoading = false;
       notifyListeners();
       return false;
     } catch (e) {
-      _errorMessage = 'Error procesando el lote: $e';
+      _processErrorMessage = 'Error procesando el lote: $e';
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
-  /// Limpia el mensaje de error activo
+  /// Limpia el mensaje de error de consulta activo
   void clearError() {
     _errorMessage = null;
     notifyListeners();
   }
 
+  /// Limpia el mensaje de error de procesamiento de lote activo
+  void clearProcessErrorMessage() {
+    _processErrorMessage = null;
+    notifyListeners();
+  }
+
   /// Limpia los datos de requisiciones y filtros en memoria al cerrar sesión
   void reset() {
-    _pendingRequisitions = [];
+    _documents = [];
+    _documentDetails.clear();
+    _loadingDetails.clear();
+    _errorDetails.clear();
     _isLoading = false;
     _errorMessage = null;
+    _processErrorMessage = null;
     _currentStatus = 'in';
     _selectedItems.clear();
     _companies = [];

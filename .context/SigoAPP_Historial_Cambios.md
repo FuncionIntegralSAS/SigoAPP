@@ -217,3 +217,18 @@ A continuación, se evidencian las modificaciones arquitectónicas introducidas 
 3. **Estandarización de Identificación de Sesión y Enrutamiento Raíz**:
    - `AuthResponse` incorpora el atributo `documento` (cédula del colaborador en nómina) propagado a `_cedula` (`currentCedula`) y persistido en `FlutterSecureStorage` (`auth_cedula`).
    - `AuthProvider` formaliza la bandera `isContador` persistida en `'auth_is_contador'`, permitiendo que `AuthWrapper` en `main.dart` direccione limpiamente al `DashboardScreen` (`isAuthenticated && !isContador`) o mantenga el aislamiento de contadores físicos en `AuthScreen`.
+
+## Control de Cambios e Histórico (v3.1 a v3.2)
+
+1. **Protección de Red Fail-Fast UI / Lazy Fetch en Requisiciones**:
+   - Eliminación de la consulta automática sin fecha al arrancar `RequisitionsScreen` (`initState`) y en el listener de cambio de pestaña, protegiendo la tabla histórica `MOVIRESU` (>100.000 registros).
+   - En `RequisitionApprovalProvider.loadRequisitions`, si el parámetro `desde` es nulo o vacío, se omiten inmediatamente las peticiones de red y se mantiene la bandeja en estado limpio sin emitir errores.
+   - En `ApprovalTabView` y `DeliveryTabView`, se implementó un estado de espera informativo con ícono institucional de calendario (`Icons.calendar_month_outlined`) que invita al operador a seleccionar una fecha inicial en el filtro superior.
+   - En `HttpRequisitionRepository.getRequisitionsByStatus`, se incorporó una guarda de seguridad preventiva que retorna lista vacía si `desde` es nulo o vacío.
+
+2. **Rediseño Conceptual y Jerárquico Master-Detail (Documento ➔ Movimientos)**:
+   - **Nivel 1 (Master):** La bandeja consume `GET /api/v1/requisiciones` y expone directamente la colección de documentos de solicitud (`RequisicionResumen`), visualizados mediante `RequisitionActionCard` con franja lateral de estado canónica de 5px, terna identificadora, bodega, fecha de radicación y badge de conteo de artículos solicitados.
+   - **Nivel 2 (Detail bajo demanda):** Al expandir la tarjeta mediante `ExpansionTile`, se consulta bajo demanda el detalle específico (`GET /api/v1/requisiciones/{empresa}/{tipo}/{num}`) con sistema de caché en el provider, desplegando metadatos extendidos (solicitante, observaciones) y los movimientos individuales (`RequisicionDetalleLinea`).
+   - **Captura y Validación de Cantidades:** Cada movimiento valida en tiempo real las cantidades ingresadas ($>0 \land \le \text{máximo permitido}$ de acuerdo con la pestaña activa), inhabilitando el checkbox ante valores incorrectos. Se agregaron accesos rápidos para seleccionar o limpiar todas las líneas de un documento.
+   - **Procesamiento Masivo Preservado:** El botón flotante `FloatingActionButton` centraliza el procesamiento en bloque (`PUT /aprobar` o `PUT /entregar`), agrupando las líneas seleccionadas por terna e invocando los endpoints transaccionales con recarga automática tras el éxito.
+

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/company_model.dart';
 import '../providers/requisition_approval_provider.dart';
+import '../providers/requisition_signature_provider.dart';
 import 'company_dropdown_field.dart';
 
 /// Barra superior de filtrado institucional para la bandeja de requisiciones.
@@ -9,6 +10,10 @@ import 'company_dropdown_field.dart';
 /// Dispone los selectores en el orden canónico:
 /// 1. Selector de Empresa (usando el widget estándar [CompanyDropdownField]).
 /// 2. Selector de Fecha inicial ("desde", formato ISO Date YYYY-MM-DD sin componente de hora).
+///
+/// Soporta:
+/// - Pestañas 'in' (Aprobación) y 'ap' (Entrega) delegando en [RequisitionApprovalProvider].
+/// - Pestaña/Pantalla 'en' (Firma) delegando en [RequisitionSignatureProvider].
 class RequisitionFilterHeader extends StatefulWidget {
   final String status;
 
@@ -26,9 +31,16 @@ class _RequisitionFilterHeaderState extends State<RequisitionFilterHeader> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<RequisitionApprovalProvider>();
-      if (provider.companies.isEmpty && !provider.isLoadingCompanies) {
-        provider.loadCompanies();
+      if (widget.status == 'en') {
+        final provider = context.read<RequisitionSignatureProvider>();
+        if (provider.companies.isEmpty && !provider.isLoadingCompanies) {
+          provider.loadCompanies();
+        }
+      } else {
+        final provider = context.read<RequisitionApprovalProvider>();
+        if (provider.companies.isEmpty && !provider.isLoadingCompanies) {
+          provider.loadCompanies();
+        }
       }
     });
   }
@@ -42,11 +54,24 @@ class _RequisitionFilterHeaderState extends State<RequisitionFilterHeader> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<RequisitionApprovalProvider>();
-    final selectedCompany = provider.getCompanyModelForStatus(widget.status);
-    final selectedDesde = provider.getDesdeForStatus(widget.status);
-    final companies = provider.companies;
-    final isLoadingCompanies = provider.isLoadingCompanies;
+    final CompanyModel? selectedCompany;
+    final DateTime? selectedDesde;
+    final List<CompanyModel> companies;
+    final bool isLoadingCompanies;
+
+    if (widget.status == 'en') {
+      final sigProvider = context.watch<RequisitionSignatureProvider>();
+      selectedCompany = sigProvider.selectedCompanyModel;
+      selectedDesde = sigProvider.selectedDesde;
+      companies = sigProvider.companies;
+      isLoadingCompanies = sigProvider.isLoadingCompanies;
+    } else {
+      final appProvider = context.watch<RequisitionApprovalProvider>();
+      selectedCompany = appProvider.getCompanyModelForStatus(widget.status);
+      selectedDesde = appProvider.getDesdeForStatus(widget.status);
+      companies = appProvider.companies;
+      isLoadingCompanies = appProvider.isLoadingCompanies;
+    }
 
     final dateDisplayText = selectedDesde != null ? _formatDisplayDate(selectedDesde) : '';
 
@@ -68,7 +93,13 @@ class _RequisitionFilterHeaderState extends State<RequisitionFilterHeader> {
             isLoading: isLoadingCompanies,
             allowClear: true,
             onChanged: (CompanyModel? newCompany) {
-              provider.selectCompany(newCompany, status: widget.status);
+              if (widget.status == 'en') {
+                context.read<RequisitionSignatureProvider>().selectCompany(newCompany);
+              } else {
+                context
+                    .read<RequisitionApprovalProvider>()
+                    .selectCompany(newCompany, status: widget.status);
+              }
             },
           ),
           const SizedBox(height: 8),
@@ -86,7 +117,15 @@ class _RequisitionFilterHeaderState extends State<RequisitionFilterHeader> {
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 18),
                       tooltip: 'Limpiar fecha',
-                      onPressed: () => provider.setDesde(null, status: widget.status),
+                      onPressed: () {
+                        if (widget.status == 'en') {
+                          context.read<RequisitionSignatureProvider>().setDesde(null);
+                        } else {
+                          context
+                              .read<RequisitionApprovalProvider>()
+                              .setDesde(null, status: widget.status);
+                        }
+                      },
                     )
                   : null,
               border: OutlineInputBorder(
@@ -105,7 +144,14 @@ class _RequisitionFilterHeaderState extends State<RequisitionFilterHeader> {
                 cancelText: 'Cancelar',
               );
               if (picked != null) {
-                provider.setDesde(picked, status: widget.status);
+                if (!context.mounted) return;
+                if (widget.status == 'en') {
+                  context.read<RequisitionSignatureProvider>().setDesde(picked);
+                } else {
+                  context
+                      .read<RequisitionApprovalProvider>()
+                      .setDesde(picked, status: widget.status);
+                }
               }
             },
           ),
@@ -114,4 +160,3 @@ class _RequisitionFilterHeaderState extends State<RequisitionFilterHeader> {
     );
   }
 }
-

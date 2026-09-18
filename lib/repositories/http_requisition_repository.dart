@@ -83,18 +83,19 @@ class HttpRequisitionRepository implements RequisitionRepository {
   Future<List<CompanyModel>> getCompanies() async {
     const endpoint = '/api/v1/empresas/getAll';
     try {
-      AppLogger.i('[REQUISICIONES] Consultando catálogo de empresas: GET ${dio.options.baseUrl}$endpoint');
       final response = await dio.get(endpoint);
-      AppLogger.i('[REQUISICIONES] Catálogo de empresas recibido - HTTP ${response.statusCode}');
       if (response.statusCode == 204 || response.data == null) {
         return [];
       }
       _checkResponseCode(response.data, 'Error al consultar catálogo de empresas', endpoint: endpoint);
 
-      final dynamic rawData = (response.data is Map) ? response.data['data'] : response.data;
+      final dynamic rawData = (response.data is Map)
+          ? (response.data['list'] ?? response.data['data'] ?? response.data['object'])
+          : response.data;
       if (rawData is List) {
         return rawData
-            .map((e) => CompanyModel.fromJson(e as Map<String, dynamic>))
+            .whereType<Map>()
+            .map((e) => CompanyModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
       }
       return [];
@@ -110,10 +111,13 @@ class HttpRequisitionRepository implements RequisitionRepository {
       final response = await dio.get(endpoint);
       _checkResponseCode(response.data, 'Error al consultar tipos de requisición', endpoint: endpoint);
 
-      final dynamic rawData = (response.data is Map) ? response.data['data'] : response.data;
+      final dynamic rawData = (response.data is Map)
+          ? (response.data['list'] ?? response.data['data'] ?? response.data['object'])
+          : response.data;
       if (rawData is List) {
         return rawData
-            .map((e) => RequisicionTipoDocumento.fromJson(e as Map<String, dynamic>))
+            .whereType<Map>()
+            .map((e) => RequisicionTipoDocumento.fromJson(Map<String, dynamic>.from(e)))
             .toList();
       }
       return [];
@@ -139,23 +143,16 @@ class HttpRequisitionRepository implements RequisitionRepository {
       if (bodega != null && bodega.isNotEmpty) queryParams['bodega'] = bodega;
       if (desde != null && desde.isNotEmpty) queryParams['desde'] = desde;
 
-      final fullUrl = '${dio.options.baseUrl}$endpoint${queryParams.isNotEmpty ? '?${Uri(queryParameters: queryParams).query}' : ''}';
-      AppLogger.i('================================================================');
-      AppLogger.i('[REQUISICIONES] >> PETICIÓN HTTP GET ENVIADA AL BACKEND:');
-      AppLogger.i('  Endpoint: $endpoint');
-      AppLogger.i('  URL Base: ${dio.options.baseUrl}');
-      AppLogger.i('  URL Completa: $fullUrl');
-      AppLogger.i('  Query Parameters: $queryParams');
-      AppLogger.i('================================================================');
-
       final response = await dio.get(endpoint, queryParameters: queryParams);
-      AppLogger.i('[REQUISICIONES] << RESPUESTA RECIBIDA - HTTP ${response.statusCode}');
       _checkResponseCode(response.data, 'Error al consultar bandeja de requisiciones', endpoint: endpoint);
 
-      final dynamic rawData = (response.data is Map) ? response.data['data'] : response.data;
+      final dynamic rawData = (response.data is Map)
+          ? (response.data['list'] ?? response.data['data'] ?? response.data['object'])
+          : response.data;
       if (rawData is List) {
         return rawData
-            .map((e) => RequisicionResumen.fromJson(e as Map<String, dynamic>))
+            .whereType<Map>()
+            .map((e) => RequisicionResumen.fromJson(Map<String, dynamic>.from(e)))
             .toList();
       }
       return [];
@@ -172,13 +169,14 @@ class HttpRequisitionRepository implements RequisitionRepository {
   ) async {
     final endpoint = '$basePath/$empresa/$tipoDocumento/$numero';
     try {
-      AppLogger.i('[REQUISICIONES] Consultando detalle: GET ${dio.options.baseUrl}$endpoint');
       final response = await dio.get(endpoint);
       _checkResponseCode(response.data, 'Error al consultar detalle de requisición', endpoint: endpoint);
 
-      final dynamic rawData = (response.data is Map) ? response.data['data'] : response.data;
-      if (rawData is Map<String, dynamic>) {
-        return RequisicionDetalle.fromJson(rawData);
+      final dynamic rawData = (response.data is Map)
+          ? (response.data['object'] ?? response.data['data'] ?? response.data)
+          : response.data;
+      if (rawData is Map) {
+        return RequisicionDetalle.fromJson(Map<String, dynamic>.from(rawData));
       }
       throw RequisitionBusinessException(
         'El formato de detalle de requisición recibido no es válido.',
@@ -197,6 +195,10 @@ class HttpRequisitionRepository implements RequisitionRepository {
     String? bodega,
     String? desde,
   }) async {
+    if (desde == null || desde.trim().isEmpty) {
+      return [];
+    }
+
     try {
       final summaries = await getRequisitions(
         estado: status,
@@ -220,7 +222,10 @@ class HttpRequisitionRepository implements RequisitionRepository {
           final lines = <RequisitionModel>[];
           for (final linea in detail.lineas) {
             // Filtrar líneas pertinentes al estado solicitado si vienen mezcladas
-            if (linea.estado.isEmpty || linea.estado.toLowerCase() == status.toLowerCase()) {
+            final effectiveLineaEstado = linea.estado.isNotEmpty ? linea.estado : detail.estado;
+            if (effectiveLineaEstado.isEmpty ||
+                effectiveLineaEstado.toLowerCase() == status.toLowerCase() ||
+                detail.estado.toLowerCase() == status.toLowerCase()) {
               lines.add(RequisitionModel.fromDetalleLinea(detalle: detail, linea: linea));
             }
           }
@@ -253,13 +258,7 @@ class HttpRequisitionRepository implements RequisitionRepository {
       final body = {
         'lineas': lineas.map((e) => e.toJson()).toList(),
       };
-      AppLogger.i('================================================================');
-      AppLogger.i('[REQUISICIONES] >> PETICIÓN HTTP PUT APROBAR ENVIADA AL BACKEND:');
-      AppLogger.i('  Endpoint: ${dio.options.baseUrl}$endpoint');
-      AppLogger.i('  Body: $body');
-      AppLogger.i('================================================================');
       final response = await dio.put(endpoint, data: body);
-      AppLogger.i('[REQUISICIONES] << Aprobación procesada - HTTP ${response.statusCode}');
       _checkResponseCode(response.data, 'Error al aprobar líneas de requisición', endpoint: endpoint);
     } on DioException catch (e) {
       throw _mapDioException(e, endpoint, 'Error al aprobar las líneas de la requisición.');
@@ -278,13 +277,7 @@ class HttpRequisitionRepository implements RequisitionRepository {
       final body = {
         'lineas': lineas.map((e) => e.toJson()).toList(),
       };
-      AppLogger.i('================================================================');
-      AppLogger.i('[REQUISICIONES] >> PETICIÓN HTTP PUT ENTREGAR ENVIADA AL BACKEND:');
-      AppLogger.i('  Endpoint: ${dio.options.baseUrl}$endpoint');
-      AppLogger.i('  Body: $body');
-      AppLogger.i('================================================================');
       final response = await dio.put(endpoint, data: body);
-      AppLogger.i('[REQUISICIONES] << Entrega procesada - HTTP ${response.statusCode}');
       _checkResponseCode(response.data, 'Error al entregar líneas de requisición', endpoint: endpoint);
     } on DioException catch (e) {
       throw _mapDioException(e, endpoint, 'Error al registrar la entrega de líneas de requisición.');

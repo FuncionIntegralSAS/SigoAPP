@@ -15,6 +15,7 @@ import 'package:sigo_app/providers/asset_verification_provider.dart';
 
 // Imports para el módulo de Requisiciones
 import 'package:sigo_app/providers/requisition_approval_provider.dart';
+import 'package:sigo_app/providers/requisition_signature_provider.dart';
 import 'package:sigo_app/repositories/http_requisition_repository.dart';
 
 // Imports para el módulo de Conteo Físico
@@ -120,6 +121,9 @@ Future<void> main() async {
         // Registramos el Provider de Requisiciones conectado a Spring Boot
         ChangeNotifierProvider(
           create: (_) => RequisitionApprovalProvider(httpRequisitionRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => RequisitionSignatureProvider(httpRequisitionRepository),
         ),
 
         // Registramos el nuevo Provider de Conteo Físico (Apertura)

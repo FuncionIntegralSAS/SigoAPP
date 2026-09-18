@@ -22,6 +22,11 @@ El Módulo de Requisiciones gestiona el flujo operativo de despacho de insumos, 
    $$\text{Línea} = (\text{articulo}, \text{bodega}, \text{secuencia})$$
    Un mismo artículo puede figurar en más de una línea si proviene de distinta bodega o secuencia.
 4. **Punto de No Retorno:** El movimiento de inventario en el ERP (`DOCUINVE` y `MOVIINVE`) se genera exclusivamente al invocar el endpoint de **Registrar Salida**. Esta acción es definitiva y requiere obligatoriamente que ambas firmas estén capturadas.
+5. **Arquitectura Master-Detail y Consulta Protegida (Fail-Fast / Lazy Fetch):**
+   - La tabla histórica `MOVIRESU` supera los 100.000 registros. Consultar la API sin fecha (`desde`) es una operación de alto costo que la aplicación móvil no dispara automáticamente en el arranque.
+   - Al abrir la pantalla de Requisiciones, la app móvil únicamente carga el catálogo de empresas (`GET /api/v1/empresas/getAll`) y permanece en espera reactiva con ícono de calendario hasta que el operador selecciona una fecha inicial (`desde`).
+   - La API `GET /api/v1/requisiciones` entrega la bandeja de **Documentos de Requisición** (`RequisicionResumen`), correspondiente al Nivel 1 (Master).
+   - Los movimientos y líneas de artículos (`RequisicionDetalleLinea`) se descargan bajo demanda (Nivel 2 - Detail) únicamente cuando el operador interactúa o expande el documento específico (`GET /api/v1/requisiciones/{empresa}/{tipoDocumento}/{numero}`).
 
 ---
 
@@ -122,7 +127,7 @@ Devuelve la bandeja filtrada por estado.
 * `empresa` (*String*, opcional): Código de la empresa (ej. `01`).
 * `tipoDocumento` (*String*, opcional): Tipo de requisición (ej. `RS`).
 * `bodega` (*String*, opcional): Código de bodega de despacho.
-* `desde` (*String ISO Date*, opcional, formato `YYYY-MM-DD`): Ventana de búsqueda histórica (por defecto aplica 90 días en backend).
+* `desde` (*String ISO Date*, opcional en backend, **obligatorio en cliente móvil**, formato `YYYY-MM-DD`): Ventana de búsqueda histórica. En la aplicación SigoAPP, esta consulta no se ejecuta en el arranque si el usuario no ha seleccionado una fecha inicial, evitando sobrecarga sobre `MOVIRESU`.
 
 #### Respuesta Exitosa (`200 OK`):
 ```json

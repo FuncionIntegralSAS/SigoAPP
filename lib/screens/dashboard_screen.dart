@@ -8,6 +8,7 @@ import 'package:sigo_app/screens/asset_verification_screen.dart';
 import '../screens/inventory_screen.dart';
 import '../screens/transfer_approval_screen.dart';
 import '../screens/requisitions_screen.dart';
+import '../screens/requisition_signature_screen.dart';
 import '../screens/physical_count_screen.dart';
 import '../screens/active_count_screen.dart';
 import '../utils/permission_utils.dart';
@@ -157,6 +158,23 @@ class DashboardScreen extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const RequisitionsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+
+                  if (auth.permisos.hasAnyPermission([
+                    AppPermission.requisiciones,
+                    AppPermission.entregaInventario,
+                  ]))
+                    _DashboardItem(
+                      icon: Icons.draw_outlined,
+                      title: 'Firma de Requisiciones',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const RequisitionSignatureScreen(),
                           ),
                         );
                       },

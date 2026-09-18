@@ -20,18 +20,20 @@ class _RequisitionsScreenState extends State<RequisitionsScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
-    // Carga inicial: catálogo maestro de empresas y aprobación pendiente ('in')
+    // Carga inicial: únicamente catálogo maestro de empresas (Lazy Fetch / Bloqueo sin fecha)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<RequisitionApprovalProvider>();
       provider.loadCompanies();
-      provider.loadRequisitions('in');
     });
 
-    // Recarga al cambiar de pestaña con el estado correspondiente
+    // Recarga al cambiar de pestaña si ya existe una fecha 'desde' configurada
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         final status = _tabController.index == 0 ? 'in' : 'ap';
-        context.read<RequisitionApprovalProvider>().loadRequisitions(status);
+        final provider = context.read<RequisitionApprovalProvider>();
+        if (provider.getDesdeForStatus(status) != null) {
+          provider.loadRequisitions(status);
+        }
       }
     });
   }

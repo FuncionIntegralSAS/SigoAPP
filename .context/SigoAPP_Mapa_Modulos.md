@@ -213,10 +213,15 @@ Fecha de actualización: Agosto 2026
 | Entrega | `aein` | `'ap'` |
 
 **Filtros y Comportamiento de Tabs:**
-- `RequisitionsScreen` utiliza `TabController` con listener. Al iniciar la pantalla (`initState`), se dispara la carga del catálogo maestro de empresas (`GET /api/v1/empresas/getAll`) mediante `RequisitionApprovalProvider.loadCompanies()`.
+- `RequisitionsScreen` utiliza `TabController` con listener. Al iniciar la pantalla (`initState`), se dispara únicamente la carga del catálogo maestro de empresas (`GET /api/v1/empresas/getAll`) mediante `RequisitionApprovalProvider.loadCompanies()`. Se aplica una política de **Lazy Fetch / Fail-Fast UI**, impidiendo la consulta automática de requisiciones sin fecha para proteger la tabla `MOVIRESU`.
 - Ambas pestañas (`ApprovalTabView` y `DeliveryTabView`) incorporan en la parte superior el widget institucional `RequisitionFilterHeader` con dos selectores en orden canónico:
   1. **Empresa (1° orden):** Menú desplegable con búsqueda interna (`DropdownTemplates.searchData`) y opción de deselección / limpiar.
   2. **Fecha (2° orden):** Campo táctil de solo lectura que invoca `showDatePicker`, formateando hacia la API en estándar ISO `YYYY-MM-DD`.
+- **Estado de Fecha Requerida:** Si no se ha configurado una fecha `desde`, las pestañas muestran un estado informativo con ícono de calendario (`Icons.calendar_month_outlined`) instruyendo al operador a seleccionar una fecha inicial.
+- **Flujo Master-Detail (Documento ➔ Movimientos):**
+  - **Nivel 1 (Master):** La bandeja consume `GET /api/v1/requisiciones` y renderiza tarjetas de documentos de solicitud (`RequisicionResumen`) mediante `RequisitionActionCard`, exponiendo tipo y número de documento, bodega, fecha, badge con cantidad de artículos y franja lateral de estado de 5px.
+  - **Nivel 2 (Detail bajo demanda):** Al expandir cada documento (`ExpansionTile`), se consulta `GET /api/v1/requisiciones/{empresa}/{tipo}/{num}` con caché en el provider, desplegando los movimientos/artículos (`RequisicionDetalleLinea`) con sus estados, solicitante, observaciones y cantidades.
+  - **Procesamiento en Lote (FAB):** Cada línea permite validar y capturar cantidades autorizadas/entregadas ($>0 \land \le \text{máximo permitido}$) y seleccionarse mediante checkbox. El botón flotante `FloatingActionButton` ejecuta la aprobación (`PUT /aprobar`) o entrega (`PUT /entregar`) masiva, notificando vía `SnackBar` y refrescando la bandeja.
 - **Autorrelleno sugerido cruzado:** Si el usuario selecciona Empresa o Fecha en una pestaña y la otra se encuentra vacía, el valor se pre-carga y sugiere automáticamente en la otra pestaña sin bloquear su modificación independiente. Al cambiar de pestaña o modificar un filtro, `loadRequisitions(status)` recarga la lista respetando los filtros vigentes.
 
 ---

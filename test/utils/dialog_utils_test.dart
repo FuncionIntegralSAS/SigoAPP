@@ -18,6 +18,15 @@ void main() {
       expect(result, 'Bodega Destino [2612] o Bodega Fuente [F571] Deben ser de Tipo Personal');
     });
 
+    test('extractFriendlyMessage extrae mensaje de negocio tras pipe en package body sin prefijo ORA', () {
+      const rawError =
+          'Error al realizar el proceso:package body SRFPNA CUA.PKG_FI_REQUISICION.PRO_ENTREGAR_LINEA. 0 70 |Usuario no autorizado Para realizar el Tramite';
+
+      final result = DialogUtils.extractFriendlyMessage(rawError);
+
+      expect(result, 'Usuario no autorizado Para realizar el Tramite');
+    });
+
     test('extractFriendlyMessage extrae ORA-20001 estándar sin pipe', () {
       const rawError =
           'ORA-20001: La persona fuente y la persona destino no pueden ser la misma ORA-06512: en linea 1';

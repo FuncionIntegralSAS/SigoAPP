@@ -261,6 +261,37 @@ WarehouseDropdownField(
 )
 ```
 
+### 4.7 Notificaciones y Mensajes de Éxito / Feedback Transversal (SnackBars)
+
+Para todo mensaje de éxito, confirmación de trámite o procesamiento transaccional en SigoAPP (por ejemplo, *"Lote procesado exitosamente"*, *"Entregas registradas exitosamente"*, *"Traspaso aprobado exitosamente"*), es **obligatorio** utilizar el estándar visual de éxito:
+
+* **Color de Fondo:** Verde Esmeralda Institucional `Colors.green.shade700` (`Color(0xFF1B5E20)`). Queda estrictamente prohibido usar fondos oscuros neutros, grises o negros para notificaciones de éxito.
+* **Tipografía:** Texto en color blanco (`Colors.white`) con peso `FontWeight.w600` o `FontWeight.bold` para garantizar legibilidad de alto contraste.
+* **Comportamiento y Disposición:** `behavior: SnackBarBehavior.floating`, con margen inferior para no colisionar con botones flotantes (`FloatingActionButton`) ni barras de navegación inferiores.
+* **Esquinas y Contornos:** Esquinas redondeadas compactas `shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))`.
+* **Iconografía de Apoyo:** Fila con icono institucional blanco `Icon(Icons.check_circle_outline, color: Colors.white)` seguido de un espaciado horizontal de `8px` antes del texto.
+
+#### Ejemplo de Implementación Canónica:
+```dart
+ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    content: const Row(
+      children: [
+        Icon(Icons.check_circle_outline, color: Colors.white),
+        SizedBox(width: 8),
+        Text(
+          'Lote procesado exitosamente',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+    backgroundColor: Colors.green.shade700,
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+  ),
+);
+```
+
 ---
 
 ## 5. Manejo de Estados Asíncronos Transversales
@@ -449,11 +480,30 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
    * **Orden Canónico de Controles:**
      - **1° Selector de Empresa:** `DropdownButtonFormField2<CompanyModel>` idéntico funcionalmente a Conteo Físico (opera con instancias `CompanyModel`, búsqueda interna mediante `DropdownTemplates.searchData` y control de carga reactivo), conservando la estética institucional de Requisiciones: esquinas `BorderRadius.circular(8)`, icono de negocio, botón de limpieza `clear` para deseleccionar y padding compacto.
      - **2° Selector de Fecha Inicial ("Desde"):** `TextFormField` de solo lectura con icono `Icons.calendar_today_outlined` que despliega `showDatePicker`. Muestra la fecha en formato legible `dd/MM/yyyy`, botón `clear` de limpieza y esquinas `r: 8`. Formatea internamente hacia la API en estándar estricto ISO `YYYY-MM-DD`.
-3. **Tarjeta de Requisición (`RequisitionActionCard`):**
-   * Franja vertical de 5px indicadora del estado actual de la requisición.
-   * Cabecera con número formal (`Requisición #REQU-XXXX`).
-   * Tabla compacta de artículos solicitados: Descripción, cantidad solicitada y cantidad aprobada/despachada.
-   * Botones de acción acordes a la pestaña: Botón de procesar aprobación en pestaña de aprobación, botón de registrar entrega física en pestaña de entrega.
+3. **Tarjeta de Documento Master-Detail (`RequisitionActionCard`):**
+   * **Nivel 1 (Cabecera Master):**
+     * Franja vertical de 5px con color de estado canónico: ámbar (`Colors.amber.shade800`) para requisiciones pendientes (`in`), verde esmeralda (`Colors.green.shade700`) para aprobadas (`ap`), azul (`Colors.blue.shade700`) para entregadas (`en`).
+     * Cabecera formal con ícono `Icons.description_outlined` y terna/identificador visible (`RS #10543`).
+     * Subtítulo estructurado: Bodega de despacho con ícono de negocio (`Bodega: B01`), fecha de radicación en ERP (`dd/MM/yyyy`) y badge compacto con la cantidad total de artículos solicitados (`N artículos solicitados`).
+     * Badge de estado en alto contraste (`PENDIENTE`, `APROBADA`, `ENTREGADA`) en fondo translúcido con borde temático.
+   * **Nivel 2 (Movimientos y Líneas bajo Demanda):**
+     * Contenedor expandible (`ExpansionTile`): al desplegar, si los detalles no residen en memoria, se invoca automáticamente `GET /api/v1/requisiciones/{empresa}/{tipo}/{num}` con indicador de progreso sutil o botón de reintento ante errores de red.
+     * Metadatos ampliados: Tercero solicitante, fecha requerida y observación formal en contenedor blanco delimitado con comillas.
+     * Barra de utilidades del documento con conteo de movimientos y botones de acción rápida (*"Seleccionar todo"* / *"Limpiar"*).
+     * Líneas de movimiento individuales (`_RequisitionMovementRow`):
+       - Checkbox para selección en bloque.
+       - Código y descripción del artículo, secuencia, bodega y unidad.
+       - Badges cuantitativos compactos: Solicitada (`Sol`), Aprobada (`Aprob`), Entregada (`Entr`) y Pendiente (`Pend`).
+       - Campo de entrada numérico para capturar cantidades con validación en tiempo real: $> 0 \land \le \text{máximo permitido}$ (`solicitada` en aprobación, `aprobada` en entrega). Ante valores inválidos o cero, el borde se resalta en rojo y el checkbox se inhabilita.
+4. **Franja Métrica y Estados Asíncronos (Fail-Fast UI):**
+   * **Estado de Fecha Requerida (Lazy Fetch):** Cuando `desde` no ha sido seleccionado, se muestra un contenedor centrado con ícono de calendario en color primario (`Icons.calendar_month_outlined`, `64px`), título *"Consulta de Requisiciones"* y leyenda instructiva: *"Selecciona una fecha en el filtro superior para consultar las requisiciones vigentes."*.
+   * **Franja Métrica de Resumen:** Situada inmediatamente bajo el panel de filtros persistente, muestra `"Documentos en lista: ${documents.length}"` en fondo blanco puro con divisor inferior continuo.
+   * **Bandeja al Día:** Ícono neutro con mensaje informativo cuando no hay documentos pendientes con los filtros aplicados.
+5. **Procesamiento Masivo (FAB):**
+   * `FloatingActionButton.extended` centrado al pie, visible únicamente cuando `selectedCount > 0`.
+   * Pestaña Aprobación: ícono `Icons.check_circle_outline` y texto `"Procesar Selección (N)"`.
+   * Pestaña Entrega: ícono `Icons.local_shipping_outlined` y texto `"Registrar Entrega (N)"`.
+   * Notificación mediante `SnackBar` institucional y recarga automática de bandeja tras confirmación del backend.
 
 ---
 

@@ -70,6 +70,18 @@ class DialogUtils {
       }
     }
 
+    // 1.1 Detectar mensajes de negocio tras pipe (|) provenientes de paquetes/procedimientos PL/SQL
+    if (trimmed.contains('|')) {
+      final parts = trimmed.split('|');
+      final afterPipe = parts.last.trim();
+      if (afterPipe.isNotEmpty &&
+          !afterPipe.startsWith('ORA-') &&
+          !afterPipe.toLowerCase().startsWith('at ') &&
+          !afterPipe.contains('HikariProxy')) {
+        return afterPipe;
+      }
+    }
+
     // 2. Detectar error ORA-20xxx estándar (errores de aplicación de negocio)
     final appErrorRegex = RegExp(
       r'ORA-20\d{3}:(?:\s*(?:package body|line|línea)\s+[^:]+?:)?\s*(?:.*?\d+\|)?\s*(.+?)(?=\s+ORA-\d{5}|\s+https?:\/\/|\]\s*\[Hikari|\r?\n|$)',
