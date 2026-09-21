@@ -11,9 +11,9 @@ Este documento consolida el estado actual derivado del análisis exhaustivo de a
 | **Fase 2: Alto / Robustez y Ciclo de Vida** | 3 | 0 | 3 |
 | **Fase 3: Medio / Calidad de Código & UX** | 5 | 0 | 5 |
 | **Fase 4: Menor / Estandarización** | 1 | 0 | 1 |
-| **Definición de Negocio y Permisos** | 0 | 2 | 2 |
+| **Definición de Negocio y Permisos** | 0 | 3 | 3 |
 | **Sincronización de Documentación (`.context/`)** | 3 | 0 | 3 |
-| **Total General** | **12** | **2** | **14** |
+| **Total General** | **12** | **3** | **15** |
 
 ---
 
@@ -124,6 +124,17 @@ Estos puntos dependen de decisiones de negocio y especificaciones que aún no ha
   1. Actualmente se utiliza `aein` (`AppPermission.entregaInventario`) para restringir el acceso general a la pantalla "Entrega / Recepción".
   2. El usuario indicó: *"bloqueemos el permiso a la opción del menú con aein, posiblemente añadamos otro permiso para los receptores"*.
   3. Se debe confirmar con el backend si existirá un código específico (ej. `arin` o similar) para separar a quien entrega de quien recibe, o si ambos continuarán bajo el rol de `aein` diferenciándose internamente por la cédula de origen/destino.
+
+### 3.3 Identificación del Responsable de Bodega y Validación de Renderizado de Firmas en Requisiciones
+- **Archivos involucrados:**
+  - [requisition_signature_screen.dart](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/screens/requisition_signature_screen.dart)
+  - [requisition_signature_capture_screen.dart](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/screens/requisition_signature_capture_screen.dart)
+  - [requisition_signature_provider.dart](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/providers/requisition_signature_provider.dart)
+  - [requisition_model.dart](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/models/requisition_model.dart)
+- **Estado:** **EN ANÁLISIS / DEFINICIÓN**.
+- **Aspectos pendientes por definir:**
+  1. **Identificación del Responsable Oficial de Bodega (Firma Salida `SA` y Recibo `RE`):** **RESUELTO**. El backend expuso en `GET /api/v1/requisiciones/{empresa}/{tipoDocumento}/{numero}` los campos `responsableBodega` (`BODEGA.BODERESP` de bodega origen) y `responsableBodegaDestino` (`RESUBODS` de bodega destino, si aplica) con `NULLIF(BODERESP, '.')`. El frontend (`RequisicionDetalle` y `RequisitionSignatureScreen`) consume ambos campos para la inferencia estricta de roles (`isDispatcher` y `isReceiver`), manteniendo fallback por permiso `aein` para bodegas sin encargado asignado.
+  2. **Validación del Renderizado y Visualización de la Firma:** Verificar y validar el renderizado de la firma digital estampada (formato base64 PNG exportado por el lienzo `signature`), evaluando tanto su visualización en la aplicación móvil (preview/auditoría) como su renderizado e impresión en los reportes oficiales o comprobantes generados por el backend ERP Oracle.
 
 ---
 

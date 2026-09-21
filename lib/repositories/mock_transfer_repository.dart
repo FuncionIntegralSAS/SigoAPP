@@ -375,6 +375,7 @@ class MockTransferRepository implements TransferRepository {
   @override
   Future<List<TransferAssetModel>> getAssetsByPerson({
     required String persona,
+    required String bodega,
     String? empresa,
   }) async {
     await Future.delayed(const Duration(milliseconds: 200));

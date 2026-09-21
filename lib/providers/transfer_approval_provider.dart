@@ -168,10 +168,29 @@ class TransferApprovalProvider extends ChangeNotifier {
     await Future.wait(uniquePersons.map((person) async {
       await Future.wait([
         _resolvePersonName(person),
-        _resolvePersonAssets(person, empresa ?? _currentEmpresa),
         _getWarehouseForPerson(person),
       ]);
     }));
+
+    // 2b. Pre-cargar activos por responsable y bodega para enriquecer artículos
+    final pairsToFetch = <(String, String)>{};
+    for (final transfer in list) {
+      final resp = transfer.responsableActual.trim();
+      if (resp.isEmpty || resp == 'Sin responsable') continue;
+      String bod = transfer.bodegaActual.trim();
+      if (bod.isEmpty || bod == 'BOD-ORIGEN' || bod == 'Sin bodega') {
+        bod = _personWarehouseCache[resp] ?? _currentBodega ?? '';
+      }
+      if (bod.isNotEmpty && bod != 'BOD-ORIGEN' && bod != 'Sin bodega') {
+        pairsToFetch.add((resp, bod));
+      }
+    }
+
+    await Future.wait(pairsToFetch.map((pair) => _resolvePersonAssets(
+          pair.$1,
+          bodega: pair.$2,
+          empresa: empresa ?? _currentEmpresa,
+        )));
 
     // 3. Mapear cada transferencia asociando bodegas, nombres resueltos y artículos enriquecidos
     final enrichedList = <TransferRequest>[];
@@ -205,8 +224,10 @@ class TransferApprovalProvider extends ChangeNotifier {
               transfer.responsablePropuesto;
 
       // Enriquecer descripción de artículos desde los activos del colaborador fuente
-      final sourceAssets =
-          _assetsByPersonCache[transfer.responsableActual.trim()] ?? [];
+      final cleanResp = transfer.responsableActual.trim();
+      final sourceAssets = _assetsByPersonCache['$cleanResp:$resolvedBodegaOrigen'] ??
+          _assetsByPersonCache[cleanResp] ??
+          [];
       final enrichedArticulos = transfer.articulos.map((art) {
         if (art.nombre != null && art.nombre!.trim().isNotEmpty) {
           return art;
@@ -286,27 +307,39 @@ class TransferApprovalProvider extends ChangeNotifier {
     return clean;
   }
 
-  /// Resuelve la lista de activos fijos asignados al colaborador consultado.
+  /// Resuelve la lista de activos fijos asignados al colaborador consultado en la bodega indicada.
   Future<List<TransferAssetModel>> _resolvePersonAssets(
-    String personQuery,
+    String personQuery, {
+    String? bodega,
     String? empresa,
-  ) async {
+  }) async {
     final clean = personQuery.trim();
     if (clean.isEmpty || clean == 'Sin responsable') return [];
+    if (bodega == null ||
+        bodega.trim().isEmpty ||
+        bodega == 'BOD-ORIGEN' ||
+        bodega == 'Sin bodega') {
+      return [];
+    }
 
-    if (_assetsByPersonCache.containsKey(clean)) {
-      return _assetsByPersonCache[clean]!;
+    final cleanBodega = bodega.trim();
+    final cacheKey = '$clean:$cleanBodega';
+
+    if (_assetsByPersonCache.containsKey(cacheKey)) {
+      return _assetsByPersonCache[cacheKey]!;
     }
 
     try {
       final assets = await repository.getAssetsByPerson(
         persona: clean,
+        bodega: cleanBodega,
         empresa: empresa,
       );
-      _assetsByPersonCache[clean] = assets;
+      _assetsByPersonCache[cacheKey] = assets;
+      _assetsByPersonCache[clean] ??= assets;
       return assets;
     } catch (_) {
-      _assetsByPersonCache[clean] = [];
+      _assetsByPersonCache[cacheKey] = [];
       return [];
     }
   }

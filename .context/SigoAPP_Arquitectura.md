@@ -85,7 +85,7 @@ Contrato asíncrono (`Future`) que define la creación, consulta y procesamiento
 * `getAllTransfers({estado, empresa, bodega, fetchDetails})`: Obtiene las solicitudes de traspaso.
 * `getTransferById(String id)`: Detalle completo de un trámite.
 * `getPersonsByWarehouse({bodega, empresa})`: Consulta colaboradores de una bodega (`GET /api/v1/traspasos/personas`).
-* `getAssetsByPerson({persona, empresa})`: Consulta activos asignados a un colaborador (`GET /api/v1/traspasos/activos`).
+* `getAssetsByPerson({persona, bodega, empresa})`: Consulta activos asignados a un colaborador radicados físicamente en la bodega indicada (`GET /api/v1/traspasos/activos?persona={persona}&bodega={bodega}`).
 * `approveTransfer(String)`: Aprueba una solicitud por ID.
 * `rejectTransfer({requestId, motivoRechazo})`: Rechaza con motivo obligatorio.
 * `signTransfer({transferId, tipoFirma, firmaBase64})`: Registra firma digital independiente (`FU` o `DE`).

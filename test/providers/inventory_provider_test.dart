@@ -111,18 +111,9 @@ void main() {
       expect(provider.state, InventoryState.initial);
     });
 
-    test('selectWarehouse carga artículos y colaboradores de la bodega', () async {
+    test('selectWarehouse carga colaboradores de la bodega pero no artículos', () async {
       const company = CompanyModel(codigo: 'EMP1', descripcion: 'Empresa 1', nit: '123', estado: 'A');
       const warehouse = WarehouseModel(codigoBodega: 'BOD01', descripcionBodega: 'Bodega Central', estadoBodega: 'A');
-      mockRepository.articlesToReturn = [
-        const ArticleModel(
-          codigoActivo: 'ART01',
-          nombre: 'Laptop HP',
-          placa: 'PLC-01',
-          bodega: 'BOD01',
-          responsable: 'Juan Diaz',
-        ),
-      ];
       mockTransferRepo.personsToReturn = [
         const TransferPersonModel(cedula: '12345', nombre: 'Juan', apellido: 'Diaz'),
       ];
@@ -134,59 +125,13 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 50));
 
       expect(provider.selectedWarehouse, warehouse);
-      expect(provider.articles.length, 1);
+      expect(provider.articles, isEmpty);
       expect(provider.collaborators.length, 1);
       expect(provider.collaborators.first.cedula, '12345');
       expect(mockTransferRepo.getPersonsCallCount, 1);
     });
 
-    test('selectCollaborator filtra artículos localmente por coincidencia de responsable', () async {
-      mockRepository.articlesToReturn = [
-        const ArticleModel(
-          codigoActivo: 'ART01',
-          nombre: 'Laptop HP',
-          placa: 'PLC-01',
-          bodega: 'BOD01',
-          responsable: 'Juan Diaz',
-        ),
-        const ArticleModel(
-          codigoActivo: 'ART02',
-          nombre: 'Monitor LG',
-          placa: 'PLC-02',
-          bodega: 'BOD01',
-          responsable: 'Carlos Perez',
-        ),
-      ];
-      provider.selectedCompany = const CompanyModel(codigo: 'EMP1', descripcion: 'Empresa 1', nit: '123', estado: 'A');
-      provider.selectWarehouse(const WarehouseModel(codigoBodega: 'BOD01', descripcionBodega: 'Bodega Central', estadoBodega: 'A'));
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      expect(provider.articles.length, 2);
-
-      // Filtrar por Juan Diaz
-      const collaborator = TransferPersonModel(cedula: '12345', nombre: 'Juan', apellido: 'Diaz');
-      await provider.selectCollaborator(collaborator);
-
-      expect(provider.selectedCollaborator, collaborator);
-      expect(provider.articles.length, 1);
-      expect(provider.articles.first.codigoActivo, 'ART01');
-
-      // Deseleccionar (Todos)
-      await provider.selectCollaborator(null);
-      expect(provider.selectedCollaborator, isNull);
-      expect(provider.articles.length, 2);
-    });
-
-    test('selectCollaborator consulta getAssetsByPerson si no hay coincidencias locales', () async {
-      mockRepository.articlesToReturn = [
-        const ArticleModel(
-          codigoActivo: 'ART01',
-          nombre: 'Laptop HP',
-          placa: 'PLC-01',
-          bodega: 'BOD01',
-          responsable: 'Carlos Perez',
-        ),
-      ];
+    test('selectCollaborator consulta getAssetsByPerson en la bodega activa tras seleccionar colaborador', () async {
       mockTransferRepo.assetsToReturn = [
         const TransferAssetModel(
           articulo: 'ASSET99',
@@ -199,30 +144,24 @@ void main() {
       provider.selectWarehouse(const WarehouseModel(codigoBodega: 'BOD01', descripcionBodega: 'Bodega Central', estadoBodega: 'A'));
       await Future.delayed(const Duration(milliseconds: 50));
 
+      expect(provider.articles, isEmpty);
+
       const collaborator = TransferPersonModel(cedula: '99999', nombre: 'Andres', apellido: 'Gomez');
       await provider.selectCollaborator(collaborator);
 
       expect(mockTransferRepo.getAssetsCallCount, 1);
+      expect(mockTransferRepo.lastBodegaPassedToGetAssets, 'BOD01');
       expect(provider.articles.length, 1);
       expect(provider.articles.first.codigoActivo, 'ASSET99');
       expect(provider.articles.first.responsable, 'Andres Gomez');
     });
 
-    test('selectCollaborator con ALL restablece lista completa y limpia selectedCollaborator', () async {
-      mockRepository.articlesToReturn = [
-        const ArticleModel(
-          codigoActivo: 'ART01',
-          nombre: 'Laptop HP',
-          placa: 'PLC-01',
-          bodega: 'BOD01',
-          responsable: 'Juan Diaz',
-        ),
-        const ArticleModel(
-          codigoActivo: 'ART02',
-          nombre: 'Monitor LG',
-          placa: 'PLC-02',
-          bodega: 'BOD01',
-          responsable: 'Carlos Perez',
+    test('selectCollaborator con null o ALL limpia la lista de artículos', () async {
+      mockTransferRepo.assetsToReturn = [
+        const TransferAssetModel(
+          articulo: 'ASSET99',
+          nombre: 'Impresora Fiscal',
+          placa: 'IMP-99',
         ),
       ];
       provider.selectedCompany = const CompanyModel(codigo: 'EMP1', descripcion: 'Empresa 1', nit: '123', estado: 'A');
@@ -238,77 +177,18 @@ void main() {
       const allCollaborator = TransferPersonModel(cedula: 'ALL', nombre: 'Todos los colaboradores', apellido: '');
       await provider.selectCollaborator(allCollaborator);
       expect(provider.selectedCollaborator, isNull);
-      expect(provider.articles.length, 2);
-    });
+      expect(provider.articles, isEmpty);
 
-    test('refreshArticles() recarga artículos de bodega y preserva filtro de colaborador seleccionado', () async {
-      mockRepository.articlesToReturn = [
-        const ArticleModel(
-          codigoActivo: 'ART01',
-          nombre: 'Laptop HP',
-          placa: 'PLC-01',
-          bodega: 'BOD01',
-          responsable: 'Juan Diaz',
-        ),
-        const ArticleModel(
-          codigoActivo: 'ART02',
-          nombre: 'Monitor LG',
-          placa: 'PLC-02',
-          bodega: 'BOD01',
-          responsable: 'Carlos Perez',
-        ),
-      ];
-      provider.selectedCompany = const CompanyModel(codigo: 'EMP1', descripcion: 'Empresa 1', nit: '123', estado: 'A');
-      provider.selectWarehouse(const WarehouseModel(codigoBodega: 'BOD01', descripcionBodega: 'Bodega Central', estadoBodega: 'A'));
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      const collaborator = TransferPersonModel(cedula: '12345', nombre: 'Juan', apellido: 'Diaz');
+      // Re-seleccionar y deseleccionar con null
       await provider.selectCollaborator(collaborator);
       expect(provider.articles.length, 1);
-      expect(provider.articles.first.codigoActivo, 'ART01');
 
-      // Simular cambio en backend (nuevo activo asignado a Juan Diaz)
-      mockRepository.articlesToReturn = [
-        const ArticleModel(
-          codigoActivo: 'ART01',
-          nombre: 'Laptop HP',
-          placa: 'PLC-01',
-          bodega: 'BOD01',
-          responsable: 'Juan Diaz',
-        ),
-        const ArticleModel(
-          codigoActivo: 'ART03',
-          nombre: 'Teclado Mecánico',
-          placa: 'PLC-03',
-          bodega: 'BOD01',
-          responsable: 'Juan Diaz',
-        ),
-        const ArticleModel(
-          codigoActivo: 'ART02',
-          nombre: 'Monitor LG',
-          placa: 'PLC-02',
-          bodega: 'BOD01',
-          responsable: 'Carlos Perez',
-        ),
-      ];
-
-      await provider.refreshArticles();
-
-      expect(provider.selectedCollaborator, collaborator);
-      expect(provider.articles.length, 2);
-      expect(provider.articles.map((a) => a.codigoActivo), containsAll(['ART01', 'ART03']));
+      await provider.selectCollaborator(null);
+      expect(provider.selectedCollaborator, isNull);
+      expect(provider.articles, isEmpty);
     });
 
-    test('refreshArticles() con colaborador que consulta getAssetsByPerson refresca los activos remotos', () async {
-      mockRepository.articlesToReturn = [
-        const ArticleModel(
-          codigoActivo: 'ART01',
-          nombre: 'Laptop HP',
-          placa: 'PLC-01',
-          bodega: 'BOD01',
-          responsable: 'Carlos Perez',
-        ),
-      ];
+    test('refreshArticles() con colaborador seleccionado refresca los activos remotos', () async {
       mockTransferRepo.assetsToReturn = [
         const TransferAssetModel(
           articulo: 'ASSET99',
@@ -325,6 +205,7 @@ void main() {
       await provider.selectCollaborator(collaborator);
 
       expect(mockTransferRepo.getAssetsCallCount, 1);
+      expect(mockTransferRepo.lastBodegaPassedToGetAssets, 'BOD01');
       expect(provider.articles.length, 1);
       expect(provider.articles.first.codigoActivo, 'ASSET99');
 
@@ -396,12 +277,16 @@ class _MockTransferRepo implements TransferRepository {
     return personsToReturn;
   }
 
+  String? lastBodegaPassedToGetAssets;
+
   @override
   Future<List<TransferAssetModel>> getAssetsByPerson({
     required String persona,
+    required String bodega,
     String? empresa,
   }) async {
     getAssetsCallCount++;
+    lastBodegaPassedToGetAssets = bodega;
     return assetsToReturn;
   }
 

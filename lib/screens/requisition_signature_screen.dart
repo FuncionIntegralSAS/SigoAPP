@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/auth_model.dart';
 import '../models/requisition_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/requisition_signature_provider.dart';
 import '../utils/dialog_utils.dart';
+import '../utils/permission_utils.dart';
 import '../widgets/requisition_filter_header.dart';
 import 'requisition_signature_capture_screen.dart';
 
@@ -20,7 +22,46 @@ class RequisitionSignatureScreen extends StatefulWidget {
 class _RequisitionSignatureScreenState extends State<RequisitionSignatureScreen> {
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
     final provider = context.watch<RequisitionSignatureProvider>();
+
+    // Control de Acceso: El usuario debe poseer el permiso AREQ (AppPermission.requisiciones)
+    if (!auth.permisos.hasPermission(AppPermission.requisiciones)) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Firma de Requisiciones'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.lock_outline_rounded, size: 64, color: Colors.grey.shade400),
+                const SizedBox(height: 16),
+                Text(
+                  'Acceso Restringido',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade800,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'No cuenta con el permiso requerido (AREQ) para consultar o gestionar la firma de requisiciones.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -462,6 +503,30 @@ class _RequisitionSignatureCardState extends State<_RequisitionSignatureCard> {
     final bool isTargetSigned = firmaRE?.firmada == true;
     final bool bothSigned = isSourceSigned && isTargetSigned;
 
+    // Inferencia de Rol y Reglas de Seguridad Operativa
+    final String currentCedula = auth.currentCedula?.trim() ?? '';
+    final String? terceroSolicitante = detail?.tercero?.trim();
+    final String? respBodegaFuente = detail?.responsableBodega?.trim();
+    final String? respBodegaDestino = detail?.responsableBodegaDestino?.trim();
+
+    final bool hasWarehousePermission = auth.permisos.hasAnyPermission([
+      AppPermission.entregaInventario,
+      AppPermission.requisiciones,
+    ]);
+
+    // 1. Validación de Despachador (Firma SA - Entrega)
+    final bool isDispatcher = (respBodegaFuente != null && respBodegaFuente.isNotEmpty)
+        ? (currentCedula == respBodegaFuente)
+        : (auth.permisos.hasPermission(AppPermission.entregaInventario) && currentCedula != terceroSolicitante);
+
+    // 2. Validación de Receptor (Firma RE - Recibe)
+    final bool isReceiver = currentCedula.isNotEmpty &&
+        (currentCedula == terceroSolicitante || 
+         (respBodegaDestino != null && respBodegaDestino.isNotEmpty && currentCedula == respBodegaDestino));
+
+    final bool canSignSA = !isSourceSigned && isDispatcher;
+    final bool canSignRE = !isTargetSigned && isReceiver;
+
     // Color de la franja lateral de 5px: verde si ambas firmas listas, azul si falta firma
     final Color statusColor =
         bothSigned ? Colors.green.shade700 : Colors.blue.shade700;
@@ -646,104 +711,226 @@ class _RequisitionSignatureCardState extends State<_RequisitionSignatureCard> {
 
                       const SizedBox(height: 10),
 
-                      // Acciones Operativas
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                      // Acciones Operativas (Inferencia Automática de Roles y Matriz de Estados)
+                      Wrap(
+                        alignment: WrapAlignment.end,
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          if (bothSigned)
+                          if (isLoadingDetail && detail == null) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          ] else if (bothSigned) ...[
+                            if (hasWarehousePermission)
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green.shade700,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  elevation: 2,
+                                ),
+                                icon: const Icon(Icons.check_circle_outline),
+                                label: const Text('Registrar Salida ERP'),
+                                onPressed: provider.isRegisteringExit
+                                    ? null
+                                    : () => _confirmAndRegisterExit(
+                                        context, provider),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border:
+                                      Border.all(color: Colors.green.shade200),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.check_circle,
+                                        size: 16, color: Colors.green.shade700),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Firmas completas. Pendiente registro en bodega.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.green.shade900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ] else if (canSignSA) ...[
                             ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green.shade700,
+                                backgroundColor: Colors.blue.shade700,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                elevation: 2,
                               ),
-                              icon: const Icon(Icons.check_circle_outline),
-                              label: const Text('Registrar Salida ERP'),
-                              onPressed: provider.isRegisteringExit
+                              icon: const Icon(Icons.draw_rounded, size: 18),
+                              label: const Text('Firmar Salida (SA)'),
+                              onPressed: (isLoadingDetail || provider.isSubmittingSignature)
                                   ? null
-                                  : () => _confirmAndRegisterExit(
-                                      context, provider),
-                            )
-                          else ...[
-                            if (!isSourceSigned) ...[
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue.shade700,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
+                                  : () async {
+                                      final signed = await Navigator.push<bool>(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              RequisitionSignatureCaptureScreen(
+                                            empresa: doc.empresa,
+                                            tipoDocumento: doc.tipoDocumento,
+                                            numero: doc.numero,
+                                            tipo: 'SA',
+                                            personaDefault: auth.currentCedula,
+                                            nombreFirmanteDefault:
+                                                auth.currentUsername,
+                                          ),
+                                        ),
+                                      );
+                                      if (signed == true && context.mounted) {
+                                        provider.loadDetail(
+                                          doc.empresa,
+                                          doc.tipoDocumento,
+                                          doc.numero,
+                                          force: true,
+                                        );
+                                      }
+                                    },
+                            ),
+                          ] else if (canSignRE) ...[
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal.shade700,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                icon: const Icon(Icons.draw_rounded, size: 18),
-                                label: const Text('Firmar Salida'),
-                                onPressed: () async {
-                                  final signed = await Navigator.push<bool>(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          RequisitionSignatureCaptureScreen(
-                                        empresa: doc.empresa,
-                                        tipoDocumento: doc.tipoDocumento,
-                                        numero: doc.numero,
-                                        tipo: 'SA',
-                                        personaDefault: auth.currentCedula,
-                                        nombreFirmanteDefault:
-                                            auth.currentUsername,
-                                      ),
-                                    ),
-                                  );
-                                  if (signed == true && context.mounted) {
-                                    provider.loadDetail(
-                                      doc.empresa,
-                                      doc.tipoDocumento,
-                                      doc.numero,
-                                      force: true,
-                                    );
-                                  }
-                                },
                               ),
-                              const SizedBox(width: 8),
-                            ],
-                            if (!isTargetSigned)
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.teal.shade700,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                              icon: const Icon(Icons.draw_rounded, size: 18),
+                              label: const Text('Firmar Recibo (RE)'),
+                              onPressed: (isLoadingDetail || provider.isSubmittingSignature)
+                                  ? null
+                                  : () async {
+                                      final signed = await Navigator.push<bool>(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              RequisitionSignatureCaptureScreen(
+                                            empresa: doc.empresa,
+                                            tipoDocumento: doc.tipoDocumento,
+                                            numero: doc.numero,
+                                            tipo: 'RE',
+                                            personaDefault: auth.currentCedula,
+                                            nombreFirmanteDefault:
+                                                auth.currentUsername,
+                                            solicitanteTercero: detail?.tercero,
+                                          ),
+                                        ),
+                                      );
+                                      if (signed == true && context.mounted) {
+                                        provider.loadDetail(
+                                          doc.empresa,
+                                          doc.tipoDocumento,
+                                          doc.numero,
+                                          force: true,
+                                        );
+                                      }
+                                    },
+                            ),
+                          ] else if (isReceiver && isTargetSigned && !isSourceSigned) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.blueGrey.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border:
+                                    Border.all(color: Colors.blueGrey.shade200),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.hourglass_top_rounded,
+                                      size: 15, color: Colors.blueGrey.shade700),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Su firma de recibo está registrada. Pendiente salida de bodega.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.blueGrey.shade800,
+                                    ),
                                   ),
-                                ),
-                                icon: const Icon(Icons.draw_rounded, size: 18),
-                                label: const Text('Firmar Recibo'),
-                                onPressed: () async {
-                                  final signed = await Navigator.push<bool>(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          RequisitionSignatureCaptureScreen(
-                                        empresa: doc.empresa,
-                                        tipoDocumento: doc.tipoDocumento,
-                                        numero: doc.numero,
-                                        tipo: 'RE',
-                                        personaDefault: detail?.tercero ??
-                                            auth.currentCedula,
-                                        nombreFirmanteDefault: detail?.tercero,
-                                      ),
-                                    ),
-                                  );
-                                  if (signed == true && context.mounted) {
-                                    provider.loadDetail(
-                                      doc.empresa,
-                                      doc.tipoDocumento,
-                                      doc.numero,
-                                      force: true,
-                                    );
-                                  }
-                                },
+                                ],
                               ),
+                            ),
+                          ] else if (isDispatcher && isSourceSigned && !isTargetSigned) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.blueGrey.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border:
+                                    Border.all(color: Colors.blueGrey.shade200),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.hourglass_top_rounded,
+                                      size: 15, color: Colors.blueGrey.shade700),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Firma de salida registrada. Pendiente recibo del solicitante.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.blueGrey.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.lock_outline,
+                                      size: 15, color: Colors.grey.shade600),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Usted no es responsable de la bodega ni solicitante de este documento.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade700,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ],
                       ),

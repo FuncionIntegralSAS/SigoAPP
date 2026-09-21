@@ -93,7 +93,7 @@ class TransferFormProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> selectOriginPerson(TransferPersonModel? person, {String? empresa}) async {
+  Future<void> selectOriginPerson(TransferPersonModel? person, {String? bodega, String? empresa}) async {
     _selectedOriginPerson = person;
     _personAssets = [];
     _selectedAssets.clear();
@@ -112,8 +112,9 @@ class TransferFormProvider extends ChangeNotifier {
     notifyListeners();
 
     if (person != null && person.cedula.isNotEmpty) {
+      final activeBodega = bodega ?? _selectedOriginBodega;
       final activeEmpresa = empresa ?? _selectedEmpresa ?? '01';
-      await loadAssetsForPerson(person.cedula, empresa: activeEmpresa);
+      await loadAssetsForPerson(person.cedula, bodega: activeBodega, empresa: activeEmpresa);
     }
   }
 
@@ -132,7 +133,16 @@ class TransferFormProvider extends ChangeNotifier {
   final List<TransferAssetModel> _selectedAssets = [];
   List<TransferAssetModel> get selectedAssets => List.unmodifiable(_selectedAssets);
 
-  Future<void> loadAssetsForPerson(String cedula, {String? empresa}) async {
+  Future<void> loadAssetsForPerson(String cedula, {String? bodega, String? empresa}) async {
+    final activeBodega = bodega ?? _selectedOriginBodega;
+    if (activeBodega == null || activeBodega.trim().isEmpty) {
+      _personAssets = [];
+      _selectedAssets.clear();
+      _assetsError = 'Debe seleccionar una bodega de origen válida.';
+      notifyListeners();
+      return;
+    }
+
     _isLoadingAssets = true;
     _assetsError = null;
     _personAssets = [];
@@ -143,6 +153,7 @@ class TransferFormProvider extends ChangeNotifier {
     try {
       _personAssets = await transferRepository.getAssetsByPerson(
         persona: cedula,
+        bodega: activeBodega.trim(),
         empresa: activeEmpresa,
       );
     } on TransferBusinessException catch (e) {

@@ -228,6 +228,8 @@ class RequisicionDetalle {
   final String? bodegaDestino;
   final String? centroInformacion;
   final String? tercero;
+  final String? responsableBodega;
+  final String? responsableBodegaDestino;
   final List<RequisicionDetalleLinea> lineas;
   final List<RequisicionFirma> firmas;
 
@@ -243,6 +245,8 @@ class RequisicionDetalle {
     this.bodegaDestino,
     this.centroInformacion,
     this.tercero,
+    this.responsableBodega,
+    this.responsableBodegaDestino,
     this.lineas = const [],
     this.firmas = const [],
   });
@@ -260,6 +264,8 @@ class RequisicionDetalle {
       bodegaDestino: json['bodegaDestino']?.toString(),
       centroInformacion: json['centroInformacion']?.toString(),
       tercero: json['tercero']?.toString(),
+      responsableBodega: json['responsableBodega']?.toString(),
+      responsableBodegaDestino: json['responsableBodegaDestino']?.toString(),
       lineas: (json['lineas'] as List<dynamic>?)
               ?.map((e) => RequisicionDetalleLinea.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -283,6 +289,8 @@ class RequisicionDetalle {
     'bodegaDestino': bodegaDestino,
     'centroInformacion': centroInformacion,
     'tercero': tercero,
+    'responsableBodega': responsableBodega,
+    'responsableBodegaDestino': responsableBodegaDestino,
     'lineas': lineas.map((e) => e.toJson()).toList(),
     'firmas': firmas.map((e) => e.toJson()).toList(),
   };

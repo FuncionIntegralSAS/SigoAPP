@@ -16,9 +16,11 @@ abstract class TransferRepository {
     required String empresa,
   });
 
-  /// Obtiene los activos fijos asignados a un colaborador identificado por [persona].
+  /// Obtiene los activos fijos asignados a un colaborador identificado por [persona]
+  /// en la [bodega] física especificada.
   Future<List<TransferAssetModel>> getAssetsByPerson({
     required String persona,
+    required String bodega,
     String? empresa,
   });
 

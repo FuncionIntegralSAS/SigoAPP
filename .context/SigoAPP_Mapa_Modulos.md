@@ -14,8 +14,8 @@ Fecha de actualización: Agosto 2026
 |---|-------------------|---------------------|-------------------------|
 | 1 | [Autenticación y Dominio](#1-autenticación-y-dominio) | Configuración de dominio, Login JWT, Expiración de sesión (401) | Ninguno (público) |
 | 2 | [Dashboard Principal](#2-dashboard-principal) | Navegación dinámica por permisos | Autenticación válida |
-| 3 | [Inventario](#3-inventario) | Verificación de Activos (QR + GPS), Generación de Traspasos, Aprobación de Traspasos, Entrega / Recepción (Firmas) | `avac`, `agqr`, `agst`, `aatr`, Autenticado |
-| 4 | [Requisiciones](#4-requisiciones) | Aprobación y Entrega de inventario | `areq`, `aein` |
+| 3 | [Inventario](#3-inventario) | Verificación de Activos (QR + GPS), Generación de Traspasos, Aprobación de Traspasos, Entrega / Recepción (Firmas) | `avac`, `agqr`, `agst`, `aatr`, `aein` |
+| 4 | [Requisiciones](#4-requisiciones) | Aprobación, Entrega de inventario, Firma Digital y Cierre Salida ERP | `areq` |
 | 5 | [Conteo Físico](#5-conteo-físico) | Apertura, Asignación de Personal, Cierre, Ejecución Offline | `aacf`, `aacu`, `accf`, `arcf`, `asin` |
 | 6 | [Módulo Principal (Solo Debug)](#6-módulo-principal-solo-debug) | Scanner QR, Generador QR, Gestión de cuentas | `kReleaseMode == false` |
 
@@ -73,8 +73,9 @@ Fecha de actualización: Agosto 2026
 | Verificación de Activos | `avac` | Inventario | `AssetVerificationScreen` |
 | Generar solicitud de traspaso | `agst` | Inventario | `InventoryScreen` |
 | Aprobación de Traspasos | `aatr` | Inventario | `TransferApprovalScreen` |
-| Entrega / Recepción | Autenticado | Inventario | `TransferDeliveryScreen` |
+| Entrega / Recepción | `aein` | Inventario | `TransferDeliveryScreen` |
 | Requisiciones | `areq` | Requisiciones | `RequisitionsScreen` |
+| Firma de Requisiciones | `areq` | Requisiciones | `RequisitionSignatureScreen` |
 | Conteo Físico | `aacf` ∨ `aacu` ∨ `accf` | Conteo Físico | `PhysicalCountScreen` |
 | Ejecutar Conteo | `arcf` | Conteo Físico | `ActiveCountScreen` |
 | Módulo Principal | Solo `!kReleaseMode` | Debug | `HomeScreen` |
@@ -107,7 +108,7 @@ Fecha de actualización: Agosto 2026
 ### 3.2 Generación de Traspasos
 
 **Permiso:** `agst` (generar traspaso), relacionado con `agqr` (generación QR)  
-**Descripción:** Gestión de inventario con filtrado en cascada Empresa → Bodega (bodegas tipo personal `'PE'` vía `HttpInventoryRepository.getWarehouses(..., tipo: 'PE')`) → Colaborador (`TransferRepository.getPersonsByWarehouse` con filtro `AND B.BODETIBO = 'PE'` y `getAssetsByPerson`) y creación de solicitudes de traspaso diferenciadas: **Traspaso Individual** vía botón de acción rápida `⇄` en cada tarjeta de activo (pre-cargando activo único) y **Traspaso Múltiple** interactivo vía Floating Action Button, el cual activa el modo de selección (`_isSelectionMode`) con casillas de verificación, validación de colaborador responsable único y barra de acciones inferior. Orquestación del flujo en `TransferFormWidget` (modo estándar o modo compacto con preselección e inyección mediante `TransferFormProvider.addPreselectedAsset()`, tarjeta compacta con desplegable interactivo de activos y retorno a inventario) que conecta con backend (`POST /api/v1/traspasos/crear`, `GET /api/v1/traspasos/personas`, `GET /api/v1/traspasos/activos`) con validación de personas distintas y compatibilidad multi-artículo PL/SQL.
+**Descripción:** Gestión de inventario con filtrado en cascada Empresa → Bodega (bodegas tipo personal `'PE'` vía `HttpInventoryRepository.getWarehouses(..., tipo: 'PE')`, sin búsqueda de activos por bodega) → Colaborador (`TransferRepository.getPersonsByWarehouse` con filtro `AND B.BODETIBO = 'PE'`, ejecutando `getAssetsByPerson` exclusivamente al seleccionar al colaborador con bodega física obligatoria) y creación de solicitudes de traspaso diferenciadas: **Traspaso Individual** vía botón de acción rápida `⇄` en cada tarjeta de activo (pre-cargando activo único) y **Traspaso Múltiple** interactivo vía Floating Action Button, el cual activa el modo de selección (`_isSelectionMode`) con casillas de verificación, validación de colaborador responsable único y barra de acciones inferior. Orquestación del flujo en `TransferFormWidget` (modo estándar o modo compacto con preselección e inyección mediante `TransferFormProvider.addPreselectedAsset()`, tarjeta compacta con desplegable interactivo de activos y retorno a inventario) que conecta con backend (`POST /api/v1/traspasos/crear`, `GET /api/v1/traspasos/personas`, `GET /api/v1/traspasos/activos?persona={...}&bodega={...}`) con validación de personas distintas y compatibilidad multi-artículo PL/SQL.
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
@@ -189,7 +190,12 @@ Fecha de actualización: Agosto 2026
 
 **Documentación Funcional:** [`SigoAPP_Funcional_Requisiciones.md`](./SigoAPP_Funcional_Requisiciones.md)
 
-**Descripción:** Gestión de requisiciones de consumo/salida de inventario. Organizada en dos pestañas: Aprobación y Entrega. Conectado a la API real de Spring Boot (`/api/v1/requisiciones`).
+**Descripción:** Gestión de requisiciones de consumo/salida de inventario. Comprende la aprobación de líneas, la entrega física en bodega con asignación de placas (FIFO), la captura interactiva de firmas digitales manuscritas (Salida SA y Recibo RE) y el asentamiento definitivo en el ERP (`DOCUINVE` y `MOVIINVE`). Conectado a la API Spring Boot (`/api/v1/requisiciones`).
+
+### 4.1 Aprobación y Entrega de Requisiciones (`RequisitionsScreen`)
+
+**Permisos requeridos:** `areq` (Aprobación) y `aein` (Entrega).  
+**Punto de entrada:** `DashboardScreen` (Opción "Requisiciones").
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
@@ -214,15 +220,42 @@ Fecha de actualización: Agosto 2026
 
 **Filtros y Comportamiento de Tabs:**
 - `RequisitionsScreen` utiliza `TabController` con listener. Al iniciar la pantalla (`initState`), se dispara únicamente la carga del catálogo maestro de empresas (`GET /api/v1/empresas/getAll`) mediante `RequisitionApprovalProvider.loadCompanies()`. Se aplica una política de **Lazy Fetch / Fail-Fast UI**, impidiendo la consulta automática de requisiciones sin fecha para proteger la tabla `MOVIRESU`.
-- Ambas pestañas (`ApprovalTabView` y `DeliveryTabView`) incorporan en la parte superior el widget institucional `RequisitionFilterHeader` con dos selectores en orden canónico:
-  1. **Empresa (1° orden):** Menú desplegable con búsqueda interna (`DropdownTemplates.searchData`) y opción de deselección / limpiar.
-  2. **Fecha (2° orden):** Campo táctil de solo lectura que invoca `showDatePicker`, formateando hacia la API en estándar ISO `YYYY-MM-DD`.
+- Ambas pestañas (`ApprovalTabView` y `DeliveryTabView`) incorporan en la parte superior el widget institucional `RequisitionFilterHeader` con dos selectores en orden canónico: Empresa (1°) y Fecha `desde` (2°).
 - **Estado de Fecha Requerida:** Si no se ha configurado una fecha `desde`, las pestañas muestran un estado informativo con ícono de calendario (`Icons.calendar_month_outlined`) instruyendo al operador a seleccionar una fecha inicial.
 - **Flujo Master-Detail (Documento ➔ Movimientos):**
   - **Nivel 1 (Master):** La bandeja consume `GET /api/v1/requisiciones` y renderiza tarjetas de documentos de solicitud (`RequisicionResumen`) mediante `RequisitionActionCard`, exponiendo tipo y número de documento, bodega, fecha, badge con cantidad de artículos y franja lateral de estado de 5px.
   - **Nivel 2 (Detail bajo demanda):** Al expandir cada documento (`ExpansionTile`), se consulta `GET /api/v1/requisiciones/{empresa}/{tipo}/{num}` con caché en el provider, desplegando los movimientos/artículos (`RequisicionDetalleLinea`) con sus estados, solicitante, observaciones y cantidades.
   - **Procesamiento en Lote (FAB):** Cada línea permite validar y capturar cantidades autorizadas/entregadas ($>0 \land \le \text{máximo permitido}$) y seleccionarse mediante checkbox. El botón flotante `FloatingActionButton` ejecuta la aprobación (`PUT /aprobar`) o entrega (`PUT /entregar`) masiva, notificando vía `SnackBar` y refrescando la bandeja.
-- **Autorrelleno sugerido cruzado:** Si el usuario selecciona Empresa o Fecha en una pestaña y la otra se encuentra vacía, el valor se pre-carga y sugiere automáticamente en la otra pestaña sin bloquear su modificación independiente. Al cambiar de pestaña o modificar un filtro, `loadRequisitions(status)` recarga la lista respetando los filtros vigentes.
+
+---
+
+### 4.2 Firma de Requisiciones y Salida Definitiva ERP (`RequisitionSignatureScreen`)
+
+**Permiso requerido:** Exclusivo **`areq`** (`AppPermission.requisiciones`).  
+**Punto de entrada:** `DashboardScreen` (Opción "Firma de Requisiciones").
+
+| Capa | Archivo | Ruta |
+|------|---------|------|
+| **Screen** | `RequisitionSignatureScreen` | `lib/screens/requisition_signature_screen.dart` |
+| **Screen (Modal/Captura)** | `RequisitionSignatureCaptureScreen` | `lib/screens/requisition_signature_capture_screen.dart` |
+| **Provider** | `RequisitionSignatureProvider` | `lib/providers/requisition_signature_provider.dart` |
+| **Repositorio (contrato)** | `RequisitionRepository` | `lib/repositories/requisition_repository.dart` |
+| **Repositorio (HTTP)** | `HttpRequisitionRepository` | `lib/repositories/http_requisition_repository.dart` |
+| **Modelo** | `RequisicionResumen`, `RequisicionDetalle`, `RequisicionFirma`, `RequisicionFirmaRequest`, `RequisicionRegistrarRequest` | `lib/models/requisition_model.dart` |
+| **Widget** | `RequisitionFilterHeader` | `lib/widgets/requisition_filter_header.dart` |
+| **Test Unitario** | `requisition_signature_provider_test.dart` | `test/providers/requisition_signature_provider_test.dart` |
+| **Test Unitario (Modelos)** | `requisition_model_test.dart` | `test/models/requisition_model_test.dart` |
+
+**Características Operativas y Matriz de Estados:**
+- **Consulta Protegida:** Requiere obligatoriamente fecha `desde` seleccionada en `RequisitionFilterHeader` (`estado: 'en'`).
+- **Inferencia Automática de Roles (Flujo Sin Selección Manual):** El colaborador nunca elige la firma de forma arbitraria; la aplicación valida la identidad a partir de `auth.currentCedula`:
+  - **Recepción (RE):** Coincidencia con el solicitante titular (`auth.currentCedula == detail.tercero`) o con el responsable oficial de la bodega destino (`auth.currentCedula == detail.responsableBodegaDestino`) en movimientos entre bodegas. Si coincide y falta firma RE, se habilita de forma exclusiva el botón *"Firmar Recibo (RE)"*.
+  - **Salida (SA):** Coincidencia estricta con el responsable de la bodega origen (`auth.currentCedula == detail.responsableBodega`). Si no hay responsable asignado en el ERP (nulo o vacío), aplica fallback por permiso de bodega `aein` (`AppPermission.entregaInventario`) siempre que no sea el solicitante. Si califica y falta firma SA, se habilita el botón único *"Firmar Salida (SA)"*.
+  - **Espera de Co-Firmante:** Si el colaborador ya firmó su rol respectivo, la tarjeta muestra un contenedor informativo (`Colors.blueGrey.shade50`) indicando que su firma está asentada y se espera la contraparte.
+  - **Usuario Sin Rol:** Si el colaborador no es receptor ni despachador, la tarjeta muestra el aviso informativo *"Usted no es responsable de la bodega ni solicitante de este documento"*, bloqueando botones de firma.
+  - **Captura Anti-Suplantación (`RequisitionSignatureCaptureScreen`):** Campo de cédula en modo solo lectura (`readOnly: true`, con `Icons.lock_outline` y `fillColor: grey.shade100`), garantizando que la firma manuscrita quede vinculada estrictamente a la sesión autenticada.
+  - **Estado "Lista para ERP" (`bothSigned`):** Franja lateral fija de 5px en Verde (`Colors.green.shade700`), badge `LISTA PARA ERP`, botones de firma ocultos y botón de acción destacado *"Registrar Salida ERP"* (`Colors.green.shade700`, `r: 8`) para usuarios con permisos de bodega.
+- **Punto de No Retorno:** Al pulsar *"Registrar Salida ERP"*, se despliega diálogo modal confirmatorio advirtiendo el carácter irreversible de la operación. Ejecuta `PUT /api/v1/requisiciones/{empresa}/{tipoDocumento}/{numero}/registrar` enviando `{}` como body, transicionando el documento a estado `rg` y generando los registros oficiales en `DOCUINVE` y `MOVIINVE`.
 
 ---
 

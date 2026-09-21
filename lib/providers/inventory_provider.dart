@@ -92,28 +92,8 @@ class InventoryProvider extends ChangeNotifier {
     notifyListeners();
 
     if (bodega != null && selectedCompany != null) {
-      _loadArticles(bodega.codigoBodega, selectedCompany!.codigo);
       if (bodega.codigoBodega != 'ALL') {
         loadCollaborators(bodega.codigoBodega, selectedCompany!.codigo);
-      }
-    }
-  }
-
-  Future<void> _loadArticles(String idBodega, String companyId) async {
-    _setState(InventoryState.loading);
-    try {
-      final fetched = await _repository.getArticles(idBodega, companyId);
-      _allArticles = List.from(fetched);
-      if (selectedCollaborator == null || selectedCollaborator!.cedula == 'ALL') {
-        articles = List.from(fetched);
-      }
-      _setState(InventoryState.success);
-    } catch (e) {
-      if (e is DioException &&
-          (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
-        _setError('Su sesión ha expirado o no tiene permisos. Por favor, vuelva a iniciar sesión.');
-      } else {
-        _setError('Error al cargar artículos.');
       }
     }
   }
@@ -121,7 +101,7 @@ class InventoryProvider extends ChangeNotifier {
   /// Consulta los colaboradores asociados a una [bodega] en una [empresa].
   Future<void> loadCollaborators(String bodega, String empresa) async {
     if (_transferRepository == null) {
-      _extractCollaboratorsFromArticles();
+      collaborators.clear();
       return;
     }
 
@@ -136,114 +116,82 @@ class InventoryProvider extends ChangeNotifier {
       );
     } catch (e) {
       collaboratorErrorMessage = 'No se pudieron obtener colaboradores remotos.';
-      _extractCollaboratorsFromArticles();
+      collaborators.clear();
     } finally {
       isLoadingCollaborators = false;
       notifyListeners();
     }
   }
 
-  /// Filtra los artículos de la bodega según el [collaborator] seleccionado.
-  /// Si [collaborator] es null o 'ALL', restablece la lista completa de artículos de la bodega.
+  /// Consulta los activos asignados al [collaborator] seleccionado en la bodega activa.
+  /// Requiere que la empresa y la bodega hayan sido seleccionadas previamente.
+  /// Si [collaborator] es null o 'ALL', limpia la lista de artículos.
   Future<void> selectCollaborator(TransferPersonModel? collaborator) async {
     selectedCollaborator = (collaborator == null || collaborator.cedula == 'ALL')
         ? null
         : collaborator;
+
     if (selectedCollaborator == null) {
-      articles = List.from(_allArticles);
+      articles.clear();
+      _allArticles.clear();
       notifyListeners();
       return;
     }
 
-    final colName = selectedCollaborator!.nombreCompleto.toLowerCase().trim();
-    final colCedula = selectedCollaborator!.cedula.toLowerCase().trim();
+    final warehouseCode = selectedWarehouse?.codigoBodega;
+    final companyCode = selectedCompany?.codigo;
 
-    final filtered = _allArticles.where((a) {
-      final resp = a.responsable?.toLowerCase().trim() ?? '';
-      if (resp.isEmpty) return false;
-      return resp == colName ||
-          resp.contains(colName) ||
-          colName.contains(resp) ||
-          (colCedula.isNotEmpty && resp.contains(colCedula));
-    }).toList();
-
-    if (filtered.isNotEmpty || _transferRepository == null) {
-      articles = filtered;
+    // Validación: la consulta de activos requiere empresa y bodega válidas
+    if (_transferRepository == null ||
+        warehouseCode == null ||
+        warehouseCode.trim().isEmpty ||
+        warehouseCode == 'ALL' ||
+        companyCode == null ||
+        companyCode.trim().isEmpty) {
+      articles.clear();
+      _allArticles.clear();
       notifyListeners();
       return;
     }
 
-    // Si no hay coincidencias locales y se dispone del repositorio de traspasos,
-    // consultar activos asignados al colaborador por su cédula
     _setState(InventoryState.loading);
     try {
       final remoteAssets = await _transferRepository.getAssetsByPerson(
         persona: selectedCollaborator!.cedula,
-        empresa: selectedCompany?.codigo,
+        bodega: warehouseCode.trim(),
+        empresa: companyCode,
       );
 
       articles = remoteAssets.map((asset) {
-        final existing = _allArticles.where((a) {
-          if (a.codigoActivo.trim().toLowerCase() !=
-              asset.articulo.trim().toLowerCase()) {
-            return false;
-          }
-          final aPlaca = a.placa.trim().toLowerCase();
-          final assetPlaca = asset.placa?.trim().toLowerCase();
-          final hasA = aPlaca.isNotEmpty && aPlaca != 'n/a';
-          final hasAsset =
-              assetPlaca != null && assetPlaca.isNotEmpty && assetPlaca != 'n/a';
-          if (hasA || hasAsset) {
-            return aPlaca == assetPlaca;
-          }
-          return true;
-        }).firstOrNull;
-
-        if (existing != null) return existing;
         return ArticleModel(
           codigoActivo: asset.articulo,
           nombre: asset.nombre,
           placa: asset.placa ?? '',
-          bodega: selectedWarehouse?.codigoBodega ?? '',
+          bodega: warehouseCode.trim(),
           responsable: selectedCollaborator!.nombreCompleto,
         );
       }).toList();
+      _allArticles = List.from(articles);
       _setState(InventoryState.success);
     } catch (e) {
-      articles = filtered;
-      _setState(InventoryState.success);
+      articles.clear();
+      _allArticles.clear();
+      if (e is DioException &&
+          (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+        _setError('Su sesión ha expirado o no tiene permisos. Por favor, vuelva a iniciar sesión.');
+      } else {
+        _setState(InventoryState.success);
+      }
     }
   }
 
-  /// Fallback: extrae colaboradores únicos a partir de los artículos existentes.
-  void _extractCollaboratorsFromArticles() {
-    final Map<String, TransferPersonModel> map = {};
-    for (final a in _allArticles) {
-      final resp = a.responsable?.trim();
-      if (resp != null &&
-          resp.isNotEmpty &&
-          resp.toUpperCase() != 'N/A' &&
-          !map.containsKey(resp)) {
-        map[resp] = TransferPersonModel(
-          cedula: resp,
-          nombre: resp,
-          apellido: '',
-        );
-      }
-    }
-    collaborators = map.values.toList();
-  }
-  
-  // Refresca la lista de artículos manualmente
+  // Refresca la lista de artículos del colaborador seleccionado manualmente
   Future<void> refreshArticles() async {
-    if (selectedWarehouse != null && selectedCompany != null) {
-      final currentCollaborator = selectedCollaborator;
-      await _loadArticles(selectedWarehouse!.codigoBodega, selectedCompany!.codigo);
-      if (_state != InventoryState.error &&
-          currentCollaborator != null &&
-          currentCollaborator.cedula != 'ALL') {
-        await selectCollaborator(currentCollaborator);
-      }
+    if (selectedWarehouse != null &&
+        selectedCompany != null &&
+        selectedCollaborator != null &&
+        selectedCollaborator!.cedula != 'ALL') {
+      await selectCollaborator(selectedCollaborator);
     }
   }
 

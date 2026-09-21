@@ -3,7 +3,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:signature/signature.dart';
+import '../providers/auth_provider.dart';
 import '../providers/requisition_signature_provider.dart';
+import '../utils/app_logger.dart';
 import '../utils/dialog_utils.dart';
 
 /// Pantalla interactiva de captura de firma manuscrita digital para Requisiciones.
@@ -18,6 +20,7 @@ class RequisitionSignatureCaptureScreen extends StatefulWidget {
   final String tipo; // 'SA' o 'RE'
   final String? personaDefault;
   final String? nombreFirmanteDefault;
+  final String? solicitanteTercero;
 
   const RequisitionSignatureCaptureScreen({
     super.key,
@@ -27,6 +30,7 @@ class RequisitionSignatureCaptureScreen extends StatefulWidget {
     required this.tipo,
     this.personaDefault,
     this.nombreFirmanteDefault,
+    this.solicitanteTercero,
   });
 
   @override
@@ -108,13 +112,43 @@ class _RequisitionSignatureCaptureScreenState
     final String base64Signature = base64Encode(bytes);
     if (!mounted) return;
 
+    final String cedula = _cedulaController.text.trim();
+    final String formattedFirma = base64Signature.startsWith('data:image')
+        ? base64Signature
+        : 'data:image/png;base64,$base64Signature';
+
+    final payloadMap = {
+      'empresa': widget.empresa,
+      'tipoDocumento': widget.tipoDocumento,
+      'numero': widget.numero.toString(),
+      'tipo': widget.tipo,
+      'persona': cedula,
+      'firma': formattedFirma,
+    };
+
+    AppLogger.i('================ PETICIÓN REGISTRAR FIRMA ================');
+    AppLogger.i('Endpoint: PUT /api/v1/requisiciones/${widget.empresa}/${widget.tipoDocumento}/${widget.numero}/firmar');
+    AppLogger.i('Payload (Objeto enviado al backend):');
+    AppLogger.i('{\n'
+        '  "tipo": "${payloadMap['tipo']}",\n'
+        '  "persona": "${payloadMap['persona']}",\n'
+        '  "firma": "${formattedFirma.length > 80 ? '${formattedFirma.substring(0, 80)}... [Longitud total: ${formattedFirma.length} chars]' : formattedFirma}"\n'
+        '}');
+    AppLogger.i('JSON completo serializado (RequisicionFirmaRequest):');
+    debugPrint(jsonEncode({
+      'tipo': widget.tipo,
+      'persona': cedula,
+      'firma': formattedFirma,
+    }));
+    AppLogger.i('==========================================================');
+
     final provider = context.read<RequisitionSignatureProvider>();
     final success = await provider.submitSignature(
       empresa: widget.empresa,
       tipoDocumento: widget.tipoDocumento,
       numero: widget.numero,
       tipo: widget.tipo,
-      persona: _cedulaController.text.trim(),
+      persona: cedula,
       firmaBase64: base64Signature,
     );
 
@@ -150,7 +184,10 @@ class _RequisitionSignatureCaptureScreenState
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<RequisitionSignatureProvider>();
+    final auth = context.watch<AuthProvider>();
     final isBusy = provider.isSubmittingSignature;
+
+    final isRecibo = widget.tipo.toUpperCase() == 'RE';
 
     return Scaffold(
       appBar: AppBar(
@@ -238,6 +275,74 @@ class _RequisitionSignatureCaptureScreenState
                               ),
                             ),
                           ],
+                          // Reflejo visual de titularidad o rol de despacho
+                          if (isRecibo) ...[
+                            Container(
+                              margin: const EdgeInsets.only(top: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.teal.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.verified_user_rounded,
+                                    color: Colors.teal.shade700,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Usted está firmando como receptor titular de esta requisición (${auth.currentUsername ?? auth.currentCedula}).',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.teal.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else if (_isDispatcher) ...[
+                            Container(
+                              margin: const EdgeInsets.only(top: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.blue.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.badge_outlined,
+                                    color: Colors.blue.shade700,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Usted está firmando como despachador de almacén (${auth.currentUsername ?? auth.currentCedula}).',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.blue.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -245,14 +350,22 @@ class _RequisitionSignatureCaptureScreenState
 
                   const SizedBox(height: 16),
 
-                  // Campo de Identificación / Cédula del Firmante
+                  // Campo de Identificación / Cédula del Firmante (Fijado a sesión)
                   TextFormField(
                     controller: _cedulaController,
+                    readOnly: true,
                     keyboardType: TextInputType.text,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                     decoration: InputDecoration(
                       labelText: 'Cédula / Identificación del Firmante *',
-                      hintText: 'Ingrese o confirme el número de documento',
+                      hintText: 'Número de documento de la sesión',
+                      helperText: isRecibo
+                          ? 'Cédula del titular solicitante y receptor en sesión'
+                          : 'Cédula del despachador de almacén en sesión',
                       prefixIcon: const Icon(Icons.badge_outlined, size: 20),
+                      suffixIcon: const Icon(Icons.lock_outline, size: 18, color: Colors.grey),
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),

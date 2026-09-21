@@ -97,9 +97,10 @@ class FakeTransferRepository implements TransferRepository {
   @override
   Future<List<TransferAssetModel>> getAssetsByPerson({
     required String persona,
+    required String bodega,
     String? empresa,
   }) async {
-    calls.add('getAssetsByPerson:$persona:$empresa');
+    calls.add('getAssetsByPerson:$persona:$bodega:$empresa');
     return [];
   }
 }

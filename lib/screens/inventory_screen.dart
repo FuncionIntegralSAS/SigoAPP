@@ -387,8 +387,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   const Divider(),
                   Expanded(
                     child: provider.articles.isEmpty
-                        ? const Center(
-                            child: Text('No hay activos para esta bodega'),
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Text(
+                                provider.selectedCompany == null
+                                    ? 'Seleccione una empresa'
+                                    : (provider.selectedWarehouse == null ||
+                                            provider.selectedWarehouse!.codigoBodega == 'ALL'
+                                        ? 'Seleccione una bodega específica'
+                                        : (provider.selectedCollaborator == null
+                                            ? 'Seleccione un colaborador para consultar sus activos'
+                                            : 'No se encontraron activos asignados al colaborador en esta bodega')),
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
                           )
                         : ListView.builder(
                             itemCount: provider.articles.length,
@@ -512,7 +529,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ? 'Seleccione una bodega específica'
             : (provider.isLoadingCollaborators
                 ? 'Cargando colaboradores...'
-                : 'Todos los colaboradores'),
+                : 'Seleccione un colaborador'),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         suffixIcon: provider.isLoadingCollaborators
             ? const SizedBox(

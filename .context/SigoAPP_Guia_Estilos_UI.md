@@ -466,6 +466,8 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
 * `RequisitionsScreen` (`lib/screens/requisitions_screen.dart`)
 * `ApprovalTabView` (`lib/screens/tabs/approval_tab_view.dart`)
 * `DeliveryTabView` (`lib/screens/tabs/delivery_tab_view.dart`)
+* `RequisitionSignatureScreen` (`lib/screens/requisition_signature_screen.dart`)
+* `RequisitionSignatureCaptureScreen` (`lib/screens/requisition_signature_capture_screen.dart`)
 * `RequisitionFilterHeader` (`lib/widgets/requisition_filter_header.dart`)
 * `RequisitionActionCard` (`lib/widgets/requisition_action_card.dart`)
 
@@ -504,6 +506,29 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
    * Pestaña Aprobación: ícono `Icons.check_circle_outline` y texto `"Procesar Selección (N)"`.
    * Pestaña Entrega: ícono `Icons.local_shipping_outlined` y texto `"Registrar Entrega (N)"`.
    * Notificación mediante `SnackBar` institucional y recarga automática de bandeja tras confirmación del backend.
+6. **Bandeja de Firma de Requisiciones Entregadas y Cierre ERP (`RequisitionSignatureScreen`):**
+   * **Control de Acceso:** Protegida de forma exclusiva por el permiso **`areq`** (`AppPermission.requisiciones`), tanto en el acceso desde el Dashboard como en la defensa en profundidad de la pantalla con vista informativa de acceso restringido.
+   * **Tarjeta de Requisición Entregada (`_RequisitionSignatureCard`):**
+     * Franja lateral de 5px antichoques (`Stack` + `Positioned(left: 0, top: 0, bottom: 0, width: 5)` con `clipBehavior: Clip.antiAlias`):
+       - **Azul (`Colors.blue.shade700`):** Para estado `"FIRMAS PENDIENTES"` (`!bothSigned`).
+       - **Verde (`Colors.green.shade700`):** Para estado `"LISTA PARA ERP"` (`bothSigned`).
+     * Badges semafóricos de firma (Salida SA y Recibo RE):
+       - *Registrada:* Verde (`Colors.green.shade50`, borde `green.shade200`, texto `green.shade800`) indicando la cédula del firmante.
+       - *Pendiente:* Naranja (`Colors.orange.shade50`, borde `orange.shade200`, texto `orange.shade800`).
+     * Acciones Operativas con layout responsivo `Wrap` e Inferencia de Roles:
+       - **Inferencia Automática:** El colaborador nunca escoge manualmente la firma; la interfaz determina `isReceiver` y `isDispatcher` a partir de `auth.currentCedula`.
+       - Botón condicional único *"Firmar Salida (SA)"* (`Colors.blue.shade700`, `r: 8`): Visible únicamente si el usuario es despachador de bodega (`isDispatcher`: coincidencia con `detail.responsableBodega` o fallback por permiso `aein`) y falta la firma SA.
+       - Botón condicional único *"Firmar Recibo (RE)"* (`Colors.teal.shade700`, `r: 8`): Visible únicamente si el usuario es el receptor titular (`auth.currentCedula == detail.tercero`) o el responsable de la bodega destino (`auth.currentCedula == detail.responsableBodegaDestino`), y falta la firma RE.
+       - Contenedor de espera de co-firmante (`Colors.blueGrey.shade50`, borde `blueGrey.shade200`, ícono `Icons.hourglass_top_rounded`): Informa que la firma del usuario ya fue registrada y se espera la contraparte.
+       - Contenedor informativo de usuario sin rol (`Colors.grey.shade100`, borde `grey.shade300`, ícono `Icons.lock_outline`): Despliega *"Usted no es responsable de la bodega ni solicitante de este documento"*, impidiendo cualquier acción no autorizada.
+       - Botón destacado *"Registrar Salida ERP"* (`Colors.green.shade700`, `r: 8`): Visible cuando ambas firmas están completas (`bothSigned`) para usuarios con permisos de bodega (`aein` / `areq`). Al presionar, despliega diálogo modal advirtiendo el punto de no retorno e irreversibilidad de la transacción.
+7. **Captura Interactiva de Firma Digital (`RequisitionSignatureCaptureScreen`):**
+   * **Identificación y Banners Informativos de Rol:**
+     - **Firma Recibo (RE):** Despliega banner verde agua (`Colors.teal.shade50`, borde `teal.shade300`) con `Icons.verified_user_rounded` certificando: *"Usted está firmando como receptor titular de esta requisición (<usuario>)"*.
+     - **Firma Salida (SA):** Despliega banner azul (`Colors.blue.shade50`, borde `blue.shade300`) con `Icons.badge_outlined` certificando: *"Usted está firmando como despachador de almacén (<usuario>)"*.
+   * **Campo de Cédula (Anti-Suplantación):** `TextFormField` bloqueado con `readOnly: true`, fondo atenuado (`fillColor: Colors.grey.shade100`), ícono de candado `Icons.lock_outline` y `helperText` explicativo, garantizando que la firma manuscrita quede vinculada de forma inalterable al usuario en sesión.
+   * **Área de Lienzo (Canvas):** Widget `Signature` (alto 240px, fondo blanco, trazo negro ancho 3) con franja inferior que incluye botón de limpieza *"Limpiar trazo"*.
+   * **Botón de Guardado:** `ElevatedButton.icon` en verde (`Colors.green.shade700`, padding vertical 14, `r: 8`) con bloqueo modal (`CircularProgressIndicator`) durante el registro asíncrono.
 
 ---
 
@@ -561,5 +586,6 @@ Para revisar las implementaciones canónicas vigentes en el código fuente:
 | **Inventario Principal** | `lib/screens/inventory_screen.dart` | Filtro cascada, barra de búsqueda, franja de resumen, modo selección con barra inferior. |
 | **Dashboard Modular** | `lib/screens/dashboard_screen.dart` | Grid dinámico con permisos, badges de alerta de trámites pendientes, confirmación `PopScope`. |
 | **Entrega y Firmas** | `lib/screens/transfer_delivery_screen.dart`, `lib/screens/signature_capture_screen.dart` | Checklist físico, canvas de firma con guía horizontal punteada y botones de guardado. |
+| **Firma de Requisiciones** | `lib/screens/requisition_signature_screen.dart`, `lib/screens/requisition_signature_capture_screen.dart` | Franja de 5px (azul/verde), badges semafóricos, banners de titularidad, botones en Wrap y modal de punto de no retorno. |
 | **Administración Conteo** | `lib/screens/physical_count_screen.dart` | TabBar modular por permisos, selectores `DropdownTemplates`, semáforo de cierre. |
 | **Conteo en Piso** | `lib/screens/active_count_screen.dart` | Cabecera fija de sesión, campo para lector láser, feedback visual instantáneo (flash). |

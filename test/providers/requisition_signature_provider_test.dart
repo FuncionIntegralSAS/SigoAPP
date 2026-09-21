@@ -79,6 +79,7 @@ class MockRequisitionRepository implements RequisitionRepository {
       estado: 'en',
       fecha: '2026-09-18',
       bodega: 'BOD-CENTRAL',
+      tercero: '1098765432',
       lineas: const [
         RequisicionDetalleLinea(
           secuencia: 1,
@@ -210,6 +211,7 @@ void main() {
       expect(detail, isNotNull);
       expect(detail!.lineas.length, 1);
       expect(detail.firmas.length, 2);
+      expect(detail.tercero, '1098765432');
 
       // Segunda llamada sin force: true no debe incrementar getDetailCallCount
       await provider.loadDetail('01', 'RS', '10543');
@@ -220,26 +222,50 @@ void main() {
       expect(repository.getDetailCallCount, 2);
     });
 
-    test('submitSignature envía request con prefijo data:image y refresca el detalle', () async {
+    test('submitSignature envía request de salida SA con prefijo data:image y refresca el detalle', () async {
       final success = await provider.submitSignature(
         empresa: '01',
         tipoDocumento: 'RS',
         numero: '10543',
         tipo: 'SA',
-        persona: '1098765432',
+        persona: '987654321',
         firmaBase64: 'iVBORw0KGgoAAAANSUhEUgAA...',
       );
 
       expect(success, isTrue);
       expect(repository.signRequisitionCallCount, 1);
       expect(repository.lastFirmaRequest?.tipo, 'SA');
-      expect(repository.lastFirmaRequest?.persona, '1098765432');
+      expect(repository.lastFirmaRequest?.persona, '987654321');
       expect(
         repository.lastFirmaRequest?.firma,
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...',
       );
       // Debe haber refrescado el detalle
       expect(repository.getDetailCallCount, 1);
+    });
+
+    test('submitSignature para recibo RE precarga y envía la cédula del solicitante tercero', () async {
+      await provider.loadDetail('01', 'RS', '10543');
+      final detail = provider.getDetail('01', 'RS', '10543');
+      expect(detail?.tercero, '1098765432');
+
+      final success = await provider.submitSignature(
+        empresa: '01',
+        tipoDocumento: 'RS',
+        numero: '10543',
+        tipo: 'RE',
+        persona: detail!.tercero!,
+        firmaBase64: 'data:image/png;base64,re_signature_bytes',
+      );
+
+      expect(success, isTrue);
+      expect(repository.signRequisitionCallCount, 1);
+      expect(repository.lastFirmaRequest?.tipo, 'RE');
+      expect(repository.lastFirmaRequest?.persona, '1098765432');
+      expect(
+        repository.lastFirmaRequest?.firma,
+        'data:image/png;base64,re_signature_bytes',
+      );
     });
 
     test('submitSignature maneja errores sanitizando mensaje tras el pipe', () async {

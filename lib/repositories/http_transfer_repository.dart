@@ -252,14 +252,22 @@ class HttpTransferRepository implements TransferRepository {
     try {
       final sourceQuery = transfer.codigoFuente;
       final destQuery = transfer.codigoDestino;
+      final bodegaActual = transfer.bodegaActual.trim();
+
+      final shouldFetchAssets = bodegaActual.isNotEmpty &&
+          bodegaActual != 'BOD-ORIGEN' &&
+          bodegaActual != 'Sin bodega';
 
       final results = await Future.wait([
         _resolvePersonName(sourceQuery, transfer.responsableActual),
         _resolvePersonName(destQuery, transfer.responsablePropuesto),
-        getAssetsByPerson(
-          persona: sourceQuery,
-          empresa: transfer.empresaDocumento,
-        ).catchError((_) => <TransferAssetModel>[]),
+        shouldFetchAssets
+            ? getAssetsByPerson(
+                persona: sourceQuery,
+                bodega: bodegaActual,
+                empresa: transfer.empresaDocumento,
+              ).catchError((_) => <TransferAssetModel>[])
+            : Future.value(<TransferAssetModel>[]),
       ]);
 
       final String fuente = results[0] as String;
@@ -487,11 +495,15 @@ class HttpTransferRepository implements TransferRepository {
   @override
   Future<List<TransferAssetModel>> getAssetsByPerson({
     required String persona,
+    required String bodega,
     String? empresa,
   }) async {
     const endpoint = 'GET /api/v1/traspasos/activos';
     try {
-      final Map<String, dynamic> qParams = {'persona': persona};
+      final Map<String, dynamic> qParams = {
+        'persona': persona,
+        'bodega': bodega,
+      };
       if (empresa != null && empresa.isNotEmpty) {
         qParams['empresa'] = empresa;
       }

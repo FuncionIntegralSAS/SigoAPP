@@ -163,10 +163,7 @@ class DashboardScreen extends StatelessWidget {
                       },
                     ),
 
-                  if (auth.permisos.hasAnyPermission([
-                    AppPermission.requisiciones,
-                    AppPermission.entregaInventario,
-                  ]))
+                  if (auth.permisos.hasPermission(AppPermission.requisiciones))
                     _DashboardItem(
                       icon: Icons.draw_outlined,
                       title: 'Firma de Requisiciones',

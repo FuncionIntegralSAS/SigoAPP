@@ -36,9 +36,9 @@ Cada valor del Enum se asocia con el código de "forma":
 - **asin**: Sincronizar Conteo (Pestaña o botón interno)
 - **accf**: Cerrar Conteo Físico (Pestaña "Cierre" en `PhysicalCountScreen`)
 
-### 3. Aprobación de Trámites
-- **areq**: Requisiciones (`RequisitionsScreen`)
-- **aein**: Entrega Inventario (Asociado internamente o futuro módulo)
+### 3. Aprobación de Trámites y Requisiciones
+- **areq**: Requisiciones (`RequisitionsScreen`) y Firma de Requisiciones (`RequisitionSignatureScreen`, `RequisitionSignatureCaptureScreen`)
+- **aein**: Entrega / Recepción de Inventario (`TransferDeliveryScreen`)
 
 ---
 
@@ -91,7 +91,9 @@ Esto garantiza que los contadores físicos permanezcan aislados en su pantalla o
 
 ### Configuración del `DashboardScreen`
 Se mantiene un `GridView` plano. Cada acceso principal comprueba si el usuario tiene permiso consultando la lista a través de la extensión: `auth.permisos.hasPermission(AppPermission.x)` (o `hasAnyPermission` para módulos con submódulos agrupados) antes de renderizar el `_DashboardItem`.
-- **Entrega / Recepción:** Opción disponible para todo usuario autenticado sin requerir un permiso RBAC específico. Su vista interna filtra los traspasos pendientes según la cédula (`currentCedula`) o usuario (`currentUsername`) del colaborador asignado.
+- **Requisiciones:** Protegida por el permiso **`areq`** (`AppPermission.requisiciones`), dando acceso a la aprobación y entrega de líneas (`RequisitionsScreen`).
+- **Firma de Requisiciones:** Protegida de forma exclusiva por el permiso **`areq`** (`AppPermission.requisiciones`), desplegando la bandeja de requisiciones entregadas pendientes de firma manuscrita y cierre de salida ERP (`RequisitionSignatureScreen`).
+- **Entrega / Recepción:** Protegida por el permiso **`aein`** (`AppPermission.entregaInventario`). Su vista interna filtra los traspasos pendientes según la cédula (`currentCedula`) o usuario (`currentUsername`) del colaborador asignado.
 - **Módulo Principal:** Es independiente del backend. Solo se muestra a desarrolladores cuando `!kReleaseMode`.
 
 ### Configuración de Sub-Módulos (`PhysicalCountScreen`)

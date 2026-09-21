@@ -333,6 +333,7 @@ void main() {
 
       final assets = await repository.getAssetsByPerson(
         persona: 'PI26055',
+        bodega: '0101',
         empresa: '01',
       );
 
@@ -340,6 +341,7 @@ void main() {
       expect(capturedOptions!.path, '/api/v1/traspasos/activos');
       expect(capturedOptions!.method, 'GET');
       expect(capturedOptions!.queryParameters['persona'], 'PI26055');
+      expect(capturedOptions!.queryParameters['bodega'], '0101');
       expect(capturedOptions!.queryParameters['empresa'], '01');
 
       expect(assets.length, 2);

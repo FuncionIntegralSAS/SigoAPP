@@ -66,12 +66,28 @@ class TransferDeliveryProvider extends ChangeNotifier {
         .where((p) => p.isNotEmpty && p != 'Sin responsable')
         .toSet();
 
-    await Future.wait(uniquePersons.map((person) async {
-      await Future.wait([
-        _resolvePersonName(person),
-        _resolvePersonAssets(person),
-      ]);
-    }));
+    final pairsToFetch = <(String, String, String?)>{};
+    for (final t in list) {
+      final src = t.codigoFuente.trim();
+      final bod = t.bodegaActual.trim();
+      final emp = t.empresaDocumento;
+      if (src.isNotEmpty &&
+          src != 'Sin responsable' &&
+          bod.isNotEmpty &&
+          bod != 'BOD-ORIGEN' &&
+          bod != 'Sin bodega') {
+        pairsToFetch.add((src, bod, emp));
+      }
+    }
+
+    await Future.wait([
+      ...uniquePersons.map((person) => _resolvePersonName(person)),
+      ...pairsToFetch.map((pair) => _resolvePersonAssets(
+            pair.$1,
+            bodega: pair.$2,
+            empresa: pair.$3,
+          )),
+    ]);
 
     final enrichedList = <TransferRequest>[];
     for (final transfer in list) {
@@ -83,7 +99,9 @@ class TransferDeliveryProvider extends ChangeNotifier {
       final resolvedDestino =
           _personsNameCache[destCode] ?? transfer.responsablePropuesto;
 
-      final sourceAssets = _assetsByPersonCache[srcCode] ?? [];
+      final sourceAssets = _assetsByPersonCache['$srcCode:${transfer.bodegaActual.trim()}'] ??
+          _assetsByPersonCache[srcCode] ??
+          [];
       final enrichedArticulos = transfer.articulos.map((art) {
         if (art.nombre != null && art.nombre!.trim().isNotEmpty) {
           return art;
@@ -158,20 +176,38 @@ class TransferDeliveryProvider extends ChangeNotifier {
     return null;
   }
 
-  Future<List<TransferAssetModel>> _resolvePersonAssets(String personQuery) async {
+  Future<List<TransferAssetModel>> _resolvePersonAssets(
+    String personQuery, {
+    String? bodega,
+    String? empresa,
+  }) async {
     final clean = personQuery.trim();
     if (clean.isEmpty || clean == 'Sin responsable') return [];
+    if (bodega == null ||
+        bodega.trim().isEmpty ||
+        bodega == 'BOD-ORIGEN' ||
+        bodega == 'Sin bodega') {
+      return [];
+    }
 
-    if (_assetsByPersonCache.containsKey(clean)) {
-      return _assetsByPersonCache[clean]!;
+    final cleanBodega = bodega.trim();
+    final cacheKey = '$clean:$cleanBodega';
+
+    if (_assetsByPersonCache.containsKey(cacheKey)) {
+      return _assetsByPersonCache[cacheKey]!;
     }
 
     try {
-      final assets = await repository.getAssetsByPerson(persona: clean);
-      _assetsByPersonCache[clean] = assets;
+      final assets = await repository.getAssetsByPerson(
+        persona: clean,
+        bodega: cleanBodega,
+        empresa: empresa,
+      );
+      _assetsByPersonCache[cacheKey] = assets;
+      _assetsByPersonCache[clean] ??= assets;
       return assets;
     } catch (_) {
-      _assetsByPersonCache[clean] = [];
+      _assetsByPersonCache[cacheKey] = [];
       return [];
     }
   }
