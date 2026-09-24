@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'notification_service.dart';
+import 'package:sigo_app/services/notification_service.dart';
 
 class InAppNotificationService implements NotificationService {
   final GlobalKey<ScaffoldMessengerState> messengerKey;

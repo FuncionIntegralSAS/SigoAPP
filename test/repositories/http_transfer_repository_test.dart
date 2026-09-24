@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sigo_app/exceptions/transfer_business_exception.dart';
-import 'package:sigo_app/models/transfer_create_request.dart';
-import 'package:sigo_app/models/transfer_request.dart';
-import 'package:sigo_app/repositories/http_transfer_repository.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_create_request.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_request.dart';
+import 'package:sigo_app/modules/inventory/repositories/http_transfer_repository.dart';
 
 class MockHttpClientAdapter implements HttpClientAdapter {
   ResponseBody Function(RequestOptions options)? handler;

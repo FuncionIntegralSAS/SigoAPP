@@ -1,9 +1,9 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/auth_model.dart';
-import 'package:sigo_app/models/physical_count_model.dart';
-import 'package:sigo_app/providers/auth_provider.dart';
-import 'package:sigo_app/repositories/auth_repository.dart';
+import 'package:sigo_app/modules/auth/models/auth_model.dart';
+import 'package:sigo_app/modules/physical_count/models/physical_count_model.dart';
+import 'package:sigo_app/modules/auth/providers/auth_provider.dart';
+import 'package:sigo_app/modules/auth/repositories/auth_repository.dart';
 
 class FakeAuthRepository implements AuthRepository {
   AuthResponse? loginResponse;

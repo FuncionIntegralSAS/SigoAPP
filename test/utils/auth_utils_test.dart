@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:sigo_app/providers/auth_provider.dart';
-import 'package:sigo_app/repositories/auth_repository.dart';
+import 'package:sigo_app/modules/auth/providers/auth_provider.dart';
+import 'package:sigo_app/modules/auth/repositories/auth_repository.dart';
 import 'package:sigo_app/utils/app_config.dart';
 import 'package:sigo_app/utils/auth_utils.dart';
 

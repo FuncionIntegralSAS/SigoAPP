@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sigo_app/exceptions/catalog_business_exception.dart';
-import 'package:sigo_app/repositories/http_catalog_repository.dart';
+import 'package:sigo_app/modules/inventory/repositories/http_catalog_repository.dart';
 
 class MockHttpClientAdapter implements HttpClientAdapter {
   ResponseBody Function(RequestOptions options)? handler;

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/auth_model.dart';
+import 'package:sigo_app/modules/auth/models/auth_model.dart';
 
 void main() {
   group('AuthResponse Tests', () {

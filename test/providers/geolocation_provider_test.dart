@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/geolocation_model.dart';
-import 'package:sigo_app/providers/geolocation_provider.dart';
-import 'package:sigo_app/repositories/geolocation_repository.dart';
+import 'package:sigo_app/modules/inventory/models/geolocation_model.dart';
+import 'package:sigo_app/modules/inventory/providers/geolocation_provider.dart';
+import 'package:sigo_app/modules/inventory/repositories/geolocation_repository.dart';
 import 'package:sigo_app/exceptions/geolocation_business_exception.dart';
 
 class FakeGeolocationRepository implements GeolocationRepository {

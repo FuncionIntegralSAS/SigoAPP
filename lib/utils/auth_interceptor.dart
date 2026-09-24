@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'app_logger.dart';
-import 'auth_utils.dart';
+import 'package:sigo_app/utils/app_logger.dart';
+import 'package:sigo_app/utils/auth_utils.dart';
 
 /// Interceptor centralizado de autenticación para [Dio].
 ///

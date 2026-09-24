@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/company_model.dart';
+import 'package:sigo_app/shared/models/company_model.dart';
 
 void main() {
   group('CompanyModel', () {

@@ -8,18 +8,18 @@ Este documento describe las clases y métodos utilitarios de la carpeta `lib/uti
   - `showErrorDialog`: Modal de error para el usuario final con redacción concisa y amigable. Si el mensaje recibido contiene volcados de base de datos o stack traces, invoca automáticamente `extractFriendlyMessage` para presentar únicamente la causa funcional en el cuerpo principal, y resguarda la traza técnica completa (`technicalDetails`, código HTTP, endpoint y botón de copiado al portapapeles) dentro del acordeón expandible para desarrollador, garantizando adaptabilidad responsiva sin desbordamientos visuales.
   - `extractFriendlyMessage`: Método utilitario que procesa cadenas crudas de error provenientes de Oracle PL/SQL (`ORA-20xxx`), extrayendo el mensaje de negocio tras pipes (`121|...`), limpiando prefijos de JDBC/Spring Boot (`CallableStatement`, `HikariProxy`, etc.) y retornando una descripción clara para el usuario final.
 - **Lugares de uso**: 
-  - `lib/screens/tabs/physical_count_closing_tab.dart`
-  - `lib/widgets/transfer_form_widget.dart`
-  - `lib/screens/transfer_delivery_screen.dart`
-  - `lib/screens/transfer_approval_screen.dart`
-  - `lib/repositories/http_transfer_repository.dart`
-  - `lib/providers/transfer_delivery_provider.dart`
+  - `lib/modules/physical_count/tabs/physical_count_closing_tab.dart`
+  - `lib/modules/inventory/widgets/transfer_form_widget.dart`
+  - `lib/modules/inventory/screens/transfer_delivery_screen.dart`
+  - `lib/modules/inventory/screens/transfer_approval_screen.dart`
+  - `lib/modules/inventory/repositories/http_transfer_repository.dart`
+  - `lib/modules/inventory/providers/transfer_delivery_provider.dart`
 
 ## `app_config.dart`
 - **Propósito**: Maneja la configuración centralizada de la aplicación (clase `AppConfig`). Se encarga de proveer una instancia única de `Dio` pre-configurada (URL base, *timeouts*, interceptores como `AuthInterceptor`, `MockHttpInterceptor` y `JsonInterceptor`), gestionar la persistencia dinámica del dominio mediante `flutter_secure_storage`, y proveer las llaves globales desacopladas `AppConfig.navigatorKey` y `AppConfig.scaffoldMessengerKey` para navegación y notificaciones sin requerir `BuildContext`.
 - **Lugares de uso**:
   - `lib/main.dart`
-  - `lib/screens/domain_scanner_screen.dart`
+  - `lib/modules/auth/screens/domain_scanner_screen.dart`
   - `lib/utils/auth_utils.dart`
 
 ## `app_logger.dart`
@@ -30,20 +30,20 @@ Este documento describe las clases y métodos utilitarios de la carpeta `lib/uti
   - `lib/utils/auth_interceptor.dart`
   - `lib/utils/mock_http_interceptor.dart`
   - `lib/utils/auth_utils.dart`
-  - `lib/repositories/http_physical_count_repository.dart`
+  - `lib/modules/physical_count/repositories/http_physical_count_repository.dart`
 
 ## `article_qr_parser.dart`
 - **Propósito**: Contiene el método estático `fromQr` que recibe una cadena leída desde un código QR (con el formato clave:valor separado por `|`) y la decodifica estructurándola en un objeto de tipo `ArticleModel`.
 - **Lugares de uso**:
-  - `lib/screens/scanner_screen.dart`
+  - `lib/modules/debug/screens/scanner_screen.dart`
 
 ## `dropdown_template.dart`
 - **Propósito**: Proporciona plantillas de configuración (como el método `DropdownTemplates.searchData`) para la construcción estandarizada de menús desplegables con barra de búsqueda interna, utilizando el paquete `dropdown_button2`. Es la base para los widgets canónicos transversales `CompanyDropdownField` y `WarehouseDropdownField`.
 - **Lugares de uso**: 
-  - `lib/widgets/company_dropdown_field.dart`
-  - `lib/widgets/warehouse_dropdown_field.dart`
-  - `lib/screens/tabs/physical_count_opening_tab.dart`
-  - `lib/screens/tabs/physical_count_closing_tab.dart`
+  - `lib/shared/widgets/company_dropdown_field.dart`
+  - `lib/shared/widgets/warehouse_dropdown_field.dart`
+  - `lib/modules/physical_count/tabs/physical_count_opening_tab.dart`
+  - `lib/modules/physical_count/tabs/physical_count_closing_tab.dart`
 
 ## `json_interceptor.dart`
 - **Propósito**: Interceptor de `Dio` diseñado para capturar respuestas del backend que vienen en formato de texto o con un `Content-Type` incorrecto (por ejemplo `text/plain`), pero que en realidad son un JSON válido. Este interceptor hace el _parsing_ forzado para evitar errores tipo `String is not a subtype of Map/List`.
@@ -68,9 +68,9 @@ Este documento describe las clases y métodos utilitarios de la carpeta `lib/uti
   - `resetSemaphore()`: Método `@visibleForTesting` para restablecer explícitamente el semáforo a `false` en pruebas unitarias o recuperaciones controladas.
 - **Lugares de uso**:
   - `lib/utils/auth_interceptor.dart`
-  - `lib/screens/inventory_screen.dart`
-  - `lib/screens/dashboard_screen.dart`
-  - `lib/screens/account_screen.dart`
-  - `lib/screens/home_screen.dart`
+  - `lib/modules/inventory/screens/inventory_screen.dart`
+  - `lib/modules/dashboard/screens/dashboard_screen.dart`
+  - `lib/modules/debug/screens/account_screen.dart`
+  - `lib/modules/debug/screens/home_screen.dart`
 
 

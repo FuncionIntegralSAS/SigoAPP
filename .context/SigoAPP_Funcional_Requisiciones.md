@@ -21,7 +21,7 @@ El Módulo de Requisiciones gestiona el flujo operativo de despacho de insumos, 
 3. **Identificador de Línea:** Dentro de una requisición, cada artículo se identifica de forma única por:
    $$\text{Línea} = (\text{articulo}, \text{bodega}, \text{secuencia})$$
    Un mismo artículo puede figurar en más de una línea si proviene de distinta bodega o secuencia.
-4. **Punto de No Retorno:** El movimiento de inventario en el ERP (`DOCUINVE` y `MOVIINVE`) se genera exclusivamente al invocar el endpoint de **Registrar Salida**. Esta acción es definitiva y requiere obligatoriamente que ambas firmas estén capturadas.
+4. **Punto de No Retorno:** El movimiento de inventario en el ERP (`DOCUINVE` y `MOVIINVE`) se genera exclusivamente al invocar la acción de **Registrar Salida**. Esta acción es definitiva y requiere obligatoriamente que ambas firmas estén capturadas (`bothSigned == true`). Su ejecución está restringida de forma estricta al responsable titular de la bodega fuente (`responsableBodega`).
 5. **Arquitectura Master-Detail y Consulta Protegida (Fail-Fast / Lazy Fetch):**
    - La tabla histórica `MOVIRESU` supera los 100.000 registros. Consultar la API sin fecha (`desde`) es una operación de alto costo que la aplicación móvil no dispara automáticamente en el arranque.
    - Al abrir la pantalla de Requisiciones, la app móvil únicamente carga el catálogo de empresas (`GET /api/v1/empresas/getAll`) y permanece en espera reactiva con ícono de calendario hasta que el operador selecciona una fecha inicial (`desde`).
@@ -309,7 +309,7 @@ No requiere enviar cantidades: la anulación es total sobre el saldo pendiente a
 Registra digitalmente una de las dos firmas manuscritas requeridas. No existe orden entre las dos firmas: cualquiera puede registrarse primero.
 
 #### Request Body (`RequisicionFirmaRequest`):
-* `tipo`: `"SA"` para la firma de salida (Despachador/Bodeguero) o `"RE"` para la de recibo (Solicitante/Colaborador).
+* `tipo`: `"SA"` para la firma de salida (responsable titular de la bodega fuente) o `"RE"` para la de recibo (solicitante titular o responsable de la bodega destino).
 * `persona`: Cédula o código de quien firma.
 * `firma`: Imagen manuscrita codificada en Base64 (admite prefijo `data:image/png;base64,`).
 
@@ -337,6 +337,7 @@ Cierra el trámite y genera el documento formal de salida en el ERP (`DOCUINVE` 
 #### Precondiciones Obligatorias:
 1. Las líneas deben estar en estado entregado (`en`).
 2. Ambas firmas (`SA` y `RE`) deben estar registradas (`firmada == true`).
+3. La acción debe ser ejecutada estrictamente por el responsable oficial de la bodega fuente (`responsableBodega`).
 
 #### Request Body (`RequisicionRegistrarRequest` - Opcional):
 * **Caso Habitual (Recepción Total Conforme):** Se envía sin body o con body vacío `{}`. El backend asume que se recibe el 100% de lo entregado.

@@ -2,41 +2,41 @@ import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter/material.dart';
-import 'package:sigo_app/repositories/http_transfer_repository.dart';
+import 'package:sigo_app/modules/inventory/repositories/http_transfer_repository.dart';
 import 'package:sigo_app/services/in_app_notification_service.dart';
 import 'package:sigo_app/services/notification_service.dart';
 
 // Providers
-import 'providers/transfer_request_provider.dart';
-import 'providers/transfer_approval_provider.dart';
-import 'providers/transfer_delivery_provider.dart';
+import 'package:sigo_app/modules/inventory/providers/transfer_request_provider.dart';
+import 'package:sigo_app/modules/inventory/providers/transfer_approval_provider.dart';
+import 'package:sigo_app/modules/inventory/providers/transfer_delivery_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:sigo_app/providers/asset_verification_provider.dart';
+import 'package:sigo_app/modules/inventory/providers/asset_verification_provider.dart';
 
 // Imports para el módulo de Requisiciones
-import 'package:sigo_app/providers/requisition_approval_provider.dart';
-import 'package:sigo_app/providers/requisition_signature_provider.dart';
-import 'package:sigo_app/repositories/http_requisition_repository.dart';
+import 'package:sigo_app/modules/requisitions/providers/requisition_approval_provider.dart';
+import 'package:sigo_app/modules/requisitions/providers/requisition_signature_provider.dart';
+import 'package:sigo_app/modules/requisitions/repositories/http_requisition_repository.dart';
 
 // Imports para el módulo de Conteo Físico
-import 'package:sigo_app/providers/physical_count_provider.dart';
-import 'package:sigo_app/providers/active_count_provider.dart';
-import 'package:sigo_app/repositories/http_physical_count_repository.dart';
-import 'package:sigo_app/repositories/http_inventory_repository.dart';
-import 'package:sigo_app/providers/inventory_provider.dart';
-import 'package:sigo_app/repositories/http_catalog_repository.dart';
-import 'package:sigo_app/providers/auth_provider.dart';
-import 'package:sigo_app/providers/transfer_form_provider.dart';
-import 'package:sigo_app/providers/printer_provider.dart';
-import 'package:sigo_app/repositories/http_auth_repository.dart';
+import 'package:sigo_app/modules/physical_count/providers/physical_count_provider.dart';
+import 'package:sigo_app/modules/physical_count/providers/active_count_provider.dart';
+import 'package:sigo_app/modules/physical_count/repositories/http_physical_count_repository.dart';
+import 'package:sigo_app/modules/inventory/repositories/http_inventory_repository.dart';
+import 'package:sigo_app/modules/inventory/providers/inventory_provider.dart';
+import 'package:sigo_app/modules/inventory/repositories/http_catalog_repository.dart';
+import 'package:sigo_app/modules/auth/providers/auth_provider.dart';
+import 'package:sigo_app/modules/inventory/providers/transfer_form_provider.dart';
+import 'package:sigo_app/modules/debug/providers/printer_provider.dart';
+import 'package:sigo_app/modules/auth/repositories/http_auth_repository.dart';
 import 'package:sigo_app/utils/app_config.dart';
-import 'package:sigo_app/repositories/http_geolocation_repository.dart';
-import 'package:sigo_app/providers/geolocation_provider.dart';
+import 'package:sigo_app/modules/inventory/repositories/http_geolocation_repository.dart';
+import 'package:sigo_app/modules/inventory/providers/geolocation_provider.dart';
 
 // Screens
-import 'screens/auth_screen.dart';
-import 'package:sigo_app/screens/dashboard_screen.dart';
-import 'package:sigo_app/screens/domain_scanner_screen.dart';
+import 'package:sigo_app/modules/auth/screens/auth_screen.dart';
+import 'package:sigo_app/modules/dashboard/screens/dashboard_screen.dart';
+import 'package:sigo_app/modules/auth/screens/domain_scanner_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

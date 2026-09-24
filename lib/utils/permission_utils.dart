@@ -1,5 +1,5 @@
 import 'dart:convert';
-import '../models/auth_model.dart';
+import 'package:sigo_app/modules/auth/models/auth_model.dart';
 
 class PermissionUtils {
   /// Deserializa la cadena JSON almacenada a una lista de permisos

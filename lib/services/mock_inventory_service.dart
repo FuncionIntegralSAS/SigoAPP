@@ -1,8 +1,8 @@
-import '../models/article_model.dart';
-import '../models/warehouse_model.dart';
-import '../models/transfer_request.dart';
+import 'package:sigo_app/modules/inventory/models/article_model.dart';
+import 'package:sigo_app/shared/models/warehouse_model.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_request.dart';
 
-import 'network_client.dart';
+import 'package:sigo_app/services/network_client.dart';
 
 /// **MOCK INVENTORY SERVICE**
 ///

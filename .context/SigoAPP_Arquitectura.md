@@ -4,19 +4,21 @@ Versión: 2.4
 Fecha de actualización: Julio 2026
 
 ## 1. Estructura de Directorios (Mapping)
-El proyecto organiza el código fuente bajo el directorio lib/, siguiendo principios de Clean Architecture para facilitar el mantenimiento y la inyección de dependencias hacia el backend (Spring Boot / Oracle).
+El proyecto organiza el código fuente bajo el directorio lib/, siguiendo principios de Clean Architecture modular (Feature-First) para facilitar el mantenimiento y la inyección de dependencias hacia el backend (Spring Boot / Oracle).
 
 lib/
  ├── database/      → Persistencia local con SQLite (modo offline)
  ├── exceptions/    → Excepciones de dominio tipadas
- ├── models/        → Modelos de dominio (inmutables)
- ├── providers/     → Manejo de estado (ChangeNotifier)
- ├── repositories/  → Abstracciones y acceso a datos (Contrato + Implementaciones)
- ├── screens/       → Pantallas orquestadoras y contenedores
- │    └── tabs/     → Vistas internas para controladores de pestañas
+ ├── modules/       → Módulos funcionales de negocio (Feature-First)
+ │    ├── auth/            → Autenticación y Dominio (screens, providers, repositories, models)
+ │    ├── dashboard/       → Dashboard principal dinámico (screens)
+ │    ├── inventory/       → Inventario, verificación QR/GPS y traspasos (screens, providers, repositories, models, widgets)
+ │    ├── requisitions/    → Requisiciones de consumo y firmas (screens, tabs, providers, repositories, models, widgets)
+ │    ├── physical_count/  → Conteo físico administrativo y en piso (screens, tabs, providers, repositories, models, widgets)
+ │    └── debug/           → Módulo de desarrollo y testing (screens, providers, models, widgets)
  ├── services/      → Servicios HTTP, Mocks y clientes de red (infraestructura)
- ├── utils/         → Utilidades transversales y parsers
- └── widgets/       → Componentes UI reutilizables
+ ├── shared/        → Elementos transversales compartidos (models, widgets)
+ └── utils/         → Utilidades transversales, helpers e interceptores Dio
 
 ## 2. Definición Extendida de Modelos (lib/models/)
 Todos los modelos de la aplicación siguen una estricta convención de nomenclatura: las propiedades en Dart deben estar escritas en **español `lowerCamelCase`** (ej. `codigoActivo`, `fechaSincronizacion`) para mantener la legibilidad semántica en el dominio y la UI. Sin embargo, para garantizar la compatibilidad con el backend (Spring Boot) y las bases de datos locales (SQLite preexistente), el mapeo en `fromJson`/`toJson` y `fromMap`/`toMap` debe conservar o soportar las llaves originales mediante `@JsonKey` o mecanismos de fallback (ej. `json['idBodega'] ?? json['warehouseId']`).

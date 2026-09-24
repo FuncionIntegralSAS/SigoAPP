@@ -5,6 +5,19 @@ Este documento contiene el registro histórico de las evoluciones arquitectónic
 
 ---
 
+## Control de Cambios e Histórico (v2.4 a v3.0 - Arquitectura Modular Feature-First)
+
+1. **Reestructuración a Feature-First / Modular**: Se transformó la estructura plana del código fuente (`lib/models/`, `lib/repositories/`, `lib/providers/`, `lib/screens/`, `lib/widgets/`) en una jerarquía modular orientada a dominios de negocio bajo `lib/modules/` y `lib/shared/`:
+   - `lib/modules/auth/`: Dominio, autenticación y configuración de acceso.
+   - `lib/modules/dashboard/`: Panel y navegación dinámica.
+   - `lib/modules/inventory/`: Inventario de activos, geolocalización satelital y traspasos físicos.
+   - `lib/modules/requisitions/`: Solicitudes administrativas de consumo, aprobación masiva y firmas manuscritas.
+   - `lib/modules/physical_count/`: Apertura, asignación de personal, cierre y conteo offline con SQLite.
+   - `lib/modules/debug/`: Utilidades exclusivas de desarrollo, testing y diagnóstico.
+   - `lib/shared/`: Modelos y selectores reutilizables entre múltiples módulos (`CompanyModel`, `WarehouseModel`, dropdowns estándar).
+2. **Estandarización de Sentencias Import**: Se migraron 400 sentencias de importación hacia rutas canónicas `package:sigo_app/modules/...` y `package:sigo_app/shared/...`, eliminando ambigüedades de rutas relativas.
+3. **Mantenimiento y Aislamiento de Tests**: Se actualizaron las suites de pruebas unitarias garantizando el 100% de éxito (160/160 tests aprobados) y cero advertencias en `flutter analyze`.
+
 ## Control de Cambios e Histórico (v1.7 a v1.8)
 
 A continuación, se evidencian las modificaciones arquitectónicas introducidas en la versión 1.8 respecto a su predecesora:

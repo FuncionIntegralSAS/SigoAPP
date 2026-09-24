@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sigo_app/exceptions/catalog_business_exception.dart';
-import 'package:sigo_app/models/warehouse_model.dart';
-import 'package:sigo_app/models/transfer_asset_model.dart';
-import 'package:sigo_app/providers/transfer_form_provider.dart';
-import 'package:sigo_app/repositories/mock_catalog_repository.dart';
-import 'package:sigo_app/repositories/mock_transfer_repository.dart';
+import 'package:sigo_app/shared/models/warehouse_model.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_asset_model.dart';
+import 'package:sigo_app/modules/inventory/providers/transfer_form_provider.dart';
+import 'package:sigo_app/modules/inventory/repositories/mock_catalog_repository.dart';
+import 'package:sigo_app/modules/inventory/repositories/mock_transfer_repository.dart';
 import 'package:sigo_app/services/mock_inventory_service.dart';
 
 void main() {

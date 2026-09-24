@@ -1,5 +1,5 @@
-import '../models/person_model.dart';
-import 'network_client.dart'; // Importamos la nueva Capa de Red
+import 'package:sigo_app/modules/debug/models/person_model.dart';
+import 'package:sigo_app/services/network_client.dart'; // Importamos la nueva Capa de Red
 
 /// **MOCK ACCOUNT SERVICE (Capa de Negocio / Repositorio)**
 ///

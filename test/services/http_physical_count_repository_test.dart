@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/repositories/http_physical_count_repository.dart';
+import 'package:sigo_app/modules/physical_count/repositories/http_physical_count_repository.dart';
 import 'package:dio/dio.dart';
 
 import 'package:sigo_app/utils/json_interceptor.dart';

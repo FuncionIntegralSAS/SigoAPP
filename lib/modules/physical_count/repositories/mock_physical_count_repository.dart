@@ -1,0 +1,154 @@
+import 'package:sigo_app/shared/models/company_model.dart';
+import 'package:sigo_app/shared/models/warehouse_model.dart';
+import 'package:sigo_app/modules/inventory/models/article_model.dart';
+import 'package:sigo_app/modules/physical_count/models/personal_model.dart';
+import 'package:sigo_app/modules/physical_count/models/physical_count_model.dart';
+import 'package:sigo_app/modules/physical_count/repositories/physical_count_repository.dart';
+
+/// Implementación Mock del [PhysicalCountRepository] para desarrollo
+/// offline y pruebas unitarias.
+class MockPhysicalCountRepository implements PhysicalCountRepository {
+  bool simulateError = false;
+
+  @override
+  Future<List<CompanyModel>> getCompanies() async {
+    if (simulateError) throw Exception('Error al obtener empresas (Mock)');
+    await Future.delayed(const Duration(milliseconds: 50));
+    return [
+      const CompanyModel(
+        codigo: 'C1',
+        nit: 'C1',
+        estado: 'C1',
+        descripcion: 'Empresa Test (Mock)',
+      ),
+    ];
+  }
+
+  @override
+  Future<List<WarehouseModel>> getWarehouses(String companyId) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return [
+      const WarehouseModel(
+        codigoBodega: 'W1',
+        descripcionBodega: 'Bodega Test (Mock)',
+        estadoBodega: 'W1',
+      ),
+    ];
+  }
+
+  @override
+  Future<List<ArticleModel>> getArticles(
+    String idBodega, [
+    String? companyId,
+  ]) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return [
+      const ArticleModel(
+        id: 0,
+        codigoActivo: 'All',
+        nombre: 'Todos',
+        placa: '',
+        bodega: 'All',
+      ),
+      const ArticleModel(
+        id: 1,
+        codigoActivo: 'A1',
+        nombre: 'Computador Portátil (Mock)',
+        placa: 'P-001',
+        bodega: 'W1',
+      ),
+      const ArticleModel(
+        id: 2,
+        codigoActivo: 'A2',
+        nombre: 'Silla Ergonómica (Mock)',
+        placa: 'S-005',
+        bodega: 'W1',
+      ),
+    ];
+  }
+
+  @override
+  Future<List<PersonalModel>> searchPersons({
+    String? nombre,
+    String? apellido,
+    String? cedula,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return [
+      PersonalModel(
+        perscodi: '1',
+        persnomb: 'Test (Mock)',
+        persapel: 'User',
+        perscoel: 'test@sigo.com',
+        persdivi: '1',
+        persesta: 'A',
+      ),
+    ];
+  }
+
+  @override
+  Future<void> createPhysicalCount(PhysicalCountRequest request) async {
+    if (simulateError) {
+      throw Exception('Error al crear conteo físico (Mock)');
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
+  }
+
+  @override
+  Future<void> assignArticles(AsignacionConteoRequest request) async {
+    if (simulateError) {
+      throw Exception('Error al asignar participantes (Mock)');
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
+  }
+
+  @override
+  Future<bool> checkHealth() async {
+    if (simulateError) return false;
+    await Future.delayed(const Duration(milliseconds: 50));
+    return true;
+  }
+
+  @override
+  Future<bool> reportarConteo(String token, ReporteConteoRequest request) async {
+    if (simulateError) return false;
+    await Future.delayed(const Duration(milliseconds: 500));
+    return true;
+  }
+
+  @override
+  Future<ConteoFisicoResponse> closePhysicalCount(
+    String token,
+    CierreConteoRequest request,
+  ) async {
+    if (simulateError) {
+      throw Exception('Error al cerrar el conteo físico (Mock)');
+    }
+    await Future.delayed(const Duration(milliseconds: 500));
+    return const ConteoFisicoResponse(
+      success: true,
+      message: 'Conteo físico cerrado exitosamente (Mock)',
+    );
+  }
+
+  @override
+  Future<List<PendingCountWarehouseModel>> getPendingWarehouses(
+    String empresa,
+  ) async {
+    if (simulateError) throw Exception('Error al obtener bodegas (Mock)');
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    // Devolver datos simulados basados en la empresa
+    return [
+      PendingCountWarehouseModel(
+        bodega: '${empresa}_B1',
+        descripcion: 'Bodega Principal (Pendiente)',
+      ),
+      PendingCountWarehouseModel(
+        bodega: '${empresa}_B2',
+        descripcion: 'Bodega Secundaria (Pendiente)',
+      ),
+    ];
+  }
+}
+

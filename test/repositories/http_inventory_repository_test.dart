@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/repositories/http_inventory_repository.dart';
+import 'package:sigo_app/modules/inventory/repositories/http_inventory_repository.dart';
 
 void main() {
   group('HttpInventoryRepository', () {

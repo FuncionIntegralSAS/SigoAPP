@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/physical_count_model.dart';
+import 'package:sigo_app/modules/physical_count/models/physical_count_model.dart';
 
 void main() {
   group('PhysicalCountRequest Model', () {

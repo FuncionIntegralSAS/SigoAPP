@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/transfer_delivery_request.dart';
-import 'package:sigo_app/models/transfer_request.dart';
-import 'package:sigo_app/models/transfer_person_model.dart';
-import 'package:sigo_app/models/transfer_asset_model.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_delivery_request.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_request.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_person_model.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_asset_model.dart';
 import 'package:sigo_app/exceptions/transfer_business_exception.dart';
-import 'package:sigo_app/providers/transfer_delivery_provider.dart';
-import 'package:sigo_app/repositories/transfer_repository.dart';
+import 'package:sigo_app/modules/inventory/providers/transfer_delivery_provider.dart';
+import 'package:sigo_app/modules/inventory/repositories/transfer_repository.dart';
 
 class FakeTransferRepository implements TransferRepository {
   List<TransferRequest> transfers = [];

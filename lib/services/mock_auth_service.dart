@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/user_model.dart';
+import 'package:sigo_app/modules/auth/models/user_model.dart';
 
 // Este servicio simula un proveedor de autenticación (como Firebase Auth)
 class MockAuthService {

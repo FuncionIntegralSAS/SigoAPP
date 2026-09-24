@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/employee_result.dart';
+import 'package:sigo_app/modules/inventory/models/employee_result.dart';
 
 void main() {
   group('EmployeeResult Model Tests', () {

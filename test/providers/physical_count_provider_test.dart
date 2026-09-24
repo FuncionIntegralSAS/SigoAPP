@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/providers/physical_count_provider.dart';
-import 'package:sigo_app/repositories/mock_physical_count_repository.dart';
-import 'package:sigo_app/models/personal_model.dart';
+import 'package:sigo_app/modules/physical_count/providers/physical_count_provider.dart';
+import 'package:sigo_app/modules/physical_count/repositories/mock_physical_count_repository.dart';
+import 'package:sigo_app/modules/physical_count/models/personal_model.dart';
 
 void main() {
   group('PhysicalCountProvider', () {

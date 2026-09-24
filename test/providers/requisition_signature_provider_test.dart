@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sigo_app/exceptions/requisition_business_exception.dart';
-import 'package:sigo_app/models/company_model.dart';
-import 'package:sigo_app/models/requisition_model.dart';
-import 'package:sigo_app/providers/requisition_signature_provider.dart';
-import 'package:sigo_app/repositories/requisition_repository.dart';
+import 'package:sigo_app/shared/models/company_model.dart';
+import 'package:sigo_app/modules/requisitions/models/requisition_model.dart';
+import 'package:sigo_app/modules/requisitions/providers/requisition_signature_provider.dart';
+import 'package:sigo_app/modules/requisitions/repositories/requisition_repository.dart';
 
 class MockRequisitionRepository implements RequisitionRepository {
   int getRequisitionsCallCount = 0;

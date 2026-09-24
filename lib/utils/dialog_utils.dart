@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:sigo_app/providers/physical_count_provider.dart';
+import 'package:sigo_app/modules/physical_count/providers/physical_count_provider.dart';
 
 class DialogUtils {
   static void showPendingWarehousesErrorDialog(

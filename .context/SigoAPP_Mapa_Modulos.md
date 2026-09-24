@@ -4,7 +4,7 @@ Versión: 1.1
 Fecha de actualización: Agosto 2026
 
 > [!NOTE]
-> Este documento está diseñado para ser consumido por agentes de IA y desarrolladores como punto de entrada rápido, evitando búsquedas extensivas entre archivos de código para identificar co-dependencias de operaciones y estados.
+> Este documento es un **archivo pivote** diseñado para ser consumido por agentes de IA y desarrolladores como punto de entrada rápido, mapeando exclusivamente archivos, dependencias, roles y contratos operativos. Las especificaciones de diseño, colores, componentes visuales y lineamientos de interfaz se encuentran centralizadas en [`SigoAPP_Guia_Estilos_UI.md`](./SigoAPP_Guia_Estilos_UI.md).
 
 ---
 
@@ -28,14 +28,14 @@ Fecha de actualización: Agosto 2026
 | Capa | Archivo | Ruta |
 |------|---------|------|
 | **Orquestador** | `main.dart` | `lib/main.dart` |
-| **Screen** | `DomainScannerScreen` | `lib/screens/domain_scanner_screen.dart` |
-| **Screen** | `AuthScreen` | `lib/screens/auth_screen.dart` |
-| **Provider** | `AuthProvider` | `lib/providers/auth_provider.dart` |
-| **Repositorio (contrato)** | `AuthRepository` | `lib/repositories/auth_repository.dart` |
-| **Repositorio (HTTP)** | `HttpAuthRepository` | `lib/repositories/http_auth_repository.dart` |
-| **Repositorio (mock)** | `MockAuthRepository` | `lib/repositories/mock_auth_repository.dart` |
-| **Modelo** | `AuthResponse`, `LoginRequest`, `LoginContadorRequest`, `AppPermission`, `Permiso` | `lib/models/auth_model.dart` |
-| **Modelo** | `UserModel` | `lib/models/user_model.dart` |
+| **Screen** | `DomainScannerScreen` | `lib/modules/auth/screens/domain_scanner_screen.dart` |
+| **Screen** | `AuthScreen` | `lib/modules/auth/screens/auth_screen.dart` |
+| **Provider** | `AuthProvider` | `lib/modules/auth/providers/auth_provider.dart` |
+| **Repositorio (contrato)** | `AuthRepository` | `lib/modules/auth/repositories/auth_repository.dart` |
+| **Repositorio (HTTP)** | `HttpAuthRepository` | `lib/modules/auth/repositories/http_auth_repository.dart` |
+| **Repositorio (mock)** | `MockAuthRepository` | `lib/modules/auth/repositories/mock_auth_repository.dart` |
+| **Modelo** | `AuthResponse`, `LoginRequest`, `LoginContadorRequest`, `AppPermission`, `Permiso` | `lib/modules/auth/models/auth_model.dart` |
+| **Modelo** | `UserModel` | `lib/modules/auth/models/user_model.dart` |
 | **Utilidad** | `AppConfig` | `lib/utils/app_config.dart` |
 | **Utilidad** | `PermissionUtils`, `PermissionListExtension` | `lib/utils/permission_utils.dart` |
 | **Utilidad** | `AppLogger` | `lib/utils/app_logger.dart` |
@@ -60,9 +60,9 @@ Fecha de actualización: Agosto 2026
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
-| **Screen** | `DashboardScreen` | `lib/screens/dashboard_screen.dart` |
-| **Provider consumido** | `AuthProvider` (solo lectura de permisos) | `lib/providers/auth_provider.dart` |
-| **Modelo consumido** | `AppPermission` | `lib/models/auth_model.dart` |
+| **Screen** | `DashboardScreen` | `lib/modules/dashboard/screens/dashboard_screen.dart` |
+| **Provider consumido** | `AuthProvider` (solo lectura de permisos) | `lib/modules/auth/providers/auth_provider.dart` |
+| **Modelo consumido** | `AppPermission` | `lib/modules/auth/models/auth_model.dart` |
 | **Utilidad** | `PermissionListExtension.hasPermission()` | `lib/utils/permission_utils.dart` |
 | **Utilidad** | `AuthUtils` (Cierre de sesión centralizado) | `lib/utils/auth_utils.dart` |
 
@@ -95,13 +95,13 @@ Fecha de actualización: Agosto 2026
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
-| **Screen** | `AssetVerificationScreen` | `lib/screens/asset_verification_screen.dart` |
-| **Provider** | `AssetVerificationProvider` | `lib/providers/asset_verification_provider.dart` |
-| **Provider** | `GeolocationProvider` | `lib/providers/geolocation_provider.dart` |
-| **Repositorio (contrato)** | `GeolocationRepository` | `lib/repositories/geolocation_repository.dart` |
-| **Repositorio (HTTP)** | `HttpGeolocationRepository` | `lib/repositories/http_geolocation_repository.dart` |
-| **Modelo** | `ArticleModel` (identificador negocio `codigoActivo`, ID BD `id`) | `lib/models/article_model.dart` |
-| **Modelo** | `GeolocationModel` | `lib/models/geolocation_model.dart` |
+| **Screen** | `AssetVerificationScreen` | `lib/modules/inventory/screens/asset_verification_screen.dart` |
+| **Provider** | `AssetVerificationProvider` | `lib/modules/inventory/providers/asset_verification_provider.dart` |
+| **Provider** | `GeolocationProvider` | `lib/modules/inventory/providers/geolocation_provider.dart` |
+| **Repositorio (contrato)** | `GeolocationRepository` | `lib/modules/inventory/repositories/geolocation_repository.dart` |
+| **Repositorio (HTTP)** | `HttpGeolocationRepository` | `lib/modules/inventory/repositories/http_geolocation_repository.dart` |
+| **Modelo** | `ArticleModel` (identificador negocio `codigoActivo`, ID BD `id`) | `lib/modules/inventory/models/article_model.dart` |
+| **Modelo** | `GeolocationModel` | `lib/modules/inventory/models/geolocation_model.dart` |
 | **Excepción** | `GeolocationBusinessException` | `lib/exceptions/geolocation_business_exception.dart` |
 | **Utilidad** | `ArticleQrParser` | `lib/utils/article_qr_parser.dart` |
 
@@ -112,32 +112,32 @@ Fecha de actualización: Agosto 2026
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
-| **Screen** | `InventoryScreen` | `lib/screens/inventory_screen.dart` |
-| **Screen** | `GeneratorScreen` (generación QR) | `lib/screens/generator_screen.dart` |
-| **Provider** | `InventoryProvider` (gestiona inventario y colaboradores vía `TransferRepository`) | `lib/providers/inventory_provider.dart` |
-| **Provider** | `TransferRequestProvider` | `lib/providers/transfer_request_provider.dart` |
-| **Provider** | `TransferFormProvider` | `lib/providers/transfer_form_provider.dart` |
-| **Repositorio (contrato inventario)** | `InventoryRepository` | `lib/repositories/inventory_repository.dart` |
-| **Repositorio (HTTP inventario)** | `HttpInventoryRepository` | `lib/repositories/http_inventory_repository.dart` |
-| **Repositorio (contrato traspasos)** | `TransferRepository` | `lib/repositories/transfer_repository.dart` |
-| **Repositorio (HTTP traspasos)** | `HttpTransferRepository` | `lib/repositories/http_transfer_repository.dart` |
-| **Repositorio (mock traspasos)** | `MockTransferRepository` | `lib/repositories/mock_transfer_repository.dart` |
-| **Repositorio (contrato catálogos)** | `CatalogRepository` | `lib/repositories/catalog_repository.dart` |
-| **Repositorio (HTTP catálogos)** | `HttpCatalogRepository` | `lib/repositories/http_catalog_repository.dart` |
-| **Repositorio (mock catálogos)** | `MockCatalogRepository` | `lib/repositories/mock_catalog_repository.dart` |
-| **Modelo** | `CompanyModel` | `lib/models/company_model.dart` |
-| **Modelo** | `WarehouseModel` | `lib/models/warehouse_model.dart` |
-| **Modelo** | `ArticleModel` | `lib/models/article_model.dart` |
-| **Modelo** | `TransferPersonModel` | `lib/models/transfer_person_model.dart` |
-| **Modelo** | `TransferAssetModel` | `lib/models/transfer_asset_model.dart` |
-| **Modelo** | `TransferCreateRequest` | `lib/models/transfer_create_request.dart` |
-| **Modelo** | `TransferRequest` | `lib/models/transfer_request.dart` |
-| **Modelo** | `TransferFilter` | `lib/models/transfer_filter.dart` |
-| **Modelo** | `EmployeeResult` | `lib/models/employee_result.dart` |
-| **Widget** | `TransferFormWidget` | `lib/widgets/transfer_form_widget.dart` |
-| **Widget** | `CascadingCatalogsWidget` | `lib/widgets/cascading_catalogs_widget.dart` |
-| **Widget** | `ArticleEditModal` (Edición, GPS y foto desacoplados) | `lib/widgets/article_edit_modal.dart` |
-| **Widget** | `InventoryArticleTile` (Tarjeta de activo con modo normal y selección) | `lib/widgets/inventory_article_tile.dart` |
+| **Screen** | `InventoryScreen` | `lib/modules/inventory/screens/inventory_screen.dart` |
+| **Screen** | `GeneratorScreen` (generación QR) | `lib/modules/inventory/screens/generator_screen.dart` |
+| **Provider** | `InventoryProvider` (gestiona inventario y colaboradores vía `TransferRepository`) | `lib/modules/inventory/providers/inventory_provider.dart` |
+| **Provider** | `TransferRequestProvider` | `lib/modules/inventory/providers/transfer_request_provider.dart` |
+| **Provider** | `TransferFormProvider` | `lib/modules/inventory/providers/transfer_form_provider.dart` |
+| **Repositorio (contrato inventario)** | `InventoryRepository` | `lib/modules/inventory/repositories/inventory_repository.dart` |
+| **Repositorio (HTTP inventario)** | `HttpInventoryRepository` | `lib/modules/inventory/repositories/http_inventory_repository.dart` |
+| **Repositorio (contrato traspasos)** | `TransferRepository` | `lib/modules/inventory/repositories/transfer_repository.dart` |
+| **Repositorio (HTTP traspasos)** | `HttpTransferRepository` | `lib/modules/inventory/repositories/http_transfer_repository.dart` |
+| **Repositorio (mock traspasos)** | `MockTransferRepository` | `lib/modules/inventory/repositories/mock_transfer_repository.dart` |
+| **Repositorio (contrato catálogos)** | `CatalogRepository` | `lib/modules/inventory/repositories/catalog_repository.dart` |
+| **Repositorio (HTTP catálogos)** | `HttpCatalogRepository` | `lib/modules/inventory/repositories/http_catalog_repository.dart` |
+| **Repositorio (mock catálogos)** | `MockCatalogRepository` | `lib/modules/inventory/repositories/mock_catalog_repository.dart` |
+| **Modelo** | `CompanyModel` | `lib/shared/models/company_model.dart` |
+| **Modelo** | `WarehouseModel` | `lib/shared/models/warehouse_model.dart` |
+| **Modelo** | `ArticleModel` | `lib/modules/inventory/models/article_model.dart` |
+| **Modelo** | `TransferPersonModel` | `lib/modules/inventory/models/transfer_person_model.dart` |
+| **Modelo** | `TransferAssetModel` | `lib/modules/inventory/models/transfer_asset_model.dart` |
+| **Modelo** | `TransferCreateRequest` | `lib/modules/inventory/models/transfer_create_request.dart` |
+| **Modelo** | `TransferRequest` | `lib/modules/inventory/models/transfer_request.dart` |
+| **Modelo** | `TransferFilter` | `lib/modules/inventory/models/transfer_filter.dart` |
+| **Modelo** | `EmployeeResult` | `lib/modules/inventory/models/employee_result.dart` |
+| **Widget** | `TransferFormWidget` | `lib/modules/inventory/widgets/transfer_form_widget.dart` |
+| **Widget** | `CascadingCatalogsWidget` | `lib/modules/inventory/widgets/cascading_catalogs_widget.dart` |
+| **Widget** | `ArticleEditModal` (Edición, GPS y foto desacoplados) | `lib/modules/inventory/widgets/article_edit_modal.dart` |
+| **Widget** | `InventoryArticleTile` (Tarjeta de activo con modo normal y selección) | `lib/modules/inventory/widgets/inventory_article_tile.dart` |
 | **Servicio** | `MockInventoryService` | `lib/services/mock_inventory_service.dart` |
 | **Servicio** | `NotificationService` / `InAppNotificationService` | `lib/services/notification_service.dart`, `lib/services/in_app_notification_service.dart` |
 | **Excepción** | `TransferBusinessException` | `lib/exceptions/transfer_business_exception.dart` |
@@ -151,21 +151,21 @@ Fecha de actualización: Agosto 2026
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
-| **Screen** | `TransferApprovalScreen` | `lib/screens/transfer_approval_screen.dart` |
-| **Provider** | `TransferApprovalProvider` | `lib/providers/transfer_approval_provider.dart` |
-| **Repositorio** | `HttpTransferRepository` (vía contrato `TransferRepository`) | `lib/repositories/http_transfer_repository.dart` |
-| **Repositorio (catálogos)** | `CatalogRepository` / `HttpCatalogRepository` | `lib/repositories/catalog_repository.dart` |
-| **Modelo** | `TransferRequest` (con `TransferArticleItem.nombre`) | `lib/models/transfer_request.dart` |
-| **Modelo** | `TransferAssetModel` | `lib/models/transfer_asset_model.dart` |
-| **Modelo** | `EmployeeResult` | `lib/models/employee_result.dart` |
-| **Modelo** | `TransferFilter` | `lib/models/transfer_filter.dart` |
-| **Widget** | `TransferFilterPanel` | `lib/widgets/transfer_filter_panel.dart` |
+| **Screen** | `TransferApprovalScreen` | `lib/modules/inventory/screens/transfer_approval_screen.dart` |
+| **Provider** | `TransferApprovalProvider` | `lib/modules/inventory/providers/transfer_approval_provider.dart` |
+| **Repositorio** | `HttpTransferRepository` (vía contrato `TransferRepository`) | `lib/modules/inventory/repositories/http_transfer_repository.dart` |
+| **Repositorio (catálogos)** | `CatalogRepository` / `HttpCatalogRepository` | `lib/modules/inventory/repositories/catalog_repository.dart` |
+| **Modelo** | `TransferRequest` (con `TransferArticleItem.nombre`) | `lib/modules/inventory/models/transfer_request.dart` |
+| **Modelo** | `TransferAssetModel` | `lib/modules/inventory/models/transfer_asset_model.dart` |
+| **Modelo** | `EmployeeResult` | `lib/modules/inventory/models/employee_result.dart` |
+| **Modelo** | `TransferFilter` | `lib/modules/inventory/models/transfer_filter.dart` |
+| **Widget** | `TransferFilterPanel` | `lib/modules/inventory/widgets/transfer_filter_panel.dart` |
 
 > [!IMPORTANT]
 > **Consumo HTTP y Ciclo de Vida:** `TransferApprovalProvider` se instancia con `autoLoad: false` en `lib/main.dart` para desacoplar peticiones de red del constructor. `TransferApprovalScreen` es un `StatefulWidget` que dispara la recarga garantizada en `initState` (`WidgetsBinding.instance.addPostFrameCallback`), asegurando datos frescos al ingresar a la pantalla. Además, `loadTransfers({String? empresa, String? bodega})` soporta el paso opcional de filtros contextuales de empresa y bodega hacia los query parameters de `GET /api/v1/traspasos/list`, y coordina el enriquecimiento concurrente por lote con caché local.
 
 > [!TIP]
-> **Diseño y Estética Institucional:** La interfaz de `TransferApprovalScreen` y `TransferFilterPanel` implementa el estándar canónico de UI/UX documentado en `SigoAPP_Guia_Estilos_UI.md` (AppBar sólido, franja métrica de conteo, tarjetas con franja lateral izquierda de estado de 5px, flujo en una línea con `maxLines: 2` en responsables, presentación enriquecida de artículos con códigos/placas y botones rectangulares `r: 8`).
+> **Lineamientos de UI/UX:** Las especificaciones visuales de `TransferApprovalScreen` y `TransferFilterPanel` se detallan en [`SigoAPP_Guia_Estilos_UI.md`](./SigoAPP_Guia_Estilos_UI.md) (§ Módulo 4: Aprobación de Traspasos).
 
 ### 3.4 Entrega / Recepción de Traspasos
 
@@ -174,13 +174,13 @@ Fecha de actualización: Agosto 2026
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
-| **Screen** | `TransferDeliveryScreen` | `lib/screens/transfer_delivery_screen.dart` |
-| **Screen** | `SignatureCaptureScreen` (Canvas interactivo de firma) | `lib/screens/signature_capture_screen.dart` |
-| **Provider** | `TransferDeliveryProvider` (Cotejo dual y firmas desacopladas) | `lib/providers/transfer_delivery_provider.dart` |
-| **Repositorio** | `HttpTransferRepository` (vía contrato `TransferRepository`) | `lib/repositories/http_transfer_repository.dart` |
-| **Repositorio (catálogos)** | `CatalogRepository` / `HttpCatalogRepository` | `lib/repositories/catalog_repository.dart` |
-| **Modelo** | `TransferRequest` (con `personaFuente`/`personaDestino`) | `lib/models/transfer_request.dart` |
-| **Modelo** | `TransferDeliveryRequest` | `lib/models/transfer_delivery_request.dart` |
+| **Screen** | `TransferDeliveryScreen` | `lib/modules/inventory/screens/transfer_delivery_screen.dart` |
+| **Screen** | `SignatureCaptureScreen` (Canvas interactivo de firma) | `lib/modules/inventory/screens/signature_capture_screen.dart` |
+| **Provider** | `TransferDeliveryProvider` (Cotejo dual y firmas desacopladas) | `lib/modules/inventory/providers/transfer_delivery_provider.dart` |
+| **Repositorio** | `HttpTransferRepository` (vía contrato `TransferRepository`) | `lib/modules/inventory/repositories/http_transfer_repository.dart` |
+| **Repositorio (catálogos)** | `CatalogRepository` / `HttpCatalogRepository` | `lib/modules/inventory/repositories/catalog_repository.dart` |
+| **Modelo** | `TransferRequest` (con `personaFuente`/`personaDestino`) | `lib/modules/inventory/models/transfer_request.dart` |
+| **Modelo** | `TransferDeliveryRequest` | `lib/modules/inventory/models/transfer_delivery_request.dart` |
 | **Excepción** | `TransferBusinessException` (con `friendlyMessage`, `technicalDetails`, `statusCode`) | `lib/exceptions/transfer_business_exception.dart` |
 | **Utilidad** | `DialogUtils` (sanitización de errores y modales responsivos) | `lib/utils/dialog_utils.dart` |
 
@@ -199,17 +199,17 @@ Fecha de actualización: Agosto 2026
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
-| **Screen** | `RequisitionsScreen` | `lib/screens/requisitions_screen.dart` |
-| **Tab** | `ApprovalTabView` | `lib/screens/tabs/approval_tab_view.dart` |
-| **Tab** | `DeliveryTabView` | `lib/screens/tabs/delivery_tab_view.dart` |
-| **Provider** | `RequisitionApprovalProvider` | `lib/providers/requisition_approval_provider.dart` |
-| **Repositorio (contrato)** | `RequisitionRepository` | `lib/repositories/requisition_repository.dart` |
-| **Repositorio (HTTP)** | `HttpRequisitionRepository` | `lib/repositories/http_requisition_repository.dart` |
-| **Modelo** | `RequisitionModel`, `RequisicionDetalle`, `RequisicionResumen`, `RequisicionLineaItem`, `RequisicionFirma` | `lib/models/requisition_model.dart` |
-| **Modelo** | `CompanyModel` | `lib/models/company_model.dart` |
+| **Screen** | `RequisitionsScreen` | `lib/modules/requisitions/screens/requisitions_screen.dart` |
+| **Tab** | `ApprovalTabView` | `lib/modules/requisitions/tabs/approval_tab_view.dart` |
+| **Tab** | `DeliveryTabView` | `lib/modules/requisitions/tabs/delivery_tab_view.dart` |
+| **Provider** | `RequisitionApprovalProvider` | `lib/modules/requisitions/providers/requisition_approval_provider.dart` |
+| **Repositorio (contrato)** | `RequisitionRepository` | `lib/modules/requisitions/repositories/requisition_repository.dart` |
+| **Repositorio (HTTP)** | `HttpRequisitionRepository` | `lib/modules/requisitions/repositories/http_requisition_repository.dart` |
+| **Modelo** | `RequisitionModel`, `RequisicionDetalle`, `RequisicionResumen`, `RequisicionLineaItem`, `RequisicionFirma` | `lib/modules/requisitions/models/requisition_model.dart` |
+| **Modelo** | `CompanyModel` | `lib/shared/models/company_model.dart` |
 | **Excepción** | `RequisitionBusinessException` | `lib/exceptions/requisition_business_exception.dart` |
-| **Widget** | `RequisitionActionCard` | `lib/widgets/requisition_action_card.dart` |
-| **Widget** | `RequisitionFilterHeader` | `lib/widgets/requisition_filter_header.dart` |
+| **Widget** | `RequisitionActionCard` | `lib/modules/requisitions/widgets/requisition_action_card.dart` |
+| **Widget** | `RequisitionFilterHeader` | `lib/modules/requisitions/widgets/requisition_filter_header.dart` |
 
 **Permisos por pestaña:**
 
@@ -221,9 +221,9 @@ Fecha de actualización: Agosto 2026
 **Filtros y Comportamiento de Tabs:**
 - `RequisitionsScreen` utiliza `TabController` con listener. Al iniciar la pantalla (`initState`), se dispara únicamente la carga del catálogo maestro de empresas (`GET /api/v1/empresas/getAll`) mediante `RequisitionApprovalProvider.loadCompanies()`. Se aplica una política de **Lazy Fetch / Fail-Fast UI**, impidiendo la consulta automática de requisiciones sin fecha para proteger la tabla `MOVIRESU`.
 - Ambas pestañas (`ApprovalTabView` y `DeliveryTabView`) incorporan en la parte superior el widget institucional `RequisitionFilterHeader` con dos selectores en orden canónico: Empresa (1°) y Fecha `desde` (2°).
-- **Estado de Fecha Requerida:** Si no se ha configurado una fecha `desde`, las pestañas muestran un estado informativo con ícono de calendario (`Icons.calendar_month_outlined`) instruyendo al operador a seleccionar una fecha inicial.
+- **Estado de Fecha Requerida:** Si no se ha configurado una fecha `desde`, las pestañas muestran un estado instructivo requiriendo seleccionar una fecha inicial.
 - **Flujo Master-Detail (Documento ➔ Movimientos):**
-  - **Nivel 1 (Master):** La bandeja consume `GET /api/v1/requisiciones` y renderiza tarjetas de documentos de solicitud (`RequisicionResumen`) mediante `RequisitionActionCard`, exponiendo tipo y número de documento, bodega, fecha, badge con cantidad de artículos y franja lateral de estado de 5px.
+  - **Nivel 1 (Master):** La bandeja consume `GET /api/v1/requisiciones` y renderiza tarjetas de documentos de solicitud (`RequisicionResumen`) mediante `RequisitionActionCard`, exponiendo tipo y número de documento, bodega, fecha y estado de líneas. Para especificaciones visuales de la tarjeta, consultar [`SigoAPP_Guia_Estilos_UI.md`](./SigoAPP_Guia_Estilos_UI.md) (§ Módulo 6).
   - **Nivel 2 (Detail bajo demanda):** Al expandir cada documento (`ExpansionTile`), se consulta `GET /api/v1/requisiciones/{empresa}/{tipo}/{num}` con caché en el provider, desplegando los movimientos/artículos (`RequisicionDetalleLinea`) con sus estados, solicitante, observaciones y cantidades.
   - **Procesamiento en Lote (FAB):** Cada línea permite validar y capturar cantidades autorizadas/entregadas ($>0 \land \le \text{máximo permitido}$) y seleccionarse mediante checkbox. El botón flotante `FloatingActionButton` ejecuta la aprobación (`PUT /aprobar`) o entrega (`PUT /entregar`) masiva, notificando vía `SnackBar` y refrescando la bandeja.
 
@@ -236,13 +236,13 @@ Fecha de actualización: Agosto 2026
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
-| **Screen** | `RequisitionSignatureScreen` | `lib/screens/requisition_signature_screen.dart` |
-| **Screen (Modal/Captura)** | `RequisitionSignatureCaptureScreen` | `lib/screens/requisition_signature_capture_screen.dart` |
-| **Provider** | `RequisitionSignatureProvider` | `lib/providers/requisition_signature_provider.dart` |
-| **Repositorio (contrato)** | `RequisitionRepository` | `lib/repositories/requisition_repository.dart` |
-| **Repositorio (HTTP)** | `HttpRequisitionRepository` | `lib/repositories/http_requisition_repository.dart` |
-| **Modelo** | `RequisicionResumen`, `RequisicionDetalle`, `RequisicionFirma`, `RequisicionFirmaRequest`, `RequisicionRegistrarRequest` | `lib/models/requisition_model.dart` |
-| **Widget** | `RequisitionFilterHeader` | `lib/widgets/requisition_filter_header.dart` |
+| **Screen** | `RequisitionSignatureScreen` | `lib/modules/requisitions/screens/requisition_signature_screen.dart` |
+| **Screen (Modal/Captura)** | `RequisitionSignatureCaptureScreen` | `lib/modules/requisitions/screens/requisition_signature_capture_screen.dart` |
+| **Provider** | `RequisitionSignatureProvider` | `lib/modules/requisitions/providers/requisition_signature_provider.dart` |
+| **Repositorio (contrato)** | `RequisitionRepository` | `lib/modules/requisitions/repositories/requisition_repository.dart` |
+| **Repositorio (HTTP)** | `HttpRequisitionRepository` | `lib/modules/requisitions/repositories/http_requisition_repository.dart` |
+| **Modelo** | `RequisicionResumen`, `RequisicionDetalle`, `RequisicionFirma`, `RequisicionFirmaRequest`, `RequisicionRegistrarRequest` | `lib/modules/requisitions/models/requisition_model.dart` |
+| **Widget** | `RequisitionFilterHeader` | `lib/modules/requisitions/widgets/requisition_filter_header.dart` |
 | **Test Unitario** | `requisition_signature_provider_test.dart` | `test/providers/requisition_signature_provider_test.dart` |
 | **Test Unitario (Modelos)** | `requisition_model_test.dart` | `test/models/requisition_model_test.dart` |
 
@@ -250,12 +250,13 @@ Fecha de actualización: Agosto 2026
 - **Consulta Protegida:** Requiere obligatoriamente fecha `desde` seleccionada en `RequisitionFilterHeader` (`estado: 'en'`).
 - **Inferencia Automática de Roles (Flujo Sin Selección Manual):** El colaborador nunca elige la firma de forma arbitraria; la aplicación valida la identidad a partir de `auth.currentCedula`:
   - **Recepción (RE):** Coincidencia con el solicitante titular (`auth.currentCedula == detail.tercero`) o con el responsable oficial de la bodega destino (`auth.currentCedula == detail.responsableBodegaDestino`) en movimientos entre bodegas. Si coincide y falta firma RE, se habilita de forma exclusiva el botón *"Firmar Recibo (RE)"*.
-  - **Salida (SA):** Coincidencia estricta con el responsable de la bodega origen (`auth.currentCedula == detail.responsableBodega`). Si no hay responsable asignado en el ERP (nulo o vacío), aplica fallback por permiso de bodega `aein` (`AppPermission.entregaInventario`) siempre que no sea el solicitante. Si califica y falta firma SA, se habilita el botón único *"Firmar Salida (SA)"*.
-  - **Espera de Co-Firmante:** Si el colaborador ya firmó su rol respectivo, la tarjeta muestra un contenedor informativo (`Colors.blueGrey.shade50`) indicando que su firma está asentada y se espera la contraparte.
-  - **Usuario Sin Rol:** Si el colaborador no es receptor ni despachador, la tarjeta muestra el aviso informativo *"Usted no es responsable de la bodega ni solicitante de este documento"*, bloqueando botones de firma.
-  - **Captura Anti-Suplantación (`RequisitionSignatureCaptureScreen`):** Campo de cédula en modo solo lectura (`readOnly: true`, con `Icons.lock_outline` y `fillColor: grey.shade100`), garantizando que la firma manuscrita quede vinculada estrictamente a la sesión autenticada.
-  - **Estado "Lista para ERP" (`bothSigned`):** Franja lateral fija de 5px en Verde (`Colors.green.shade700`), badge `LISTA PARA ERP`, botones de firma ocultos y botón de acción destacado *"Registrar Salida ERP"* (`Colors.green.shade700`, `r: 8`) para usuarios con permisos de bodega.
-- **Punto de No Retorno:** Al pulsar *"Registrar Salida ERP"*, se despliega diálogo modal confirmatorio advirtiendo el carácter irreversible de la operación. Ejecuta `PUT /api/v1/requisiciones/{empresa}/{tipoDocumento}/{numero}/registrar` enviando `{}` como body, transicionando el documento a estado `rg` y generando los registros oficiales en `DOCUINVE` y `MOVIINVE`.
+  - **Salida (SA):** Coincidencia estricta con el responsable de la bodega origen (`auth.currentCedula == detail.responsableBodega`). Sin fallbacks permisivos. Si califica y falta firma SA, se habilita el botón único *"Firmar Salida (SA)"*.
+  - **Espera de Co-Firmante:** Si el colaborador ya firmó su rol respectivo, la tarjeta muestra un aviso informativo indicando que su firma está asentada y se espera la contraparte.
+  - **Usuario Sin Rol:** Si el colaborador no es receptor ni despachador, la tarjeta muestra un aviso indicando que carece de rol en el documento, bloqueando acciones de firma.
+  - **Captura Anti-Suplantación (`RequisitionSignatureCaptureScreen`):** Campo de cédula en modo solo lectura (`readOnly: true`), garantizando que la firma manuscrita quede vinculada estrictamente a la sesión autenticada.
+  - **Estado "Lista para ERP" (`bothSigned`):** Se ocultan los botones de firma y se habilita la acción *"Registrar Salida"*, reservada de forma exclusiva para el responsable de la bodega fuente (`isDispatcher`). Si el usuario autenticado no es el responsable, se despliega un contenedor informativo indicando que las firmas están completas y la salida está pendiente de registro.
+  - **Detalle de Componentes Visuales:** Para la paleta cromática, franjas laterales de estado, badges y modales de este flujo, consultar [`SigoAPP_Guia_Estilos_UI.md`](./SigoAPP_Guia_Estilos_UI.md) (§ Módulo 6).
+- **Punto de No Retorno:** Al pulsar *"Registrar Salida"*, se despliega diálogo modal confirmatorio advirtiendo el Impacto inmediato en el inventario. Ejecuta `PUT /api/v1/requisiciones/{empresa}/{tipoDocumento}/{numero}/registrar` enviando `{}` como body, transicionando el documento a estado `rg` y generando los registros oficiales en `DOCUINVE` y `MOVIINVE`.
 
 ---
 
@@ -271,19 +272,19 @@ Fecha de actualización: Agosto 2026
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
-| **Screen** | `PhysicalCountScreen` | `lib/screens/physical_count_screen.dart` |
-| **Tab** | `PhysicalCountAssignmentTab` | `lib/screens/tabs/physical_count_assignment_tab.dart` |
-| **Tab** | `PhysicalCountOpeningTab` | `lib/screens/tabs/physical_count_opening_tab.dart` |
-| **Tab** | `PhysicalCountClosingTab` | `lib/screens/tabs/physical_count_closing_tab.dart` |
-| **Provider** | `PhysicalCountProvider` | `lib/providers/physical_count_provider.dart` |
-| **Repositorio (contrato)** | `PhysicalCountRepository` | `lib/repositories/physical_count_repository.dart` |
-| **Repositorio (HTTP)** | `HttpPhysicalCountRepository` | `lib/repositories/http_physical_count_repository.dart` |
-| **Repositorio (mock)** | `MockPhysicalCountRepository` | `lib/repositories/mock_physical_count_repository.dart` |
-| **Modelo** | `PhysicalCountRequest`, `AsignacionConteoRequest`, `UsuarioAsignacion`, `CierreConteoRequest`, `ConteoFisicoResponse`, `PendingCountWarehouseModel` | `lib/models/physical_count_model.dart` |
-| **Modelo** | `CompanyModel` | `lib/models/company_model.dart` |
-| **Modelo** | `WarehouseModel` | `lib/models/warehouse_model.dart` |
-| **Modelo** | `ArticleModel` | `lib/models/article_model.dart` |
-| **Modelo** | `PersonalModel` | `lib/models/personal_model.dart` |
+| **Screen** | `PhysicalCountScreen` | `lib/modules/physical_count/screens/physical_count_screen.dart` |
+| **Tab** | `PhysicalCountAssignmentTab` | `lib/modules/physical_count/tabs/physical_count_assignment_tab.dart` |
+| **Tab** | `PhysicalCountOpeningTab` | `lib/modules/physical_count/tabs/physical_count_opening_tab.dart` |
+| **Tab** | `PhysicalCountClosingTab` | `lib/modules/physical_count/tabs/physical_count_closing_tab.dart` |
+| **Provider** | `PhysicalCountProvider` | `lib/modules/physical_count/providers/physical_count_provider.dart` |
+| **Repositorio (contrato)** | `PhysicalCountRepository` | `lib/modules/physical_count/repositories/physical_count_repository.dart` |
+| **Repositorio (HTTP)** | `HttpPhysicalCountRepository` | `lib/modules/physical_count/repositories/http_physical_count_repository.dart` |
+| **Repositorio (mock)** | `MockPhysicalCountRepository` | `lib/modules/physical_count/repositories/mock_physical_count_repository.dart` |
+| **Modelo** | `PhysicalCountRequest`, `AsignacionConteoRequest`, `UsuarioAsignacion`, `CierreConteoRequest`, `ConteoFisicoResponse`, `PendingCountWarehouseModel` | `lib/modules/physical_count/models/physical_count_model.dart` |
+| **Modelo** | `CompanyModel` | `lib/shared/models/company_model.dart` |
+| **Modelo** | `WarehouseModel` | `lib/shared/models/warehouse_model.dart` |
+| **Modelo** | `ArticleModel` | `lib/modules/inventory/models/article_model.dart` |
+| **Modelo** | `PersonalModel` | `lib/modules/physical_count/models/personal_model.dart` |
 | **Utilidad** | `DropdownTemplates` | `lib/utils/dropdown_template.dart` |
 | **Utilidad** | `DialogUtils` | `lib/utils/dialog_utils.dart` |
 
@@ -317,15 +318,15 @@ Fecha de actualización: Agosto 2026
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
-| **Screen** | `ActiveCountScreen` | `lib/screens/active_count_screen.dart` |
-| **Provider** | `ActiveCountProvider` | `lib/providers/active_count_provider.dart` |
-| **Repositorio (contrato)** | `PhysicalCountRepository` (compartido con §5.1) | `lib/repositories/physical_count_repository.dart` |
-| **Repositorio (HTTP)** | `HttpPhysicalCountRepository` (compartido con §5.1) | `lib/repositories/http_physical_count_repository.dart` |
+| **Screen** | `ActiveCountScreen` | `lib/modules/physical_count/screens/active_count_screen.dart` |
+| **Provider** | `ActiveCountProvider` | `lib/modules/physical_count/providers/active_count_provider.dart` |
+| **Repositorio (contrato)** | `PhysicalCountRepository` (compartido con §5.1) | `lib/modules/physical_count/repositories/physical_count_repository.dart` |
+| **Repositorio (HTTP)** | `HttpPhysicalCountRepository` (compartido con §5.1) | `lib/modules/physical_count/repositories/http_physical_count_repository.dart` |
 | **Database** | `DatabaseHelper` (SQLite) | `lib/database/database_helper.dart` |
-| **Modelo** | `ActiveCountModel` | `lib/models/active_count_model.dart` |
-| **Modelo** | `CountRecordModel` | `lib/models/count_record_model.dart` |
-| **Widget** | `ContinuousScanView` | `lib/widgets/continuous_scan_view.dart` |
-| **Widget** | `ListCountView` | `lib/widgets/list_count_view.dart` |
+| **Modelo** | `ActiveCountModel` | `lib/modules/physical_count/models/active_count_model.dart` |
+| **Modelo** | `CountRecordModel` | `lib/modules/physical_count/models/count_record_model.dart` |
+| **Widget** | `ContinuousScanView` | `lib/modules/physical_count/widgets/continuous_scan_view.dart` |
+| **Widget** | `ListCountView` | `lib/modules/physical_count/widgets/list_count_view.dart` |
 
 **Tablas SQLite involucradas:** `ActiveCountForms`, `CountMasterItems`, `CountRecords`.
 
@@ -337,19 +338,19 @@ Fecha de actualización: Agosto 2026
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
-| **Screen** | `HomeScreen` | `lib/screens/home_screen.dart` |
-| **Screen** | `ScannerScreen` | `lib/screens/scanner_screen.dart` |
-| **Screen** | `GeneratorScreen` | `lib/screens/generator_screen.dart` |
-| **Screen** | `AccountScreen` | `lib/screens/account_screen.dart` |
-| **Screen** | `InventoryScreen` (reutilizada del módulo Inventario §3.2) | `lib/screens/inventory_screen.dart` |
-| **Screen** | `TransferApprovalScreen` (reutilizada del módulo Inventario §3.3) | `lib/screens/transfer_approval_screen.dart` |
-| **Widget** | `PrinterConnectionDialog` | `lib/widgets/printer_connection_dialog.dart` |
-| **Provider** | `PrinterProvider` | `lib/providers/printer_provider.dart` |
+| **Screen** | `HomeScreen` | `lib/modules/debug/screens/home_screen.dart` |
+| **Screen** | `ScannerScreen` | `lib/modules/debug/screens/scanner_screen.dart` |
+| **Screen** | `GeneratorScreen` | `lib/modules/inventory/screens/generator_screen.dart` |
+| **Screen** | `AccountScreen` | `lib/modules/debug/screens/account_screen.dart` |
+| **Screen** | `InventoryScreen` (reutilizada del módulo Inventario §3.2) | `lib/modules/inventory/screens/inventory_screen.dart` |
+| **Screen** | `TransferApprovalScreen` (reutilizada del módulo Inventario §3.3) | `lib/modules/inventory/screens/transfer_approval_screen.dart` |
+| **Widget** | `PrinterConnectionDialog` | `lib/modules/debug/widgets/printer_connection_dialog.dart` |
+| **Provider** | `PrinterProvider` | `lib/modules/debug/providers/printer_provider.dart` |
 | **Servicio** | `BluetoothPrinterService` | `lib/services/bluetooth_printer_service.dart` |
 | **Servicio** | `MockAuthService` | `lib/services/mock_auth_service.dart` |
 | **Servicio** | `MockAccountService` | `lib/services/mock_account_service.dart` |
 | **Servicio** | `NetworkClient` (singleton mock) | `lib/services/network_client.dart` |
-| **Modelo** | `PersonModel` | `lib/models/person_model.dart` |
+| **Modelo** | `PersonModel` | `lib/modules/debug/models/person_model.dart` |
 
 ---
 
@@ -366,9 +367,9 @@ Los siguientes servicios y utilidades son compartidos entre múltiples módulos:
 | `NotificationService` | `lib/services/notification_service.dart` | Inventario (Traspasos) |
 | `InAppNotificationService` | `lib/services/in_app_notification_service.dart` | Inventario (Traspasos) |
 | `PermissionUtils` | `lib/utils/permission_utils.dart` | Dashboard, PhysicalCountScreen |
-| `AuthProvider` | `lib/providers/auth_provider.dart` | Todos (token JWT, permisos) |
-| `CompanyDropdownField` | `lib/widgets/company_dropdown_field.dart` | Requisiciones, Conteo Físico, Inventario (Selector estándar de Empresas) |
-| `WarehouseDropdownField` | `lib/widgets/warehouse_dropdown_field.dart` | Conteo Físico, Inventario, Traspasos (Selector estándar de Bodegas) |
+| `AuthProvider` | `lib/modules/auth/providers/auth_provider.dart` | Todos (token JWT, permisos) |
+| `CompanyDropdownField` | `lib/shared/widgets/company_dropdown_field.dart` | Requisiciones, Conteo Físico, Inventario (Selector estándar de Empresas) |
+| `WarehouseDropdownField` | `lib/shared/widgets/warehouse_dropdown_field.dart` | Conteo Físico, Inventario, Traspasos (Selector estándar de Bodegas) |
 | `DropdownTemplates` | `lib/utils/dropdown_template.dart` | Todos los selectores desplegables con búsqueda interna |
 
 ---

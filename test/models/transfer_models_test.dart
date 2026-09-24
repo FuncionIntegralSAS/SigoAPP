@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/transfer_create_request.dart';
-import 'package:sigo_app/models/transfer_request.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_create_request.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_request.dart';
 
 void main() {
   group('TransferArticleItem and TransferFirmItem Tests', () {

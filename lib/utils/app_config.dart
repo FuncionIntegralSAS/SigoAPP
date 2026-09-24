@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sigo_app/utils/json_interceptor.dart';
 import 'package:sigo_app/utils/auth_interceptor.dart';
 import 'package:sigo_app/utils/mock_http_interceptor.dart';
-import 'app_logger.dart';
+import 'package:sigo_app/utils/app_logger.dart';
 
 /// Configuración centralizada de la aplicación.
 ///

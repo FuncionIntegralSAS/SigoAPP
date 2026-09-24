@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/article_model.dart';
+import 'package:sigo_app/modules/inventory/models/article_model.dart';
 
 void main() {
   // Configuración de un artículo base para usar en todos los tests

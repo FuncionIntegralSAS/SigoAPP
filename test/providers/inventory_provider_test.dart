@@ -1,15 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/company_model.dart';
-import 'package:sigo_app/models/warehouse_model.dart';
-import 'package:sigo_app/models/article_model.dart';
-import 'package:sigo_app/models/transfer_person_model.dart';
-import 'package:sigo_app/models/transfer_asset_model.dart';
-import 'package:sigo_app/models/transfer_request.dart';
-import 'package:sigo_app/models/transfer_delivery_request.dart';
-import 'package:sigo_app/providers/inventory_provider.dart';
-import 'package:sigo_app/repositories/inventory_repository.dart';
-import 'package:sigo_app/repositories/transfer_repository.dart';
+import 'package:sigo_app/shared/models/company_model.dart';
+import 'package:sigo_app/shared/models/warehouse_model.dart';
+import 'package:sigo_app/modules/inventory/models/article_model.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_person_model.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_asset_model.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_request.dart';
+import 'package:sigo_app/modules/inventory/models/transfer_delivery_request.dart';
+import 'package:sigo_app/modules/inventory/providers/inventory_provider.dart';
+import 'package:sigo_app/modules/inventory/repositories/inventory_repository.dart';
+import 'package:sigo_app/modules/inventory/repositories/transfer_repository.dart';
 
 void main() {
   group('InventoryProvider', () {

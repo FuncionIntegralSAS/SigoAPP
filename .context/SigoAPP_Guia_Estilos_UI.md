@@ -156,7 +156,7 @@ const Divider(height: 1, thickness: 1),
 ```
 
 ### 4.3 Tarjeta de Registro con Franja Vertical de Estado (5px)
-Patrón transversal obligatorio para representar registros con estado (`lib/widgets/inventory_article_tile.dart`, `lib/screens/transfer_approval_screen.dart`):
+Patrón transversal obligatorio para representar registros con estado (`lib/modules/inventory/widgets/inventory_article_tile.dart`, `lib/modules/inventory/screens/transfer_approval_screen.dart`):
 ```dart
 Card(
   elevation: 1.5,
@@ -327,8 +327,8 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
 ## Módulo 1: Autenticación y Configuración de Dominio
 
 ### Pantallas Involucradas
-* `DomainScannerScreen` (`lib/screens/domain_scanner_screen.dart`)
-* `AuthScreen` (`lib/screens/auth_screen.dart`)
+* `DomainScannerScreen` (`lib/modules/auth/screens/domain_scanner_screen.dart`)
+* `AuthScreen` (`lib/modules/auth/screens/auth_screen.dart`)
 
 ### Especificaciones de Layout y UI/UX
 1. **Pantalla de Autenticación (`AuthScreen`):**
@@ -347,7 +347,7 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
 ## Módulo 2: Dashboard Principal y Navegación Dinámica
 
 ### Pantalla Involucrada
-* `DashboardScreen` (`lib/screens/dashboard_screen.dart`)
+* `DashboardScreen` (`lib/modules/dashboard/screens/dashboard_screen.dart`)
 
 ### Especificaciones de Layout y UI/UX
 1. **AppBar del Dashboard:**
@@ -370,12 +370,12 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
 ## Módulo 3: Inventario, Verificación y Catálogo
 
 ### Pantallas y Widgets Involucrados
-* `InventoryScreen` (`lib/screens/inventory_screen.dart`)
-* `AssetVerificationScreen` (`lib/screens/asset_verification_screen.dart`)
-* `GeneratorScreen` (`lib/screens/generator_screen.dart`)
-* `InventoryArticleTile` (`lib/widgets/inventory_article_tile.dart`)
-* `CascadingCatalogsWidget` (`lib/widgets/cascading_catalogs_widget.dart`)
-* `ArticleEditModal` (`lib/widgets/article_edit_modal.dart`)
+* `InventoryScreen` (`lib/modules/inventory/screens/inventory_screen.dart`)
+* `AssetVerificationScreen` (`lib/modules/inventory/screens/asset_verification_screen.dart`)
+* `GeneratorScreen` (`lib/modules/inventory/screens/generator_screen.dart`)
+* `InventoryArticleTile` (`lib/modules/inventory/widgets/inventory_article_tile.dart`)
+* `CascadingCatalogsWidget` (`lib/modules/inventory/widgets/cascading_catalogs_widget.dart`)
+* `ArticleEditModal` (`lib/modules/inventory/widgets/article_edit_modal.dart`)
 
 ### Especificaciones de Layout y UI/UX
 1. **Pantalla Principal de Inventario (`InventoryScreen`):**
@@ -402,8 +402,8 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
 ## Módulo 4: Aprobación de Traspasos
 
 ### Pantallas y Widgets Involucrados
-* `TransferApprovalScreen` (`lib/screens/transfer_approval_screen.dart`)
-* `TransferFilterPanel` (`lib/widgets/transfer_filter_panel.dart`)
+* `TransferApprovalScreen` (`lib/modules/inventory/screens/transfer_approval_screen.dart`)
+* `TransferFilterPanel` (`lib/modules/inventory/widgets/transfer_filter_panel.dart`)
 
 ### Especificaciones de Layout y UI/UX
 1. **Panel de Filtros Fijo (`TransferFilterPanel`):**
@@ -438,8 +438,8 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
 ## Módulo 5: Entrega, Recepción y Captura de Firmas
 
 ### Pantallas Involucradas
-* `TransferDeliveryScreen` (`lib/screens/transfer_delivery_screen.dart`)
-* `SignatureCaptureScreen` (`lib/screens/signature_capture_screen.dart`)
+* `TransferDeliveryScreen` (`lib/modules/inventory/screens/transfer_delivery_screen.dart`)
+* `SignatureCaptureScreen` (`lib/modules/inventory/screens/signature_capture_screen.dart`)
 
 ### Especificaciones de Layout y UI/UX
 1. **Pantalla de Entrega / Despacho (`TransferDeliveryScreen`):**
@@ -463,13 +463,13 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
 ## Módulo 6: Requisiciones de Inventario
 
 ### Pantallas y Tabs Involucrados
-* `RequisitionsScreen` (`lib/screens/requisitions_screen.dart`)
-* `ApprovalTabView` (`lib/screens/tabs/approval_tab_view.dart`)
-* `DeliveryTabView` (`lib/screens/tabs/delivery_tab_view.dart`)
-* `RequisitionSignatureScreen` (`lib/screens/requisition_signature_screen.dart`)
-* `RequisitionSignatureCaptureScreen` (`lib/screens/requisition_signature_capture_screen.dart`)
-* `RequisitionFilterHeader` (`lib/widgets/requisition_filter_header.dart`)
-* `RequisitionActionCard` (`lib/widgets/requisition_action_card.dart`)
+* `RequisitionsScreen` (`lib/modules/requisitions/screens/requisitions_screen.dart`)
+* `ApprovalTabView` (`lib/modules/requisitions/tabs/approval_tab_view.dart`)
+* `DeliveryTabView` (`lib/modules/requisitions/tabs/delivery_tab_view.dart`)
+* `RequisitionSignatureScreen` (`lib/modules/requisitions/screens/requisition_signature_screen.dart`)
+* `RequisitionSignatureCaptureScreen` (`lib/modules/requisitions/screens/requisition_signature_capture_screen.dart`)
+* `RequisitionFilterHeader` (`lib/modules/requisitions/widgets/requisition_filter_header.dart`)
+* `RequisitionActionCard` (`lib/modules/requisitions/widgets/requisition_action_card.dart`)
 
 ### Especificaciones de Layout y UI/UX
 1. **TabBar Institucional:**
@@ -517,11 +517,11 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
        - *Pendiente:* Naranja (`Colors.orange.shade50`, borde `orange.shade200`, texto `orange.shade800`).
      * Acciones Operativas con layout responsivo `Wrap` e Inferencia de Roles:
        - **Inferencia Automática:** El colaborador nunca escoge manualmente la firma; la interfaz determina `isReceiver` y `isDispatcher` a partir de `auth.currentCedula`.
-       - Botón condicional único *"Firmar Salida (SA)"* (`Colors.blue.shade700`, `r: 8`): Visible únicamente si el usuario es despachador de bodega (`isDispatcher`: coincidencia con `detail.responsableBodega` o fallback por permiso `aein`) y falta la firma SA.
+       - Botón condicional único *"Firmar Salida (SA)"* (`Colors.blue.shade700`, `r: 8`): Visible únicamente si el usuario es el responsable de la bodega fuente (`isDispatcher`: coincidencia estricta `auth.currentCedula == detail.responsableBodega` sin fallback permisivo) y falta la firma SA.
        - Botón condicional único *"Firmar Recibo (RE)"* (`Colors.teal.shade700`, `r: 8`): Visible únicamente si el usuario es el receptor titular (`auth.currentCedula == detail.tercero`) o el responsable de la bodega destino (`auth.currentCedula == detail.responsableBodegaDestino`), y falta la firma RE.
        - Contenedor de espera de co-firmante (`Colors.blueGrey.shade50`, borde `blueGrey.shade200`, ícono `Icons.hourglass_top_rounded`): Informa que la firma del usuario ya fue registrada y se espera la contraparte.
        - Contenedor informativo de usuario sin rol (`Colors.grey.shade100`, borde `grey.shade300`, ícono `Icons.lock_outline`): Despliega *"Usted no es responsable de la bodega ni solicitante de este documento"*, impidiendo cualquier acción no autorizada.
-       - Botón destacado *"Registrar Salida ERP"* (`Colors.green.shade700`, `r: 8`): Visible cuando ambas firmas están completas (`bothSigned`) para usuarios con permisos de bodega (`aein` / `areq`). Al presionar, despliega diálogo modal advirtiendo el punto de no retorno e irreversibilidad de la transacción.
+       - Botón destacado *"Registrar Salida"* (`Colors.green.shade700`, `r: 8`): Visible cuando ambas firmas están completas (`bothSigned`) reservado estrictamente al responsable de la bodega fuente (`isDispatcher`). Si ambas firmas están completas pero el usuario autenticado no es el responsable, se despliega un contenedor informativo (`Colors.green.shade50`, borde `green.shade200`, ícono `Icons.check_circle`) indicando *"Firmas completas. Pendiente registro de salida por el responsable de la bodega."*. Al presionar, despliega diálogo modal advirtiendo el punto de no retorno e irreversibilidad de la transacción.
 7. **Captura Interactiva de Firma Digital (`RequisitionSignatureCaptureScreen`):**
    * **Identificación y Banners Informativos de Rol:**
      - **Firma Recibo (RE):** Despliega banner verde agua (`Colors.teal.shade50`, borde `teal.shade300`) con `Icons.verified_user_rounded` certificando: *"Usted está firmando como receptor titular de esta requisición (<usuario>)"*.
@@ -535,11 +535,11 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
 ## Módulo 7: Conteo Físico Administrativo y en Piso
 
 ### Pantallas y Tabs Involucrados
-* `PhysicalCountScreen` (`lib/screens/physical_count_screen.dart`)
-* `PhysicalCountOpeningTab` (`lib/screens/tabs/physical_count_opening_tab.dart`)
-* `PhysicalCountAssignmentTab` (`lib/screens/tabs/physical_count_assignment_tab.dart`)
-* `PhysicalCountClosingTab` (`lib/screens/tabs/physical_count_closing_tab.dart`)
-* `ActiveCountScreen` (`lib/screens/active_count_screen.dart`)
+* `PhysicalCountScreen` (`lib/modules/physical_count/screens/physical_count_screen.dart`)
+* `PhysicalCountOpeningTab` (`lib/modules/physical_count/tabs/physical_count_opening_tab.dart`)
+* `PhysicalCountAssignmentTab` (`lib/modules/physical_count/tabs/physical_count_assignment_tab.dart`)
+* `PhysicalCountClosingTab` (`lib/modules/physical_count/tabs/physical_count_closing_tab.dart`)
+* `ActiveCountScreen` (`lib/modules/physical_count/screens/active_count_screen.dart`)
 
 ### Especificaciones de Layout y UI/UX
 1. **Administración del Conteo (`PhysicalCountScreen`):**
@@ -560,9 +560,9 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
 ## Módulo 8: Gestión de Cuenta y Utilidades de Diagnóstico
 
 ### Pantallas Involucradas
-* `AccountScreen` (`lib/screens/account_screen.dart`)
-* `ScannerScreen` (`lib/screens/scanner_screen.dart`)
-* `HomeScreen` (`lib/screens/home_screen.dart`)
+* `AccountScreen` (`lib/modules/debug/screens/account_screen.dart`)
+* `ScannerScreen` (`lib/modules/debug/screens/scanner_screen.dart`)
+* `HomeScreen` (`lib/modules/debug/screens/home_screen.dart`)
 
 ### Especificaciones de Layout y UI/UX
 1. **Pantalla de Cuenta (`AccountScreen`):**
@@ -580,12 +580,12 @@ Para revisar las implementaciones canónicas vigentes en el código fuente:
 
 | Pantalla / Widget | Archivo | Patrón Destacado |
 |---|---|---|
-| **Aprobación de Traspasos** | `lib/screens/transfer_approval_screen.dart` | AppBar sólido, franja métrica, tarjetas con franja de 5px, flujo en una línea, botones `r: 8`. |
-| **Panel de Filtros** | `lib/widgets/transfer_filter_panel.dart` | Selectores rectangulares `r: 8`, código de color temático por estado, badge de filtros activos. |
-| **Tarjeta de Inventario** | `lib/widgets/inventory_article_tile.dart` | Franja vertical de 5px, badges de placa monoespacio, soporte modo individual y selección múltiple. |
-| **Inventario Principal** | `lib/screens/inventory_screen.dart` | Filtro cascada, barra de búsqueda, franja de resumen, modo selección con barra inferior. |
-| **Dashboard Modular** | `lib/screens/dashboard_screen.dart` | Grid dinámico con permisos, badges de alerta de trámites pendientes, confirmación `PopScope`. |
-| **Entrega y Firmas** | `lib/screens/transfer_delivery_screen.dart`, `lib/screens/signature_capture_screen.dart` | Checklist físico, canvas de firma con guía horizontal punteada y botones de guardado. |
-| **Firma de Requisiciones** | `lib/screens/requisition_signature_screen.dart`, `lib/screens/requisition_signature_capture_screen.dart` | Franja de 5px (azul/verde), badges semafóricos, banners de titularidad, botones en Wrap y modal de punto de no retorno. |
-| **Administración Conteo** | `lib/screens/physical_count_screen.dart` | TabBar modular por permisos, selectores `DropdownTemplates`, semáforo de cierre. |
-| **Conteo en Piso** | `lib/screens/active_count_screen.dart` | Cabecera fija de sesión, campo para lector láser, feedback visual instantáneo (flash). |
+| **Aprobación de Traspasos** | `lib/modules/inventory/screens/transfer_approval_screen.dart` | AppBar sólido, franja métrica, tarjetas con franja de 5px, flujo en una línea, botones `r: 8`. |
+| **Panel de Filtros** | `lib/modules/inventory/widgets/transfer_filter_panel.dart` | Selectores rectangulares `r: 8`, código de color temático por estado, badge de filtros activos. |
+| **Tarjeta de Inventario** | `lib/modules/inventory/widgets/inventory_article_tile.dart` | Franja vertical de 5px, badges de placa monoespacio, soporte modo individual y selección múltiple. |
+| **Inventario Principal** | `lib/modules/inventory/screens/inventory_screen.dart` | Filtro cascada, barra de búsqueda, franja de resumen, modo selección con barra inferior. |
+| **Dashboard Modular** | `lib/modules/dashboard/screens/dashboard_screen.dart` | Grid dinámico con permisos, badges de alerta de trámites pendientes, confirmación `PopScope`. |
+| **Entrega y Firmas** | `lib/modules/inventory/screens/transfer_delivery_screen.dart`, `lib/modules/inventory/screens/signature_capture_screen.dart` | Checklist físico, canvas de firma con guía horizontal punteada y botones de guardado. |
+| **Firma de Requisiciones** | `lib/modules/requisitions/screens/requisition_signature_screen.dart`, `lib/modules/requisitions/screens/requisition_signature_capture_screen.dart` | Franja de 5px (azul/verde), badges semafóricos, banners de titularidad, botones en Wrap y modal de punto de no retorno. |
+| **Administración Conteo** | `lib/modules/physical_count/screens/physical_count_screen.dart` | TabBar modular por permisos, selectores `DropdownTemplates`, semáforo de cierre. |
+| **Conteo en Piso** | `lib/modules/physical_count/screens/active_count_screen.dart` | Cabecera fija de sesión, campo para lector láser, feedback visual instantáneo (flash). |

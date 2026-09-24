@@ -1,9 +1,0 @@
-import '../models/geolocation_model.dart';
-
-abstract class GeolocationRepository {
-  Future<GeolocationModel?> getGeolocationByAssetId(int assetId);
-  Future<List<GeolocationModel>> getAllGeolocations();
-  Future<void> createGeolocation(GeolocationModel model);
-  Future<void> updateGeolocation(GeolocationModel model);
-  Future<void> deleteGeolocation(int assetId);
-}

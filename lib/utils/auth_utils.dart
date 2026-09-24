@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
-import 'app_config.dart';
-import 'app_logger.dart';
-import '../providers/auth_provider.dart';
-import '../providers/inventory_provider.dart';
-import '../providers/transfer_form_provider.dart';
-import '../providers/transfer_approval_provider.dart';
-import '../providers/transfer_delivery_provider.dart';
-import '../providers/physical_count_provider.dart';
-import '../providers/active_count_provider.dart';
-import '../providers/requisition_approval_provider.dart';
-import '../providers/asset_verification_provider.dart';
-import '../main.dart';
+import 'package:sigo_app/utils/app_config.dart';
+import 'package:sigo_app/utils/app_logger.dart';
+import 'package:sigo_app/modules/auth/providers/auth_provider.dart';
+import 'package:sigo_app/modules/inventory/providers/inventory_provider.dart';
+import 'package:sigo_app/modules/inventory/providers/transfer_form_provider.dart';
+import 'package:sigo_app/modules/inventory/providers/transfer_approval_provider.dart';
+import 'package:sigo_app/modules/inventory/providers/transfer_delivery_provider.dart';
+import 'package:sigo_app/modules/physical_count/providers/physical_count_provider.dart';
+import 'package:sigo_app/modules/physical_count/providers/active_count_provider.dart';
+import 'package:sigo_app/modules/requisitions/providers/requisition_approval_provider.dart';
+import 'package:sigo_app/modules/inventory/providers/asset_verification_provider.dart';
+import 'package:sigo_app/main.dart';
 
 /// Utilidades transversales de autenticación, sesión y navegación en SigoAPP.
 class AuthUtils {

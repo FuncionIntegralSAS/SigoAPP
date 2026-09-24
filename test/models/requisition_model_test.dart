@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sigo_app/models/requisition_model.dart';
+import 'package:sigo_app/modules/requisitions/models/requisition_model.dart';
 
 void main() {
   group('RequisicionDetalle Model Tests', () {

@@ -11,8 +11,12 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  setUp(() {
+  setUp(() async {
     dbHelper = DatabaseHelper.instance;
+    final db = await dbHelper.database;
+    await db.delete('CountRecords');
+    await db.delete('CountMasterItems');
+    await db.delete('ActiveCountForms');
   });
 
   test('Should insert an ActiveCountForm and its MasterItems', () async {
@@ -29,14 +33,12 @@ void main() {
         'physicalCountId': 'COUNT-001',
         'financialArticleId': 'ART-001',
         'descripcion': 'Laptop Dell',
-        'expectedQuantity': 5.0,
       },
       {
         'id': 'MITEM-002',
         'physicalCountId': 'COUNT-001',
         'financialArticleId': 'ART-002',
         'descripcion': 'Mouse Logitech',
-        'expectedQuantity': 10.0,
       },
     ];
 

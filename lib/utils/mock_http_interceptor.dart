@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'app_logger.dart';
+import 'package:sigo_app/utils/app_logger.dart';
 
 /// Interceptor de `Dio` para simulación local cuando la sesión activa
 /// pertenece al "Entorno de Pruebas (MOCK)".

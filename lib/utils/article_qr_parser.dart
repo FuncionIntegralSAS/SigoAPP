@@ -1,4 +1,4 @@
-import '../models/article_model.dart';
+import 'package:sigo_app/modules/inventory/models/article_model.dart';
 
 class ArticleQrParser {
   static ArticleModel fromQr(String qrData) {
