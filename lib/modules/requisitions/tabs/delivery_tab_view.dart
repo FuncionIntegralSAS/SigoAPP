@@ -36,22 +36,9 @@ class DeliveryTabView extends StatelessWidget {
                     final success = await provider.processBatchSelection('ap');
                     if (!context.mounted) return;
                     if (success) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Row(
-                            children: [
-                              Icon(Icons.check_circle_outline, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text(
-                                'Lote procesado exitosamente',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          backgroundColor: Colors.green.shade700,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
+                      DialogUtils.showSuccessSnackBar(
+                        context,
+                        'Lote procesado exitosamente',
                       );
                     } else if (provider.processErrorMessage != null) {
                       await DialogUtils.showErrorDialog(

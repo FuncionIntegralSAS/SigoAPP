@@ -48,54 +48,22 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
     );
   }
 
-  void _showSuccessDialog(PhysicalCountProvider provider) {
+  Future<void> _showSuccessDialog(PhysicalCountProvider provider) async {
     final message = provider.closeSuccessMessage ??
         'Se ha cerrado exitosamente el conteo físico para la bodega "${_warehouseCodeController.text.trim()}" de la empresa "${_selectedCompany?.descripcion ?? ''}".';
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-        title: const Text(
-          'CONTEO CERRADO',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        content: Text(
-          message,
-          style: const TextStyle(fontSize: 16, height: 1.5),
-        ),
-        actionsAlignment: MainAxisAlignment.end,
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () {
-              Navigator.of(context).pop();
-              _warehouseCodeController.clear();
-              _warehouseNotifier.value = null;
-              setState(() {
-                _selectedCompany = null;
-                _selectedWarehouse = null;
-              });
-              provider.resetCloseForm();
-            },
-            child: const Text(
-              'Aceptar',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
+    await DialogUtils.showSuccessDialog(
+      context,
+      title: 'CONTEO CERRADO',
+      message: message,
     );
+    if (!mounted) return;
+    _warehouseCodeController.clear();
+    _warehouseNotifier.value = null;
+    setState(() {
+      _selectedCompany = null;
+      _selectedWarehouse = null;
+    });
+    provider.resetCloseForm();
   }
 
   Future<void> _confirmAndClose(PhysicalCountProvider provider) async {
@@ -119,64 +87,13 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-        title: const Text(
-          'CONFIRMAR CIERRE',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        content: Text(
-          '¿Estás seguro que quieres cerrar el conteo para la bodega $bodega de la empresa $empresa?',
-          style: const TextStyle(fontSize: 16, height: 1.5),
-        ),
-        actions: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.deepPurple,
-                    side: const BorderSide(
-                      color: Colors.deepPurple,
-                      width: 1.5,
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: const StadiumBorder(),
-                  ),
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text(
-                    'Cancelar',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade600,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: const StadiumBorder(),
-                    elevation: 2,
-                  ),
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text(
-                    'Confirmar',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    final confirmed = await DialogUtils.showConfirmationDialog(
+      context,
+      title: 'CONFIRMAR CIERRE',
+      message: '¿Estás seguro que quieres cerrar el conteo para la bodega $bodega de la empresa $empresa?',
+      confirmText: 'Confirmar',
+      cancelText: 'Cancelar',
+      isDestructive: true,
     );
 
     if (confirmed == true && mounted) {
@@ -197,14 +114,9 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
       if (mounted &&
           provider.pendingWarehousesErrorMessage == null &&
           provider.pendingWarehouses.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'No se encontraron bodegas pendientes para la empresa ${value.descripcion}.',
-            ),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
-          ),
+        DialogUtils.showWarningSnackBar(
+          context,
+          'No se encontraron bodegas pendientes para la empresa ${value.descripcion}.',
         );
       }
     } else {
@@ -237,8 +149,8 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
             });
           } else if (provider.closeState == PhysicalCountState.creada) {
             _lastHandledCloseState = provider.closeState;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _showSuccessDialog(provider);
+            WidgetsBinding.instance.addPostFrameCallback((_) async {
+              await _showSuccessDialog(provider);
               _lastHandledCloseState = null;
             });
           }

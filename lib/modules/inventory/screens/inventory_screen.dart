@@ -15,6 +15,7 @@ import 'package:sigo_app/modules/auth/models/auth_model.dart';
 import 'package:sigo_app/utils/auth_utils.dart';
 import 'package:sigo_app/shared/widgets/company_dropdown_field.dart';
 import 'package:sigo_app/shared/widgets/warehouse_dropdown_field.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 
 const WarehouseModel _allWarehousesFilter = WarehouseModel(
   codigoBodega: 'ALL',
@@ -113,14 +114,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
               firstResp != 'n/a' &&
               artResp != 'n/a' &&
               firstResp != artResp) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Todos los activos del traspaso deben pertenecer al mismo responsable (${first.responsable}).',
-                ),
-                backgroundColor: Colors.orange.shade800,
-                duration: const Duration(seconds: 3),
-              ),
+            DialogUtils.showWarningSnackBar(
+              context,
+              'Todos los activos del traspaso deben pertenecer al mismo responsable (${first.responsable}).',
             );
             return;
           }
@@ -157,14 +153,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
           for (final a in compatible) {
             _selectedArticles[_getArticleKey(a)] = a;
           }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Se marcaron ${compatible.length} activos del responsable (${visibleArticles.first.responsable}).',
-              ),
-              backgroundColor: Colors.blue.shade800,
-              duration: const Duration(seconds: 3),
-            ),
+          DialogUtils.showInfoSnackBar(
+            context,
+            'Se marcaron ${compatible.length} activos del responsable (${visibleArticles.first.responsable}).',
           );
         } else {
           _selectedArticles.clear();
@@ -278,12 +269,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ? FloatingActionButton.extended(
               onPressed: () {
                 if (provider.articles.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'No hay activos disponibles en la lista para seleccionar.',
-                      ),
-                    ),
+                  DialogUtils.showInfoSnackBar(
+                    context,
+                    'No hay activos disponibles en la lista para seleccionar.',
                   );
                   return;
                 }

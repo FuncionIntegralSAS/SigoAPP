@@ -868,23 +868,17 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                     ? () {
                         final toggled = formProvider.toggleAssetSelection(asset);
                         if (!toggled && formProvider.selectionLimitError != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(formProvider.selectionLimitError!),
-                              backgroundColor: Colors.orange.shade800,
-                              duration: const Duration(seconds: 2),
-                            ),
+                          DialogUtils.showWarningSnackBar(
+                            context,
+                            formProvider.selectionLimitError!,
                           );
                         }
                       }
                     : () {
                         if (formProvider.selectedAssets.length >= 50 && !asset.enTramite) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Límite alcanzado: Máximo 50 artículos por solicitud de traspaso.'),
-                              backgroundColor: Colors.orange,
-                              duration: Duration(seconds: 2),
-                            ),
+                          DialogUtils.showWarningSnackBar(
+                            context,
+                            'Límite alcanzado: Máximo 50 artículos por solicitud de traspaso.',
                           );
                         }
                       },
@@ -915,12 +909,9 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                             ? (_) {
                                 final toggled = formProvider.toggleAssetSelection(asset);
                                 if (!toggled && formProvider.selectionLimitError != null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(formProvider.selectionLimitError!),
-                                      backgroundColor: Colors.orange.shade800,
-                                      duration: const Duration(seconds: 2),
-                                    ),
+                                  DialogUtils.showWarningSnackBar(
+                                    context,
+                                    formProvider.selectionLimitError!,
                                   );
                                 }
                               }
@@ -1069,7 +1060,6 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
     TransferFormProvider formProvider,
     TransferRequestProvider requestProvider,
   ) async {
-    final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
     final selectedAssets = formProvider.selectedAssets;
@@ -1206,26 +1196,11 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
     if (!mounted) return;
 
     if (success) {
-      navigator.pop(true);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_outline, color: Colors.white),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Traspaso creado exitosamente con ${articulosPayload.length} artículo(s).',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.green.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+      DialogUtils.showSuccessSnackBar(
+        context,
+        'Traspaso creado exitosamente con ${articulosPayload.length} artículo(s).',
       );
+      navigator.pop(true);
     } else {
       await DialogUtils.showInferredErrorDialog(
         context,

@@ -3,15 +3,23 @@
 Este documento describe las clases y métodos utilitarios de la carpeta `lib/utils`. Sirve para contextualizar a los asistentes de inteligencia artificial sobre el propósito de cada utilidad y los lugares donde actualmente se usan en el proyecto.
 
 ## `dialog_utils.dart`
-- **Propósito**: Provee métodos estáticos para mostrar cuadros de diálogo reutilizables (*Alerts* / Modales) y sanitización inteligente de errores de servidor y base de datos.
+- **Propósito**: Provee métodos estáticos para mostrar cuadros de diálogo reutilizables (*Alerts* / Modales), notificaciones flotantes estandarizadas (SnackBars) y sanitización inteligente de errores de servidor y base de datos.
   - `showPendingWarehousesErrorDialog`: Modal institucional estandarizado que delega en `showErrorDialog`. Sanitiza la traza del error mediante `extractFriendlyMessage`, expone detalles técnicos en el acordeón y adopta el radio de borde `r: 12`, reseteando el error del provider (`clearPendingWarehousesError`) al cerrar.
   - `showErrorDialog`: Modal de error para el usuario final con redacción concisa y amigable. Si el mensaje recibido contiene volcados de base de datos o stack traces, invoca automáticamente `extractFriendlyMessage` para presentar únicamente la causa funcional en el cuerpo principal, y resguarda la traza técnica completa (`technicalDetails`, código HTTP, endpoint y botón de copiado al portapapeles) dentro del acordeón expandible para desarrollador, garantizando adaptabilidad responsiva sin desbordamientos visuales (radio institucional `r: 12` y botones `r: 8`).
   - `showInferredErrorDialog`: Método universal que infiere automáticamente mensaje amigable, código de estado HTTP, endpoint y detalles técnicos a partir de cualquier excepción tipada de negocio (`TransferBusinessException`, `RequisitionBusinessException`, `CatalogBusinessException`, etc.), `DioException`, cadenas crudas o cualquier `Object`, desplegando el modal estandarizado `showErrorDialog` sin acoplamiento entre capas.
   - `extractFriendlyMessage`: Método utilitario que procesa cadenas crudas de error provenientes de Oracle PL/SQL (`ORA-20xxx`), extrayendo el mensaje de negocio tras pipes (`121|...`), limpiando prefijos de JDBC/Spring Boot (`CallableStatement`, `HikariProxy`, etc.) y retornando una descripción clara para el usuario final.
+  - `showSuccessSnackBar`: SnackBar flotante de éxito con fondo verde esmeralda institucional (`Colors.green.shade700`), icono `Icons.check_circle_outline`, duración configurable (por defecto 4s, o reducida ej. 800ms para escaneo ágil) y limpieza automática de mensajes previos (`hideCurrentSnackBar()`).
+  - `showInfoSnackBar`: SnackBar flotante informativo con fondo azul institucional (`Colors.blue.shade800`), icono `Icons.info_outline`, duración configurable y limpieza automática de cola.
+  - `showWarningSnackBar`: SnackBar flotante de advertencia para validaciones operativas y límites de negocio (límite de artículos, incompatibilidad de responsable, etc.) con fondo ámbar (`Colors.amber.shade800`), icono `Icons.warning_amber_rounded`, duración configurable y limpieza automática de cola.
+  - `showConfirmationDialog`: Modal de confirmación estandarizado (`r: 12`, botones `r: 8`) con retorno booleano `Future<bool?>`, soporte para icono de cabecera (`IconData? icon`), color de confirmación configurable, soporte destructivo (`Colors.red.shade700`) y `barrierDismissible: false`.
+  - `showSuccessDialog`: Modal formal de éxito con icono circular verde esmeralda, `barrierDismissible: false` y soporte para callback de acción `VoidCallback? onAccept`.
 - **Lugares de uso**: 
+  - `lib/modules/dashboard/screens/dashboard_screen.dart`
   - `lib/modules/physical_count/tabs/physical_count_opening_tab.dart`
   - `lib/modules/physical_count/tabs/physical_count_assignment_tab.dart`
   - `lib/modules/physical_count/tabs/physical_count_closing_tab.dart`
+  - `lib/modules/physical_count/widgets/continuous_scan_view.dart`
+  - `lib/modules/inventory/screens/inventory_screen.dart`
   - `lib/modules/inventory/widgets/transfer_form_widget.dart`
   - `lib/modules/inventory/screens/transfer_delivery_screen.dart`
   - `lib/modules/inventory/screens/transfer_approval_screen.dart`

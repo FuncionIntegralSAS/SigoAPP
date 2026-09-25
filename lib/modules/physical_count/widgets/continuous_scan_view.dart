@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sigo_app/modules/physical_count/providers/active_count_provider.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 
 class ContinuousScanView extends StatefulWidget {
   const ContinuousScanView({super.key});
@@ -19,13 +20,12 @@ class _ContinuousScanViewState extends State<ContinuousScanView> {
     final provider = context.read<ActiveCountProvider>();
     // Simula cámara: Al detectar código asume cantidad 1.0 (incremento natural)
     provider.recordCount(barcode, 1.0);
-    
+
     _barcodeController.clear();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Artículo $barcode registrado exitosamente.'),
-        duration: const Duration(milliseconds: 800),
-      ),
+    DialogUtils.showSuccessSnackBar(
+      context,
+      'Artículo $barcode registrado exitosamente.',
+      duration: const Duration(milliseconds: 1500),
     );
   }
 
@@ -41,11 +41,18 @@ class _ContinuousScanViewState extends State<ContinuousScanView> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                const Icon(Icons.qr_code_scanner, size: 100, color: Colors.white24),
+                const Icon(
+                  Icons.qr_code_scanner,
+                  size: 100,
+                  color: Colors.white24,
+                ),
                 Positioned(
                   bottom: 20,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     color: Colors.black54,
                     child: const Text(
                       'Cámara Activa (Modo Continuo)',

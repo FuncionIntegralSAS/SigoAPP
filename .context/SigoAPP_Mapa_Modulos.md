@@ -65,6 +65,7 @@ Fecha de actualización: Agosto 2026
 | **Modelo consumido** | `AppPermission` | `lib/modules/auth/models/auth_model.dart` |
 | **Utilidad** | `PermissionListExtension.hasPermission()` | `lib/utils/permission_utils.dart` |
 | **Utilidad** | `AuthUtils` (Cierre de sesión centralizado) | `lib/utils/auth_utils.dart` |
+| **Utilidad** | `DialogUtils` (diálogo modal de confirmación de salida) | `lib/utils/dialog_utils.dart` |
 
 **Navegación desde Dashboard (agrupada por módulo de negocio):**
 

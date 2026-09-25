@@ -955,12 +955,9 @@ class _TransferCardState extends State<_TransferCard> {
                                   if (!context.mounted) return;
 
                                   if (success) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Traspaso aprobado correctamente'),
-                                        backgroundColor: Color(0xFF1B5E20),
-                                      ),
+                                    DialogUtils.showSuccessSnackBar(
+                                      context,
+                                      'Traspaso aprobado correctamente',
                                     );
                                   } else {
                                     DialogUtils.showErrorDialog(
@@ -1106,11 +1103,9 @@ class _TransferCardState extends State<_TransferCard> {
                           if (!context.mounted) return;
 
                           if (success) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Traspaso rechazado correctamente'),
-                                backgroundColor: Colors.orange,
-                              ),
+                            DialogUtils.showInfoSnackBar(
+                              context,
+                              'Traspaso rechazado correctamente',
                             );
                           } else {
                             DialogUtils.showErrorDialog(

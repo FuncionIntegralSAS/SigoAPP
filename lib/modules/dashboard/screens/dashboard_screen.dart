@@ -13,6 +13,7 @@ import 'package:sigo_app/modules/physical_count/screens/physical_count_screen.da
 import 'package:sigo_app/modules/physical_count/screens/active_count_screen.dart';
 import 'package:sigo_app/utils/permission_utils.dart';
 import 'package:sigo_app/utils/auth_utils.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 import 'package:sigo_app/modules/inventory/screens/transfer_delivery_screen.dart' as transfer_delivery;
 
 class DashboardScreen extends StatelessWidget {
@@ -29,24 +30,13 @@ class DashboardScreen extends StatelessWidget {
           canPop: isLoggingOut,
           onPopInvokedWithResult: (didPop, result) async {
             if (didPop || isLoggingOut || AuthUtils.isLoggingOut) return;
-            final shouldExit = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('¿Salir de la aplicación?'),
-                content: const Text(
-                  '¿Estás seguro de que deseas salir de SigoAPP?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Cancelar'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text('Salir'),
-                  ),
-                ],
-              ),
+            final shouldExit = await DialogUtils.showConfirmationDialog(
+              context,
+              title: '¿Salir de la aplicación?',
+              message: '¿Estás seguro de que deseas salir de SigoAPP?',
+              confirmText: 'Salir',
+              cancelText: 'Cancelar',
+              isDestructive: true,
             );
             if (shouldExit == true && context.mounted) {
               Navigator.of(context).pop();

@@ -247,6 +247,199 @@ void main() {
       expect(fakeProvider.pendingWarehousesErrorMessage, isNull);
     });
   });
+
+  group('DialogUtils Feedback, SnackBars & Modals Tests', () {
+    testWidgets('showSuccessSnackBar muestra SnackBar con verde institucional e icono check', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  DialogUtils.showSuccessSnackBar(
+                    context,
+                    'Operación realizada con éxito',
+                  );
+                },
+                child: const Text('Mostrar Éxito'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Mostrar Éxito'));
+      await tester.pump();
+
+      expect(find.text('Operación realizada con éxito'), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+
+      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+      expect(snackBar.backgroundColor, Colors.green.shade700);
+      expect(snackBar.behavior, SnackBarBehavior.floating);
+
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('showInfoSnackBar muestra SnackBar con azul institucional e icono de info', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  DialogUtils.showInfoSnackBar(
+                    context,
+                    'Información de proceso',
+                  );
+                },
+                child: const Text('Mostrar Info'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Mostrar Info'));
+      await tester.pump();
+
+      expect(find.text('Información de proceso'), findsOneWidget);
+      expect(find.byIcon(Icons.info_outline), findsOneWidget);
+
+      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+      expect(snackBar.backgroundColor, Colors.blue.shade800);
+      expect(snackBar.behavior, SnackBarBehavior.floating);
+
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('showWarningSnackBar muestra SnackBar con ámbar institucional e icono de advertencia', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  DialogUtils.showWarningSnackBar(
+                    context,
+                    'Advertencia de límite de negocio',
+                  );
+                },
+                child: const Text('Mostrar Advertencia'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Mostrar Advertencia'));
+      await tester.pump();
+
+      expect(find.text('Advertencia de límite de negocio'), findsOneWidget);
+      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+
+      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+      expect(snackBar.backgroundColor, Colors.amber.shade800);
+      expect(snackBar.behavior, SnackBarBehavior.floating);
+
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('showConfirmationDialog retorna true al confirmar, false al cancelar y aplica color destructivo', (tester) async {
+      bool? dialogResult;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  dialogResult = await DialogUtils.showConfirmationDialog(
+                    context,
+                    title: '¿Confirmar Acción?',
+                    message: 'Esta acción no se puede deshacer.',
+                    confirmText: 'Eliminar',
+                    cancelText: 'Cancelar',
+                    isDestructive: true,
+                    icon: Icons.delete_outline,
+                  );
+                },
+                child: const Text('Abrir Confirmación'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // 1. Abrir diálogo y cancelar
+      await tester.tap(find.text('Abrir Confirmación'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('¿Confirmar Acción?'), findsOneWidget);
+      expect(find.text('Esta acción no se puede deshacer.'), findsOneWidget);
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+      expect(find.text('Eliminar'), findsOneWidget);
+      expect(find.text('Cancelar'), findsOneWidget);
+
+      final confirmBtn = tester.widget<ElevatedButton>(
+        find.widgetWithText(ElevatedButton, 'Eliminar'),
+      );
+      expect(confirmBtn.style?.backgroundColor?.resolve({}), Colors.red.shade700);
+
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(dialogResult, isFalse);
+
+      // 2. Abrir diálogo y confirmar
+      await tester.tap(find.text('Abrir Confirmación'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Eliminar'));
+      await tester.pumpAndSettle();
+      expect(dialogResult, isTrue);
+    });
+
+    testWidgets('showSuccessDialog despliega modal con icono verde y ejecuta onAccept al presionar el botón', (tester) async {
+      bool accepted = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  DialogUtils.showSuccessDialog(
+                    context,
+                    title: 'Proceso Exitoso',
+                    message: 'La operación finalizó correctamente.',
+                    buttonText: 'Aceptar',
+                    onAccept: () {
+                      accepted = true;
+                    },
+                  );
+                },
+                child: const Text('Abrir Modal Éxito'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Abrir Modal Éxito'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Proceso Exitoso'), findsOneWidget);
+      expect(find.text('La operación finalizó correctamente.'), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+      expect(find.text('Aceptar'), findsOneWidget);
+
+      await tester.tap(find.text('Aceptar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Proceso Exitoso'), findsNothing);
+      expect(accepted, isTrue);
+    });
+  });
 }
 
 class _FakePhysicalCountProvider extends Fake implements PhysicalCountProvider {

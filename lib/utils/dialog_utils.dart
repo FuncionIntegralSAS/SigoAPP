@@ -4,8 +4,11 @@ import 'package:sigo_app/modules/physical_count/providers/physical_count_provide
 
 class DialogUtils {
   static Future<void> showPendingWarehousesErrorDialog(
-      BuildContext context, PhysicalCountProvider provider) async {
-    final rawMessage = provider.pendingWarehousesErrorMessage ??
+    BuildContext context,
+    PhysicalCountProvider provider,
+  ) async {
+    final rawMessage =
+        provider.pendingWarehousesErrorMessage ??
         'Ocurrió un error al obtener las bodegas pendientes.';
     final friendly = extractFriendlyMessage(rawMessage);
 
@@ -77,13 +80,30 @@ class DialogUtils {
 
     // 4. Limpieza de prefijos técnicos comunes de Spring Boot / JDBC / CallableStatement
     var cleaned = trimmed;
-    cleaned = cleaned.replaceAll(RegExp(r'^Error al realizar el proceso:\s*', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'^Error ejecutando [^:]+:\s*', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'^Error calling CallableStatement[^:]*:\s*', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'\[HikariProxyCallableStatement[^\]]*\]', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(
+      RegExp(r'^Error al realizar el proceso:\s*', caseSensitive: false),
+      '',
+    );
+    cleaned = cleaned.replaceAll(
+      RegExp(r'^Error ejecutando [^:]+:\s*', caseSensitive: false),
+      '',
+    );
+    cleaned = cleaned.replaceAll(
+      RegExp(
+        r'^Error calling CallableStatement[^:]*:\s*',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    cleaned = cleaned.replaceAll(
+      RegExp(r'\[HikariProxyCallableStatement[^\]]*\]', caseSensitive: false),
+      '',
+    );
 
     cleaned = cleaned.trim();
-    return cleaned.isNotEmpty ? cleaned : 'Ha ocurrido un error en la operación.';
+    return cleaned.isNotEmpty
+        ? cleaned
+        : 'Ha ocurrido un error en la operación.';
   }
 
   /// Muestra un modal de error amigable y conciso para el usuario final,
@@ -105,7 +125,8 @@ class DialogUtils {
     final displayFriendlyMessage = extractFriendlyMessage(message);
     final bool isTechnicalError = displayFriendlyMessage != message.trim();
 
-    final effectiveTechnicalDetails = technicalDetails ??
+    final effectiveTechnicalDetails =
+        technicalDetails ??
         (isTechnicalError
             ? [
                 if (endpoint != null) 'Endpoint: $endpoint',
@@ -113,18 +134,20 @@ class DialogUtils {
                 'Detalle técnico:\n$message',
               ].join('\n')
             : (statusCode != null || endpoint != null
-                ? [
-                    if (endpoint != null) 'Endpoint: $endpoint',
-                    if (statusCode != null) 'Código HTTP: $statusCode',
-                  ].join('\n')
-                : null));
+                  ? [
+                      if (endpoint != null) 'Endpoint: $endpoint',
+                      if (statusCode != null) 'Código HTTP: $statusCode',
+                    ].join('\n')
+                  : null));
 
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
           actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
@@ -229,21 +252,27 @@ class DialogUtils {
                             child: TextButton.icon(
                               style: TextButton.styleFrom(
                                 visualDensity: VisualDensity.compact,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
                               ),
                               icon: const Icon(Icons.copy, size: 14),
-                              label: const Text('Copiar detalle',
-                                  style: TextStyle(fontSize: 11)),
+                              label: const Text(
+                                'Copiar detalle',
+                                style: TextStyle(fontSize: 11),
+                              ),
                               onPressed: () {
-                                final textToCopy = effectiveTechnicalDetails ??
+                                final textToCopy =
+                                    effectiveTechnicalDetails ??
                                     'Endpoint: ${endpoint ?? "N/A"}\nCódigo: ${statusCode ?? "N/A"}';
                                 Clipboard.setData(
-                                    ClipboardData(text: textToCopy));
+                                  ClipboardData(text: textToCopy),
+                                );
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                        'Detalles técnicos copiados al portapapeles'),
+                                      'Detalles técnicos copiados al portapapeles',
+                                    ),
                                     duration: Duration(seconds: 2),
                                   ),
                                 );
@@ -273,10 +302,13 @@ class DialogUtils {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade800,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: () {
                 Navigator.of(dialogContext).pop();
@@ -360,6 +392,248 @@ class DialogUtils {
       buttonText: buttonText,
       onAccept: onAccept,
       onRetry: onRetry,
+    );
+  }
+
+  /// Muestra un SnackBar de éxito estandarizado (Verde Esmeralda institucional).
+  static void showSuccessSnackBar(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 5),
+  }) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green.shade700,
+        behavior: SnackBarBehavior.floating,
+        duration: duration,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  /// Muestra un SnackBar informativo estandarizado (Azul Institucional).
+  static void showInfoSnackBar(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 5),
+  }) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.blue.shade800,
+        behavior: SnackBarBehavior.floating,
+        duration: duration,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  /// Muestra un SnackBar de advertencia estandarizado (Ámbar institucional).
+  static void showWarningSnackBar(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 4),
+  }) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.amber.shade800,
+        behavior: SnackBarBehavior.floating,
+        duration: duration,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  /// Muestra un diálogo de confirmación estandarizado (r: 12, botones r: 8).
+  static Future<bool?> showConfirmationDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String confirmText = 'Aceptar',
+    String cancelText = 'Cancelar',
+    bool isDestructive = false,
+    IconData? icon,
+    Color? confirmButtonColor,
+    bool barrierDismissible = false,
+  }) async {
+    final effectiveConfirmColor =
+        confirmButtonColor ??
+        (isDestructive ? Colors.red.shade700 : Colors.blue.shade800);
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        title: icon != null
+            ? Row(
+                children: [
+                  Icon(icon, color: effectiveConfirmColor, size: 24),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
+                ),
+              ),
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 15, height: 1.4),
+        ),
+        actions: [
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: Colors.grey.shade300),
+              foregroundColor: Colors.grey.shade800,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(cancelText),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: effectiveConfirmColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(confirmText),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Muestra un diálogo de éxito estandarizado (r: 12, botones r: 8, icono verde).
+  static Future<void> showSuccessDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String buttonText = 'Aceptar',
+    bool barrierDismissible = false,
+    VoidCallback? onAccept,
+  }) async {
+    return showDialog(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.check_circle_outline,
+                color: Colors.green.shade700,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 15, height: 1.4),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () {
+              Navigator.of(context).pop();
+              onAccept?.call();
+            },
+            child: Text(buttonText),
+          ),
+        ],
+      ),
     );
   }
 }

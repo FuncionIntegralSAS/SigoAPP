@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:sigo_app/modules/inventory/models/article_model.dart';
 import 'package:sigo_app/modules/inventory/providers/inventory_provider.dart';
 import 'package:sigo_app/modules/inventory/providers/geolocation_provider.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 
 /// Modal interactivo para actualizar el estado operativo, comentarios, foto
 /// y coordenadas GPS de un activo en la vista de inventario.
@@ -81,24 +82,12 @@ class _ArticleEditModalState extends State<ArticleEditModal> {
 
   Future<void> _captureLocation() async {
     if (_currentLat != null && _currentLon != null) {
-      final update = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Actualizar Ubicación'),
-          content: const Text(
-            'El activo ya cuenta con una ubicación registrada. ¿Desea reemplazarla por su ubicación actual?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('No'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Sí'),
-            ),
-          ],
-        ),
+      final update = await DialogUtils.showConfirmationDialog(
+        context,
+        title: 'Actualizar Ubicación',
+        message: 'El activo ya cuenta con una ubicación registrada. ¿Desea reemplazarla por su ubicación actual?',
+        confirmText: 'Sí',
+        cancelText: 'No',
       );
       if (update != true) return;
     }
@@ -125,8 +114,10 @@ class _ArticleEditModalState extends State<ArticleEditModal> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLocating = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error GPS: $e')),
+      DialogUtils.showInferredErrorDialog(
+        context,
+        title: 'Error de GPS',
+        error: e,
       );
     }
   }
@@ -137,10 +128,9 @@ class _ArticleEditModalState extends State<ArticleEditModal> {
           'path/to/local/storage/photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
     });
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Foto capturada (Simulación: Cámara)'),
-        ),
+      DialogUtils.showInfoSnackBar(
+        context,
+        'Foto capturada (Simulación: Cámara)',
       );
     }
   }
@@ -158,20 +148,10 @@ class _ArticleEditModalState extends State<ArticleEditModal> {
           _currentLon!,
         );
         if (!synced && mounted) {
-          await showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Aviso de Sincronización'),
-              content: Text(
-                'No se pudo registrar la ubicación en el servidor:\n${geoProvider.errorMessage ?? "Error de red"}\n\nLos cambios locales continuarán.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Aceptar'),
-                ),
-              ],
-            ),
+          await DialogUtils.showErrorDialog(
+            context,
+            title: 'Aviso de Sincronización',
+            message: 'No se pudo registrar la ubicación en el servidor:\n${geoProvider.errorMessage ?? "Error de red"}\n\nLos cambios locales continuarán.',
           );
         }
       }
@@ -186,22 +166,19 @@ class _ArticleEditModalState extends State<ArticleEditModal> {
       if (mounted) {
         context.read<InventoryProvider>().updateArticleLocally(updatedArticle);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Datos del activo actualizados correctamente'),
-            backgroundColor: Colors.green,
-          ),
+        DialogUtils.showSuccessSnackBar(
+          context,
+          'Datos del activo actualizados correctamente',
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+        DialogUtils.showInferredErrorDialog(
+          context,
+          title: 'Error al Guardar',
+          error: e,
         );
       }
     }

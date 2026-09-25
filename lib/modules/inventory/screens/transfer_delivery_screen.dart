@@ -270,17 +270,13 @@ class _DeliveryCard extends StatelessWidget {
                     onPressed: provider.loading
                         ? null
                         : () async {
-                            final messenger = ScaffoldMessenger.of(context);
                             final success =
                                 await provider.confirmReceipt(request.id);
                             if (!context.mounted) return;
                             if (success) {
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Recepción confirmada e inventario actualizado en ERP'),
-                                  backgroundColor: Colors.green,
-                                ),
+                              DialogUtils.showSuccessSnackBar(
+                                context,
+                                'Recepción confirmada e inventario actualizado en ERP',
                               );
                             } else {
                               DialogUtils.showErrorDialog(

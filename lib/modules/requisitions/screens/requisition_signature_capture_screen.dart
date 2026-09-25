@@ -77,19 +77,9 @@ class _RequisitionSignatureCaptureScreenState
     }
 
     if (_signatureController.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.white),
-              SizedBox(width: 8),
-              Text('Por favor, estampe la firma antes de guardar.'),
-            ],
-          ),
-          backgroundColor: Colors.orange.shade800,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+      DialogUtils.showInfoSnackBar(
+        context,
+        'Por favor, estampe la firma antes de guardar.',
       );
       return;
     }
@@ -97,13 +87,10 @@ class _RequisitionSignatureCaptureScreenState
     final Uint8List? bytes = await _signatureController.toPngBytes();
     if (bytes == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error al procesar los trazos de la firma.'),
-            backgroundColor: Colors.red.shade700,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
+        DialogUtils.showErrorDialog(
+          context,
+          title: 'Error de Procesamiento',
+          message: 'Error al procesar los trazos de la firma.',
         );
       }
       return;
@@ -155,19 +142,9 @@ class _RequisitionSignatureCaptureScreenState
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_outline, color: Colors.white),
-              const SizedBox(width: 8),
-              Text('$_signatureTitle registrada correctamente.'),
-            ],
-          ),
-          backgroundColor: Colors.green.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+      DialogUtils.showSuccessSnackBar(
+        context,
+        '$_signatureTitle registrada correctamente.',
       );
       Navigator.pop(context, true);
     } else {

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:sigo_app/modules/physical_count/providers/active_count_provider.dart';
 import 'package:sigo_app/modules/physical_count/widgets/continuous_scan_view.dart';
 import 'package:sigo_app/modules/physical_count/widgets/list_count_view.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 import 'package:sigo_app/modules/auth/providers/auth_provider.dart';
 
 class ActiveCountScreen extends StatefulWidget {
@@ -25,32 +26,20 @@ class _ActiveCountScreenState extends State<ActiveCountScreen> {
     });
   }
 
-  void _showFinishDialog(BuildContext context, ActiveCountProvider provider) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Finalizar Conteo ${provider.currentIteration}'),
-        content: const Text(
-          '¿Estás seguro de finalizar esta iteración? Si existen diferencias, se habilitará el siguiente conteo.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              final authProvider = context.read<AuthProvider>();
-              provider.completeCurrentIteration(
-                authProvider.currentToken ?? '',
-              );
-            },
-            child: const Text('Confirmar'),
-          ),
-        ],
-      ),
+  Future<void> _showFinishDialog(BuildContext context, ActiveCountProvider provider) async {
+    final confirmed = await DialogUtils.showConfirmationDialog(
+      context,
+      title: 'Finalizar Conteo ${provider.currentIteration}',
+      message: '¿Estás seguro de finalizar esta iteración? Si existen diferencias, se habilitará el siguiente conteo.',
+      confirmText: 'Confirmar',
+      cancelText: 'Cancelar',
     );
+    if (confirmed == true && context.mounted) {
+      final authProvider = context.read<AuthProvider>();
+      provider.completeCurrentIteration(
+        authProvider.currentToken ?? '',
+      );
+    }
   }
 
   @override
@@ -65,9 +54,11 @@ class _ActiveCountScreenState extends State<ActiveCountScreen> {
 
           if (provider.errorMessage != null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              ScaffoldMessenger.of(
+              DialogUtils.showErrorDialog(
                 context,
-              ).showSnackBar(SnackBar(content: Text(provider.errorMessage!)));
+                title: 'Error de Conteo',
+                message: provider.errorMessage!,
+              );
               provider.clearError();
             });
           }

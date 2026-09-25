@@ -16,6 +16,7 @@ import 'package:sigo_app/modules/debug/widgets/printer_connection_dialog.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:sigo_app/utils/dropdown_template.dart';
 import 'package:sigo_app/modules/inventory/providers/geolocation_provider.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 
 // El StatefulWidget para la pantalla de Generación de QR
 class GeneratorScreen extends StatefulWidget {
@@ -111,10 +112,9 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   // Función que se ejecuta SOLO al presionar el botón de generación.
   void _generateQr() async {
     if (_selectedArticle == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debe seleccionar un activo para generar el QR.'),
-        ),
+      DialogUtils.showInfoSnackBar(
+        context,
+        'Debe seleccionar un activo para generar el QR.',
       );
       return;
     }
@@ -137,20 +137,10 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         final synced =
             await geoProvider.syncGeolocation(updatedArticle.id!, lat, lon);
         if (!synced && mounted) {
-          await showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Aviso de Sincronización'),
-              content: Text(
-                'No se pudo registrar la ubicación en el servidor:\n${geoProvider.errorMessage ?? "Error de red"}\n\nEl proceso local continuará con normalidad.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Aceptar'),
-                ),
-              ],
-            ),
+          await DialogUtils.showErrorDialog(
+            context,
+            title: 'Aviso de Sincronización',
+            message: 'No se pudo registrar la ubicación en el servidor:\n${geoProvider.errorMessage ?? "Error de red"}\n\nEl proceso local continuará con normalidad.',
           );
         }
       }
@@ -182,23 +172,18 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         );
         if (!printSuccess) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Error de impresión térmica: ${printerProvider.errorMessage}',
-                ),
-              ),
+            DialogUtils.showErrorDialog(
+              context,
+              title: 'Error de Impresión',
+              message: 'Error de impresión térmica: ${printerProvider.errorMessage}',
             );
           }
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'PDF generado. No hay impresora conectada para impresión térmica.',
-              ),
-            ),
+          DialogUtils.showInfoSnackBar(
+            context,
+            'PDF generado. No hay impresora conectada para impresión térmica.',
           );
         }
       }
@@ -217,9 +202,11 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
           _isGenerating = false;
           _message = 'Error: $e';
         });
-        ScaffoldMessenger.of(
+        DialogUtils.showInferredErrorDialog(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error en el proceso: $e')));
+          title: 'Error en el Proceso',
+          error: e,
+        );
       }
     }
   }

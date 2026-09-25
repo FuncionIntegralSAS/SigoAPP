@@ -9,6 +9,7 @@ import 'package:sigo_app/utils/dropdown_template.dart';
 import 'package:sigo_app/modules/debug/screens/scanner_screen.dart';
 import 'package:sigo_app/modules/inventory/screens/generator_screen.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 
 class AssetVerificationScreen extends StatefulWidget {
   const AssetVerificationScreen({super.key});
@@ -114,22 +115,12 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
     }
 
     if (shouldUpdate && mounted) {
-      final update = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(dialogTitle),
-          content: Text(dialogContent),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('No'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Sí'),
-            ),
-          ],
-        ),
+      final update = await DialogUtils.showConfirmationDialog(
+        context,
+        title: dialogTitle,
+        message: dialogContent,
+        confirmText: 'Sí',
+        cancelText: 'No',
       );
 
       if (update == true && mounted) {
@@ -140,17 +131,15 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
         );
         if (mounted) {
           if (success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Ubicación guardada exitosamente')),
+            DialogUtils.showSuccessSnackBar(
+              context,
+              'Ubicación guardada exitosamente',
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'No se pudo sincronizar la ubicación: ${geoProvider.errorMessage ?? "Error de conexión"}',
-                ),
-                backgroundColor: Colors.orange,
-              ),
+            DialogUtils.showErrorDialog(
+              context,
+              title: 'Error de Sincronización',
+              message: 'No se pudo sincronizar la ubicación: ${geoProvider.errorMessage ?? "Error de conexión"}',
             );
           }
         }

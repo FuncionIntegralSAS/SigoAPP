@@ -48,27 +48,15 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
     );
   }
 
-  void _showSuccessDialog(PhysicalCountProvider provider) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text('Conteo Creado y Asignado'),
-        content: const Text(
-          'Se ha generado la apertura de conteo físico y se ha asignado el personal exitosamente.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              provider.resetForm();
-              _formKey.currentState?.reset();
-            },
-            child: const Text('Aceptar'),
-          ),
-        ],
-      ),
+  Future<void> _showSuccessDialog(PhysicalCountProvider provider) async {
+    await DialogUtils.showSuccessDialog(
+      context,
+      title: 'Conteo Creado y Asignado',
+      message: 'Se ha generado la apertura de conteo físico y se ha asignado el personal exitosamente.',
     );
+    if (!mounted) return;
+    provider.resetForm();
+    _formKey.currentState?.reset();
   }
 
   Future<void> _selectDate(PhysicalCountProvider provider) async {
@@ -98,8 +86,8 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
             });
           } else if (provider.state == PhysicalCountState.creada) {
             _lastHandledState = provider.state;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _showSuccessDialog(provider);
+            WidgetsBinding.instance.addPostFrameCallback((_) async {
+              await _showSuccessDialog(provider);
               _lastHandledState = null;
             });
           }

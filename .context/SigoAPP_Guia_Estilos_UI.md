@@ -212,6 +212,15 @@ Todo diálogo modal (`showDialog` / `AlertDialog`) debe respetar:
    * La fila del encabezado del acordeón desplegable debe utilizar `MainAxisSize.min` y envolver el texto explicativo con `Flexible` para evitar errores de renderizado (`RenderFlex overflowed`) en ventanas compactas de Windows o dispositivos móviles.
    * Queda prohibido ubicar badges adicionales (ej. chips de método o código HTTP) en la misma fila horizontal del toggle desplegable; dichos metadatos deben residir estructurados dentro del área expandida.
 
+#### Directrices para Diálogos de Confirmación y Éxito (`DialogUtils.showConfirmationDialog` y `DialogUtils.showSuccessDialog`)
+1. **Diálogos de Confirmación (`showConfirmationDialog`):**
+   * Estructura modal (`r: 12`, botones `r: 8`) con `barrierDismissible: false` para evitar toques involuntarios fuera del diálogo en entornos operativos.
+   * Retorna `Future<bool?>` (`true` al confirmar, `false` al cancelar).
+   * Admite icono opcional en el encabezado (`IconData? icon`), personalización de botones (`confirmText`, `cancelText`), color de confirmación configurable (`confirmButtonColor`) y bandera destructiva (`isDestructive: true` con fondo `Colors.red.shade700`).
+2. **Diálogos de Éxito (`showSuccessDialog`):**
+   * Modal formal de finalización exitosa (`r: 12`) con icono circular verde esmeralda (`Icons.check_circle_outline`, fondo `Colors.green.shade50`) y `barrierDismissible: false`.
+   * Admite callback opcional `onAccept` que se ejecuta inmediatamente tras el cierre (`pop()`), ideal para disparar navegaciones o limpiezas de formulario sin condiciones de carrera.
+
 ### 4.6 Selectores Desplegables de Catálogo (Empresas y Bodegas)
 
 Para garantizar consistencia visual y operativa en toda la aplicación, queda prohibido maquetar selectores de empresas o bodegas con implementaciones ad-hoc dispersas. Se deben utilizar obligatoriamente los widgets estandarizados del proyecto:
@@ -263,34 +272,48 @@ WarehouseDropdownField(
 )
 ```
 
-### 4.7 Notificaciones y Mensajes de Éxito / Feedback Transversal (SnackBars)
+### 4.7 Notificaciones y Retroalimentación Rápida (SnackBars Institucionales)
 
-Para todo mensaje de éxito, confirmación de trámite o procesamiento transaccional en SigoAPP (por ejemplo, *"Lote procesado exitosamente"*, *"Entregas registradas exitosamente"*, *"Traspaso aprobado exitosamente"*), es **obligatorio** utilizar el estándar visual de éxito:
+Toda notificación flotante debe gestionarse a través de la API estandarizada de [`DialogUtils`](../lib/utils/dialog_utils.dart). Queda estrictamente prohibido instanciar `SnackBar` ad-hoc o utilizar fondos oscuros genéricos.
 
-* **Color de Fondo:** Verde Esmeralda Institucional `Colors.green.shade700` (`Color(0xFF1B5E20)`). Queda estrictamente prohibido usar fondos oscuros neutros, grises o negros para notificaciones de éxito.
-* **Tipografía:** Texto en color blanco (`Colors.white`) con peso `FontWeight.w600` o `FontWeight.bold` para garantizar legibilidad de alto contraste.
-* **Comportamiento y Disposición:** `behavior: SnackBarBehavior.floating`, con margen inferior para no colisionar con botones flotantes (`FloatingActionButton`) ni barras de navegación inferiores.
-* **Esquinas y Contornos:** Esquinas redondeadas compactas `shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))`.
-* **Iconografía de Apoyo:** Fila con icono institucional blanco `Icon(Icons.check_circle_outline, color: Colors.white)` seguido de un espaciado horizontal de `8px` antes del texto.
+#### Tríada Semántica Institucional:
+* **Éxito (`DialogUtils.showSuccessSnackBar`):**
+  - **Fondo:** Verde Esmeralda Institucional `Colors.green.shade700` (`Color(0xFF1B5E20)`).
+  - **Icono:** `Icons.check_circle_outline` (blanco, 24px).
+  - **Uso:** Confirmación de trámites, creaciones, recepciones o aprobaciones exitosas.
+* **Información (`DialogUtils.showInfoSnackBar`):**
+  - **Fondo:** Azul Institucional `Colors.blue.shade800`.
+  - **Icono:** `Icons.info_outline` (blanco, 24px).
+  - **Uso:** Avisos contextuales, instrucciones operativas o estados informativos neutros.
+* **Advertencia / Validación de Negocio (`DialogUtils.showWarningSnackBar`):**
+  - **Fondo:** Ámbar Institucional `Colors.amber.shade800`.
+  - **Icono:** `Icons.warning_amber_rounded` (blanco, 24px).
+  - **Uso:** Restricciones de validación operativa (ej. *"Límite alcanzado: Máximo 50 artículos"*, *"Todos los activos deben pertenecer al mismo responsable"* o *"No se encontraron bodegas pendientes"*).
+
+#### Reglas de Renderizado y Despacho:
+1. **Comportamiento Flotante:** `behavior: SnackBarBehavior.floating` con esquinas redondeadas compactas `shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))`.
+2. **Tipografía de Alto Contraste:** Texto blanco puro (`Colors.white`) con `FontWeight.w600`.
+3. **Limpieza Automática de Cola:** Toda invocación a `DialogUtils` ejecuta `ScaffoldMessenger.of(context).hideCurrentSnackBar()` antes de mostrar el nuevo mensaje, garantizando respuesta táctil inmediata y previniendo encolamientos acumulativos.
+4. **Duración Ajustable:**
+   - Estándar: `Duration(seconds: 4)` (por defecto).
+   - Escaneo Rápido / Continuo (`ContinuousScanView`): `Duration(milliseconds: 800)` para ritmo ágil de operario.
 
 #### Ejemplo de Implementación Canónica:
 ```dart
-ScaffoldMessenger.of(context).showSnackBar(
-  SnackBar(
-    content: const Row(
-      children: [
-        Icon(Icons.check_circle_outline, color: Colors.white),
-        SizedBox(width: 8),
-        Text(
-          'Lote procesado exitosamente',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-      ],
-    ),
-    backgroundColor: Colors.green.shade700,
-    behavior: SnackBarBehavior.floating,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-  ),
+// Éxito
+DialogUtils.showSuccessSnackBar(context, 'Traspaso creado exitosamente.');
+
+// Advertencia de validación de negocio
+DialogUtils.showWarningSnackBar(context, 'Límite alcanzado: Máximo 50 artículos por solicitud.');
+
+// Información
+DialogUtils.showInfoSnackBar(context, 'Se seleccionaron 5 activos compatibles.');
+
+// Escaneo continuo ágil
+DialogUtils.showSuccessSnackBar(
+  context,
+  'Artículo $barcode registrado exitosamente.',
+  duration: const Duration(milliseconds: 800),
 );
 ```
 

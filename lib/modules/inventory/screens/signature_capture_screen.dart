@@ -6,6 +6,7 @@ import 'package:signature/signature.dart';
 import 'package:sigo_app/modules/inventory/providers/transfer_delivery_provider.dart';
 import 'package:sigo_app/modules/auth/providers/auth_provider.dart';
 import 'package:sigo_app/modules/inventory/models/transfer_request.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 
 class SignatureCaptureScreen extends StatefulWidget {
   final TransferRequest transfer;
@@ -31,11 +32,10 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
 
   Future<void> _submitSignature(bool isDispatcher) async {
     if (_controller.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('La firma es requerida.'),
-          backgroundColor: Colors.red,
-        ),
+      DialogUtils.showErrorDialog(
+        context,
+        title: 'Firma Requerida',
+        message: 'La firma es requerida.',
       );
       return;
     }
@@ -44,11 +44,10 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
 
     if (bytes == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al procesar la firma.'),
-            backgroundColor: Colors.red,
-          ),
+        DialogUtils.showErrorDialog(
+          context,
+          title: 'Error de Procesamiento',
+          message: 'Error al procesar la firma.',
         );
       }
       return;
@@ -68,29 +67,13 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Firma registrada correctamente.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      DialogUtils.showSuccessSnackBar(context, 'Firma registrada correctamente.');
       Navigator.pop(context); // Volver a la lista
     } else {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text(
-            'Error',
-            style: TextStyle(color: Colors.red),
-          ),
-          content: Text(provider.error ?? 'Error desconocido'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Aceptar'),
-            ),
-          ],
-        ),
+      DialogUtils.showErrorDialog(
+        context,
+        title: 'Error al Registrar Firma',
+        message: provider.error ?? 'Error desconocido',
       );
     }
   }

@@ -390,50 +390,20 @@ class _RequisitionSignatureCardState extends State<_RequisitionSignatureCard> {
     final bool isTargetSigned = detail?.firmas.any((f) => f.tipo.toUpperCase() == 'RE' && f.firmada) == true;
 
     if (!isSourceSigned || !isTargetSigned || !isDispatcher) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Se requiere que ambas firmas estén capturadas y que sea el responsable de la bodega para registrar salida.',
-          ),
-          backgroundColor: Colors.red,
-        ),
+      DialogUtils.showErrorDialog(
+        context,
+        title: 'Requisitos Incompletos',
+        message: 'Se requiere que ambas firmas estén capturadas y que sea el responsable de la bodega para registrar salida.',
       );
       return;
     }
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-            SizedBox(width: 8),
-            Text('Confirmar Salida'),
-          ],
-        ),
-        content: Text(
-          '¿Está seguro de registrar la salida para el documento ${widget.document.tipoDocumento} #${widget.document.numero}?\n\nEsta acción actualizará el stock oficial.',
-          style: const TextStyle(fontSize: 14, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade700,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('Registrar Salida'),
-          ),
-        ],
-      ),
+    final confirm = await DialogUtils.showConfirmationDialog(
+      context,
+      title: 'Confirmar Salida',
+      message: '¿Está seguro de registrar la salida para el documento ${widget.document.tipoDocumento} #${widget.document.numero}?\n\nEsta acción actualizará el stock oficial.',
+      confirmText: 'Registrar Salida',
+      cancelText: 'Cancelar',
     );
 
     if (confirm != true) return;
@@ -448,24 +418,9 @@ class _RequisitionSignatureCardState extends State<_RequisitionSignatureCard> {
     if (!context.mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Salida registrada exitosamente.',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.green.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+      DialogUtils.showSuccessSnackBar(
+        context,
+        'Salida registrada exitosamente.',
       );
     } else {
       await DialogUtils.showErrorDialog(
