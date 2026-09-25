@@ -11,8 +11,10 @@ import 'package:sigo_app/modules/inventory/providers/inventory_provider.dart';
 import 'package:sigo_app/modules/inventory/providers/transfer_form_provider.dart';
 import 'package:sigo_app/modules/inventory/providers/transfer_request_provider.dart';
 import 'package:sigo_app/utils/dropdown_template.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 import 'package:sigo_app/shared/widgets/company_dropdown_field.dart';
 import 'package:sigo_app/shared/widgets/warehouse_dropdown_field.dart';
+import 'package:sigo_app/shared/widgets/app_error_widget.dart';
 
 /// Formulario interactivo para la creación de solicitudes de traspaso multi-artículo
 /// estructurado en flujo dinámico:
@@ -130,13 +132,15 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
         WarehouseModel? originWarehouseToSelect =
             widget.initialWarehouse ?? inventoryProvider.selectedWarehouse;
         if (originWarehouseToSelect != null &&
-            originWarehouseToSelect.codigoBodega != 'ALL') {
+            originWarehouseToSelect.codigoBodega != 'ALL' &&
+            originWarehouseToSelect.isPersonal) {
           final matchedOriginWarehouse = (widget.warehouses ??
                   inventoryProvider.warehouses)
               .where(
                 (w) =>
                     w.codigoBodega.trim().toLowerCase() ==
-                    originWarehouseToSelect.codigoBodega.trim().toLowerCase(),
+                        originWarehouseToSelect.codigoBodega.trim().toLowerCase() &&
+                    w.isPersonal,
               )
               .firstOrNull;
 
@@ -145,6 +149,7 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
             await formProvider.selectOriginBodega(
               matchedOriginWarehouse.codigoBodega,
               empresa: _selectedCompany?.codigo ?? '01',
+              tipo: matchedOriginWarehouse.tipo ?? 'PE',
             );
           }
 
@@ -565,14 +570,16 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
 
                   if (formProvider.destinationPersonsError != null) ...[
                     const SizedBox(height: 6),
-                    _buildInlineError(formProvider.destinationPersonsError!),
+                    AppErrorWidget.inline(
+                      message: formProvider.destinationPersonsError!,
+                    ),
                   ],
 
                   if (formProvider.destinationPersonValidationError !=
                       null) ...[
                     const SizedBox(height: 6),
-                    _buildInlineError(
-                      formProvider.destinationPersonValidationError!,
+                    AppErrorWidget.inline(
+                      message: formProvider.destinationPersonValidationError!,
                     ),
                   ],
 
@@ -619,7 +626,6 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                     (!formProvider.isFormValid || requestProvider.loading)
                     ? null
                     : () => _handleCreateTransfer(
-                        context,
                         formProvider,
                         requestProvider,
                       ),
@@ -699,29 +705,6 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
     );
   }
 
-  Widget _buildInlineError(String message) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.red.shade200),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, size: 16, color: Colors.red.shade700),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: Colors.red.shade900, fontSize: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildAssetsSelector(
     BuildContext context,
     TransferFormProvider formProvider,
@@ -769,7 +752,37 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
     }
 
     if (formProvider.assetsError != null) {
-      return _buildInlineError(formProvider.assetsError!);
+      final isNonPeError = formProvider.assetsError!
+              .toLowerCase()
+              .contains('bodegas personales [pe]') ||
+          formProvider.assetsError!.toLowerCase().contains('tipo [fi]');
+      return AppErrorWidget.banner(
+        title: isNonPeError ? 'BODEGA NO PERMITIDA' : 'ERROR AL CONSULTAR ACTIVOS',
+        message: formProvider.assetsError!,
+        isWarning: isNonPeError,
+        icon: isNonPeError
+            ? Icons.warning_amber_rounded
+            : Icons.error_outline_rounded,
+        onShowDetails: () {
+          DialogUtils.showErrorDialog(
+            context,
+            title: isNonPeError
+                ? 'Bodega No Permitida'
+                : 'Error al Consultar Activos',
+            message: formProvider.assetsError!,
+          );
+        },
+        onRetry: () {
+          if (_selectedOriginWarehouse != null &&
+              formProvider.selectedOriginPerson != null) {
+            formProvider.loadAssetsForPerson(
+              formProvider.selectedOriginPerson!.cedula,
+              bodega: _selectedOriginWarehouse!.codigoBodega,
+              empresa: _selectedCompany?.codigo ?? '01',
+            );
+          }
+        },
+      );
     }
 
     if (formProvider.personAssets.isEmpty) {
@@ -803,7 +816,15 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Indicador de regla PL/SQL
+        if (formProvider.selectionLimitError != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: AppErrorWidget.inline(
+              message: formProvider.selectionLimitError!,
+            ),
+          ),
+
+        // Indicador de regla PL/SQL y límite
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           margin: const EdgeInsets.only(bottom: 8),
@@ -818,7 +839,7 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Regla PL/SQL: Todos los activos seleccionados deben compartir Centro de Información y Tercero.',
+                  'Regla: Máximo 50 artículos por solicitud. Todos deben compartir Centro de Información y Tercero.',
                   style: TextStyle(fontSize: 11, color: Colors.blue.shade900),
                 ),
               ),
@@ -844,8 +865,29 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
 
               return InkWell(
                 onTap: (isSelectable || isSelected)
-                    ? () => formProvider.toggleAssetSelection(asset)
-                    : null,
+                    ? () {
+                        final toggled = formProvider.toggleAssetSelection(asset);
+                        if (!toggled && formProvider.selectionLimitError != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(formProvider.selectionLimitError!),
+                              backgroundColor: Colors.orange.shade800,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
+                    : () {
+                        if (formProvider.selectedAssets.length >= 50 && !asset.enTramite) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Límite alcanzado: Máximo 50 artículos por solicitud de traspaso.'),
+                              backgroundColor: Colors.orange,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
                 borderRadius: BorderRadius.circular(8),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
@@ -870,7 +912,18 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                       Checkbox(
                         value: isSelected,
                         onChanged: (isSelectable || isSelected)
-                            ? (_) => formProvider.toggleAssetSelection(asset)
+                            ? (_) {
+                                final toggled = formProvider.toggleAssetSelection(asset);
+                                if (!toggled && formProvider.selectionLimitError != null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(formProvider.selectionLimitError!),
+                                      backgroundColor: Colors.orange.shade800,
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              }
                             : null,
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
@@ -1013,12 +1066,91 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
 
   // --- ENVÍO DE LA SOLICITUD ---
   Future<void> _handleCreateTransfer(
-    BuildContext context,
     TransferFormProvider formProvider,
     TransferRequestProvider requestProvider,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+
+    final selectedAssets = formProvider.selectedAssets;
+
+    // Validación 1: Máximo 50 artículos y al menos 1
+    if (selectedAssets.isEmpty) {
+      await DialogUtils.showErrorDialog(
+        context,
+        title: 'Selección Requerida',
+        message: 'Debe seleccionar al menos un artículo para generar el traspaso.',
+      );
+      return;
+    }
+    if (selectedAssets.length > 50) {
+      await DialogUtils.showErrorDialog(
+        context,
+        title: 'Límite de Artículos Superado',
+        message: 'No se pueden agregar más de 50 artículos por solicitud de traspaso.',
+      );
+      return;
+    }
+
+    // Validación 2: Sin artículos repetidos (clave articulo + placa)
+    final seenKeys = <String>{};
+    for (final a in selectedAssets) {
+      final key = '${a.articulo.trim().toLowerCase()}_${(a.placa ?? '').trim().toLowerCase()}';
+      if (!seenKeys.add(key)) {
+        await DialogUtils.showErrorDialog(
+          context,
+          title: 'Artículo Duplicado',
+          message: 'El artículo ${a.nombre} (${a.articulo}) con placa ${a.placa ?? "N/A"} está repetido en la solicitud.',
+        );
+        return;
+      }
+    }
+
+    // Validación 3: Ningún artículo en trámite pendiente
+    final inTransit = selectedAssets.where((a) => a.enTramite).firstOrNull;
+    if (inTransit != null) {
+      await DialogUtils.showErrorDialog(
+        context,
+        title: 'Activo En Trámite Pendiente',
+        message: 'El artículo "${inTransit.nombre}" (${inTransit.articulo}) se encuentra en trámite pendiente y no puede ser traspasado.',
+      );
+      return;
+    }
+
+    // Validación 4: Compatibilidad estricta (CI y Tercero)
+    final firstCi = selectedAssets.first.centroInformacion?.trim();
+    final firstTercero = selectedAssets.first.tercero?.trim();
+    for (final a in selectedAssets) {
+      final ci = a.centroInformacion?.trim();
+      final t = a.tercero?.trim();
+      if (ci != null && firstCi != null && ci != firstCi) {
+        await DialogUtils.showErrorDialog(
+          context,
+          title: 'Incompatibilidad de Artículos',
+          message: 'Todos los artículos seleccionados deben compartir el mismo Centro de Información.',
+        );
+        return;
+      }
+      if (t != null && firstTercero != null && t != firstTercero) {
+        await DialogUtils.showErrorDialog(
+          context,
+          title: 'Incompatibilidad de Artículos',
+          message: 'Todos los artículos seleccionados deben compartir el mismo Tercero.',
+        );
+        return;
+      }
+    }
+
+    // Validación 5: Bodega Origen Personal [PE]
+    final originWarehouse = _selectedOriginWarehouse;
+    if (originWarehouse != null && !originWarehouse.isPersonal) {
+      await DialogUtils.showErrorDialog(
+        context,
+        title: 'Bodega No Permitida',
+        message: 'La bodega ${originWarehouse.codigoBodega} es de tipo [${originWarehouse.tipo ?? "FI"}]: solo se pueden traspasar activos de bodegas personales [PE].',
+      );
+      return;
+    }
 
     final String empresa =
         _selectedCompany?.codigo ?? formProvider.selectedEmpresa ?? '01';
@@ -1029,7 +1161,7 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
         ? _notesController.text.trim()
         : 'Solicitud de traspaso generada desde SigoAPP';
 
-    final articulosPayload = formProvider.selectedAssets
+    final articulosPayload = selectedAssets
         .map((a) => a.toTransferArticleItem())
         .toList();
 
@@ -1050,8 +1182,8 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
     debugPrint('======================================================\n');
 
     final success = await requestProvider.createRequest(
-      codigoActivo: formProvider.selectedAssets.first.articulo,
-      nombreArticulo: formProvider.selectedAssets.first.nombre,
+      codigoActivo: selectedAssets.first.articulo,
+      nombreArticulo: selectedAssets.first.nombre,
       responsableActual: formProvider.selectedOriginPerson!.nombreCompleto,
       responsablePropuesto:
           formProvider.selectedDestinationPerson!.nombreCompleto,
@@ -1067,7 +1199,7 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
       empresa: empresa,
       personaFuente: personaFuente,
       personaDestino: personaDestino,
-      placa: formProvider.selectedAssets.first.placa,
+      placa: selectedAssets.first.placa,
       articulos: articulosPayload,
     );
 
@@ -1077,11 +1209,32 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
       navigator.pop(true);
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            'Traspaso creado exitosamente con ${articulosPayload.length} artículo(s).',
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Traspaso creado exitosamente con ${articulosPayload.length} artículo(s).',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: Colors.green.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
+      );
+    } else {
+      await DialogUtils.showInferredErrorDialog(
+        context,
+        title: 'Error al Crear Solicitud de Traspaso',
+        error: requestProvider.errorMessage ??
+            'No fue posible registrar la solicitud de traspaso en el ERP.',
+        technicalDetails: requestProvider.technicalDetails,
+        statusCode: requestProvider.statusCode,
+        endpoint: requestProvider.endpoint,
       );
     }
   }
@@ -1351,6 +1504,9 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
     InventoryProvider inventoryProvider,
     List<WarehouseModel> availableWarehouses,
   ) {
+    final originWarehouses =
+        availableWarehouses.where((w) => w.isPersonal).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1374,13 +1530,13 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
 
         WarehouseDropdownField(
           value: _selectedOriginWarehouse,
-          warehouses: availableWarehouses,
-          labelText: 'Bodega Origen',
-          hintText: availableWarehouses.isEmpty
-              ? 'Sin bodegas disponibles'
+          warehouses: originWarehouses,
+          labelText: 'Bodega Origen (Solo Personal PE)',
+          hintText: originWarehouses.isEmpty
+              ? 'Sin bodegas personales disponibles'
               : 'Seleccione la bodega origen',
           isRequired: true,
-          onChanged: availableWarehouses.isEmpty
+          onChanged: originWarehouses.isEmpty
               ? null
               : (WarehouseModel? warehouse) {
                   setState(() {
@@ -1389,6 +1545,7 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                   formProvider.selectOriginBodega(
                     warehouse?.codigoBodega,
                     empresa: _selectedCompany?.codigo ?? '01',
+                    tipo: warehouse?.tipo ?? 'PE',
                   );
                 },
         ),
@@ -1457,7 +1614,9 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
 
         if (formProvider.originPersonsError != null) ...[
           const SizedBox(height: 6),
-          _buildInlineError(formProvider.originPersonsError!),
+          AppErrorWidget.inline(
+            message: formProvider.originPersonsError!,
+          ),
         ],
       ],
     );

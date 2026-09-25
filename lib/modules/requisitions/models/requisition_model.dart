@@ -179,28 +179,38 @@ class RequisicionFirma {
   final int posicion;
   final String tipo; // SA (Salida) o RE (Recibo)
   final String? persona;
-  final String? fechaFirma;
+  final String? nombre;
+  final String? fecha;
   final bool firmada;
   final String? firma;
 
   const RequisicionFirma({
-    required this.posicion,
+    this.posicion = 0,
     required this.tipo,
     this.persona,
-    this.fechaFirma,
+    this.nombre,
+    this.fecha,
     required this.firmada,
     this.firma,
   });
 
+  /// Getter de compatibilidad con código existente.
+  String? get fechaFirma => fecha;
+
   factory RequisicionFirma.fromJson(Map<String, dynamic> json) {
+    final rawFecha = json['fecha']?.toString() ?? json['fechaFirma']?.toString();
+    final hasFecha = rawFecha != null && rawFecha.trim().isNotEmpty;
+    final isExplicitFirmada = json['firmada'] == true || json['firmada']?.toString() == 'true';
+
     return RequisicionFirma(
       posicion: json['posicion'] is int
           ? json['posicion'] as int
           : int.tryParse(json['posicion']?.toString() ?? '0') ?? 0,
       tipo: json['tipo']?.toString() ?? '',
       persona: json['persona']?.toString(),
-      fechaFirma: json['fechaFirma']?.toString(),
-      firmada: json['firmada'] == true || json['firmada']?.toString() == 'true',
+      nombre: json['nombre']?.toString() ?? json['nombrePersona']?.toString(),
+      fecha: rawFecha,
+      firmada: hasFecha || isExplicitFirmada,
       firma: json['firma']?.toString(),
     );
   }
@@ -208,10 +218,12 @@ class RequisicionFirma {
   Map<String, dynamic> toJson() => {
     'posicion': posicion,
     'tipo': tipo,
-    'persona': persona,
-    'fechaFirma': fechaFirma,
+    if (persona != null) 'persona': persona,
+    if (nombre != null) 'nombre': nombre,
+    if (fecha != null) 'fecha': fecha,
+    if (fecha != null) 'fechaFirma': fecha,
     'firmada': firmada,
-    'firma': firma,
+    if (firma != null) 'firma': firma,
   };
 }
 
@@ -250,6 +262,42 @@ class RequisicionDetalle {
     this.lineas = const [],
     this.firmas = const [],
   });
+
+  RequisicionDetalle copyWith({
+    String? empresa,
+    String? tipoDocumento,
+    dynamic numero,
+    String? estado,
+    String? fecha,
+    String? fechaRequerida,
+    String? observacion,
+    String? bodega,
+    String? bodegaDestino,
+    String? centroInformacion,
+    String? tercero,
+    String? responsableBodega,
+    String? responsableBodegaDestino,
+    List<RequisicionDetalleLinea>? lineas,
+    List<RequisicionFirma>? firmas,
+  }) {
+    return RequisicionDetalle(
+      empresa: empresa ?? this.empresa,
+      tipoDocumento: tipoDocumento ?? this.tipoDocumento,
+      numero: numero ?? this.numero,
+      estado: estado ?? this.estado,
+      fecha: fecha ?? this.fecha,
+      fechaRequerida: fechaRequerida ?? this.fechaRequerida,
+      observacion: observacion ?? this.observacion,
+      bodega: bodega ?? this.bodega,
+      bodegaDestino: bodegaDestino ?? this.bodegaDestino,
+      centroInformacion: centroInformacion ?? this.centroInformacion,
+      tercero: tercero ?? this.tercero,
+      responsableBodega: responsableBodega ?? this.responsableBodega,
+      responsableBodegaDestino: responsableBodegaDestino ?? this.responsableBodegaDestino,
+      lineas: lineas ?? this.lineas,
+      firmas: firmas ?? this.firmas,
+    );
+  }
 
   factory RequisicionDetalle.fromJson(Map<String, dynamic> json) {
     return RequisicionDetalle(
@@ -315,6 +363,26 @@ class RequisicionResumen {
     required this.bodega,
     required this.lineas,
   });
+
+  RequisicionResumen copyWith({
+    String? empresa,
+    String? tipoDocumento,
+    dynamic numero,
+    String? estado,
+    String? fecha,
+    String? bodega,
+    int? lineas,
+  }) {
+    return RequisicionResumen(
+      empresa: empresa ?? this.empresa,
+      tipoDocumento: tipoDocumento ?? this.tipoDocumento,
+      numero: numero ?? this.numero,
+      estado: estado ?? this.estado,
+      fecha: fecha ?? this.fecha,
+      bodega: bodega ?? this.bodega,
+      lineas: lineas ?? this.lineas,
+    );
+  }
 
   factory RequisicionResumen.fromJson(Map<String, dynamic> json) {
     return RequisicionResumen(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sigo_app/modules/physical_count/providers/physical_count_provider.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 
 class PhysicalCountAssignmentTab extends StatefulWidget {
   const PhysicalCountAssignmentTab({super.key});
@@ -40,9 +41,11 @@ class _PhysicalCountAssignmentTabState
 
   PhysicalCountState? _lastHandledState;
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+  void _showErrorDialog(String message) {
+    DialogUtils.showErrorDialog(
+      context,
+      title: 'Error en Asignación de Personal',
+      message: message,
     );
   }
 
@@ -55,7 +58,7 @@ class _PhysicalCountAssignmentTabState
               provider.errorMessage != null) {
             _lastHandledState = provider.state;
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _showErrorSnackBar(provider.errorMessage!);
+              _showErrorDialog(provider.errorMessage!);
               provider.clearError();
               _lastHandledState = null;
             });

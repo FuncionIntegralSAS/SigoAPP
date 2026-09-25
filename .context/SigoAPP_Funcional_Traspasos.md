@@ -87,19 +87,27 @@ stateDiagram-v2
 
 #### Reglas de Negocio y Validación del Endpoint de Creación:
 1. **Selección de Empresa:** Restringe bodegas y se propaga en todas las consultas subsiguientes.
-2. **Selección de Colaboradores:**
+2. **Regla Crítica de Bodega Origen (Solo Bodegas Personales [PE]):**
+   - **Filtro Estricto en UI:** El selector de bodega origen en `TransferFormWidget` admite y filtra únicamente bodegas de tipo personal (`tipo: 'PE'`).
+   - **Validación y Alerta:** `TransferFormProvider.selectOriginBodega` valida el tipo de bodega origen. Si el backend responde `code: -1` con el mensaje *"La bodega ... es de tipo [FI]: solo se pueden traspasar activos de bodegas personales [PE]"*, o ante cualquier error en la consulta de activos, el provider captura el mensaje, vacía la lista de activos (`personAssets` y `selectedAssets`), y la UI renderiza un banner visible de alerta destacada.
+3. **Consulta de Activos Asignados (`GET /api/v1/traspasos/activos`):**
+   - **Query Parameters:** `persona` (Requerido), `bodega` (Requerido), `empresa` (Opcional).
+   - **Mapeo del Modelo (`TransferAssetModel`):** Deserializa `articulo`, `placa`, `nombre`, `centroInformacion`, `tercero` y `enTramite`.
+   - **Bloqueo por Trámite Abierto (`enTramite: true`):** Si un activo ya está comprometido en otro trámite abierto, su checkbox de selección en la UI queda inhabilitado y se muestra la etiqueta/badge *"En trámite pendiente"*.
+4. **Selección de Colaboradores:**
    - Origen consultado vía `GET /api/v1/traspasos/personas?bodega={bodega}&empresa={empresa}`.
    - **Regla de Personas Distintas:** La Persona Destino no puede ser igual a la Persona Fuente (`personaDestino != personaFuente`). Spring Boot valida y rechaza con `code: -1` (*"La persona fuente y la persona destino no pueden ser la misma"*).
-3. **Selección y Límites de Activos:**
-   - **Rango Permitido:** Mínimo 1 y máximo 50 artículos por solicitud de traspaso.
-   - **No Duplicados:** No se permiten artículos repetidos en la lista (`code: -1`).
-   - **Regla de Bloqueo por Trámite (`enTramite: true`):** Si un activo ya está en trámite pendiente (`pe`) o aprobado (`ap`), queda inhabilitado con aviso visual.
-   - **Regla de Compatibilidad PL/SQL (`PKG_FI_MOVITRAS.pro_crear_solicitud`):** La base de datos exige que todos los activos compartan el mismo `centroInformacion` y `tercero`. Cuando se consultan desde `/api/v1/traspasos/activos`, el provider valida que coincidan. Si los activos provienen precargados de inventario (`ArticleModel`), donde dichos campos son `null`, el cliente no bloquea la compatibilidad y confía en la resolución de base de datos.
-4. **Contrato de Envío (`POST /api/v1/traspasos/crear`):**
+5. **Selección, Límites y Compatibilidad de Activos:**
+   - **Rango Permitido:** Mínimo 1 y máximo 50 artículos por solicitud de traspaso. Al intentar agregar más de 50 artículos, se notifica de inmediato al usuario en `SnackBar` y se impide la selección adicional.
+   - **Sin Artículos Repetidos:** Validación estricta por combinación de clave única `articulo` + `placa` tanto en el provider (`isFormValid`) como previo al envío (`_handleCreateTransfer`).
+   - **Compatibilidad Estricta:** Todos los artículos seleccionados deben compartir el mismo `centroInformacion` y el mismo `tercero`.
+6. **Manejo de Errores Limpios de Negocio:**
+   - Al no existir trazas técnicas `ORA-` en las respuestas de Spring Boot (`code: -1`), `HttpTransferRepository` propaga íntegramente `response.data['msg']` hacia `TransferBusinessException.message`, permitiendo desplegar mensajes de negocio limpios y amigables directamente en diálogos y notificaciones.
+7. **Contrato de Envío (`POST /api/v1/traspasos/crear`):**
    - **Cuerpo JSON:** Envía `empresa`, `personaFuente`, `personaDestino`, `articulos: [ { articulo, placa } ]`, `observacion` y `tipoMovimiento: null`.
    - **Exclusión de Bodegas, CI y Terceros:** El endpoint **no recibe** bodegas, ni centro de información, ni tercero. Las bodegas solo se usan en el cliente para filtrar colaboradores.
    - **Normalización de Placa:** Si el activo no posee placa, se envía `null` (el backend lo normaliza a `"."`).
-5. **Estructura de Respuesta del Trámite (`TransferCreatedResponse`):**
+8. **Estructura de Respuesta del Trámite (`TransferCreatedResponse`):**
    - `object.id`: Número de Trámite en SigoAPP (`MOTRNUTR`). Identificador único para el ciclo de vida del traspaso.
    - `object.numeroDocumento`: Consecutivo asignado por el ERP para la requisición (`RESUNUME`), visible para el usuario.
    - `object.tipoDocumento`: Tipo de documento generado en ERP (ej. `"REQU"`).

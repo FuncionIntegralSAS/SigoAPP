@@ -108,7 +108,11 @@ Fecha de actualización: Agosto 2026
 ### 3.2 Generación de Traspasos
 
 **Permiso:** `agst` (generar traspaso), relacionado con `agqr` (generación QR)  
-**Descripción:** Gestión de inventario con filtrado en cascada Empresa → Bodega (bodegas tipo personal `'PE'` vía `HttpInventoryRepository.getWarehouses(..., tipo: 'PE')`, sin búsqueda de activos por bodega) → Colaborador (`TransferRepository.getPersonsByWarehouse` con filtro `AND B.BODETIBO = 'PE'`, ejecutando `getAssetsByPerson` exclusivamente al seleccionar al colaborador con bodega física obligatoria) y creación de solicitudes de traspaso diferenciadas: **Traspaso Individual** vía botón de acción rápida `⇄` en cada tarjeta de activo (pre-cargando activo único) y **Traspaso Múltiple** interactivo vía Floating Action Button, el cual activa el modo de selección (`_isSelectionMode`) con casillas de verificación, validación de colaborador responsable único y barra de acciones inferior. Orquestación del flujo en `TransferFormWidget` (modo estándar o modo compacto con preselección e inyección mediante `TransferFormProvider.addPreselectedAsset()`, tarjeta compacta con desplegable interactivo de activos y retorno a inventario) que conecta con backend (`POST /api/v1/traspasos/crear`, `GET /api/v1/traspasos/personas`, `GET /api/v1/traspasos/activos?persona={...}&bodega={...}`) con validación de personas distintas y compatibilidad multi-artículo PL/SQL.
+**Descripción:** Gestión de inventario con filtrado en cascada Empresa → Bodega Origen Personal (`tipo: 'PE'` validado vía `WarehouseModel.isPersonal` y filtrado en selector de `TransferFormWidget`; ante errores de negocio o bodegas no permitidas se vacía la lista de activos y se despliega alerta visual) → Colaborador (`TransferRepository.getPersonsByWarehouse` con filtro `AND B.BODETIBO = 'PE'`, ejecutando `getAssetsByPerson` exclusivamente al seleccionar al colaborador con bodega física obligatoria) y creación de solicitudes de traspaso diferenciadas: **Traspaso Individual** vía botón de acción rápida `⇄` en cada tarjeta de activo (pre-cargando activo único) y **Traspaso Múltiple** interactivo vía Floating Action Button, el cual activa el modo de selección (`_isSelectionMode`) con casillas de verificación, validación de colaborador responsable único y barra de acciones inferior. Orquestación del flujo en `TransferFormProvider` y `TransferFormWidget`:
+- Límite máximo de hasta 50 artículos por solicitud (`isAssetSelectable`, `toggleAssetSelection`, alerta SnackBar).
+- Validación estricta contra duplicados por `(articulo, placa)` y compatibilidad multi-artículo PL/SQL (`PKG_FI_MOVITRAS` exigiendo mismo `centroInformacion` y mismo `tercero`).
+- Bloqueo y descarte de selección para activos con `enTramite == true` (checkbox deshabilitado y badge *"En trámite pendiente"*).
+- Propagación transparente y directa de mensajes limpios de negocio `data['msg']` en `HttpTransferRepository` sin recortes de texto. Conexión con endpoints Spring Boot (`POST /api/v1/traspasos/crear`, `GET /api/v1/traspasos/personas`, `GET /api/v1/traspasos/activos?persona={...}&bodega={...}`).
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
@@ -138,6 +142,7 @@ Fecha de actualización: Agosto 2026
 | **Widget** | `CascadingCatalogsWidget` | `lib/modules/inventory/widgets/cascading_catalogs_widget.dart` |
 | **Widget** | `ArticleEditModal` (Edición, GPS y foto desacoplados) | `lib/modules/inventory/widgets/article_edit_modal.dart` |
 | **Widget** | `InventoryArticleTile` (Tarjeta de activo con modo normal y selección) | `lib/modules/inventory/widgets/inventory_article_tile.dart` |
+| **Widget** | `AppErrorWidget` (Renderizado estandarizado inline/banner) | `lib/shared/widgets/app_error_widget.dart` |
 | **Servicio** | `MockInventoryService` | `lib/services/mock_inventory_service.dart` |
 | **Servicio** | `NotificationService` / `InAppNotificationService` | `lib/services/notification_service.dart`, `lib/services/in_app_notification_service.dart` |
 | **Excepción** | `TransferBusinessException` | `lib/exceptions/transfer_business_exception.dart` |
@@ -251,12 +256,13 @@ Fecha de actualización: Agosto 2026
 - **Inferencia Automática de Roles (Flujo Sin Selección Manual):** El colaborador nunca elige la firma de forma arbitraria; la aplicación valida la identidad a partir de `auth.currentCedula`:
   - **Recepción (RE):** Coincidencia con el solicitante titular (`auth.currentCedula == detail.tercero`) o con el responsable oficial de la bodega destino (`auth.currentCedula == detail.responsableBodegaDestino`) en movimientos entre bodegas. Si coincide y falta firma RE, se habilita de forma exclusiva el botón *"Firmar Recibo (RE)"*.
   - **Salida (SA):** Coincidencia estricta con el responsable de la bodega origen (`auth.currentCedula == detail.responsableBodega`). Sin fallbacks permisivos. Si califica y falta firma SA, se habilita el botón único *"Firmar Salida (SA)"*.
+  - **Metadatos Enriquecidos de Firma (`RequisicionFirma`):** Se mapean `tipo`, `persona`, `nombre` y `fecha` (ISO 8601). La condición `firmada` se deriva formalmente como `(fecha != null && fecha.isNotEmpty) || firmada == true`. Los badges visuales exponen el nombre del firmante y la fecha/hora formateada.
   - **Espera de Co-Firmante:** Si el colaborador ya firmó su rol respectivo, la tarjeta muestra un aviso informativo indicando que su firma está asentada y se espera la contraparte.
   - **Usuario Sin Rol:** Si el colaborador no es receptor ni despachador, la tarjeta muestra un aviso indicando que carece de rol en el documento, bloqueando acciones de firma.
   - **Captura Anti-Suplantación (`RequisitionSignatureCaptureScreen`):** Campo de cédula en modo solo lectura (`readOnly: true`), garantizando que la firma manuscrita quede vinculada estrictamente a la sesión autenticada.
   - **Estado "Lista para ERP" (`bothSigned`):** Se ocultan los botones de firma y se habilita la acción *"Registrar Salida"*, reservada de forma exclusiva para el responsable de la bodega fuente (`isDispatcher`). Si el usuario autenticado no es el responsable, se despliega un contenedor informativo indicando que las firmas están completas y la salida está pendiente de registro.
   - **Detalle de Componentes Visuales:** Para la paleta cromática, franjas laterales de estado, badges y modales de este flujo, consultar [`SigoAPP_Guia_Estilos_UI.md`](./SigoAPP_Guia_Estilos_UI.md) (§ Módulo 6).
-- **Punto de No Retorno:** Al pulsar *"Registrar Salida"*, se despliega diálogo modal confirmatorio advirtiendo el Impacto inmediato en el inventario. Ejecuta `PUT /api/v1/requisiciones/{empresa}/{tipoDocumento}/{numero}/registrar` enviando `{}` como body, transicionando el documento a estado `rg` y generando los registros oficiales en `DOCUINVE` y `MOVIINVE`.
+- **Punto de No Retorno e Idempotencia:** Al pulsar *"Registrar Salida"*, se despliega diálogo modal confirmatorio advirtiendo el impacto inmediato en el inventario. Ejecuta `PUT /api/v1/requisiciones/{empresa}/{tipoDocumento}/{numero}/registrar` enviando `{}` como body (o `RequisicionRegistrarRequest` opcional para recepciones parciales). Si el documento ya fue registrado (`estado == 'rg'`), `RequisitionSignatureProvider` maneja la operación de manera idempotente actualizando el estado local y refrescando la bandeja sin disparar excepción de error al usuario, transicionando el documento y generando los registros oficiales en `DOCUINVE` y `MOVIINVE`.
 
 ---
 
@@ -370,6 +376,9 @@ Los siguientes servicios y utilidades son compartidos entre múltiples módulos:
 | `AuthProvider` | `lib/modules/auth/providers/auth_provider.dart` | Todos (token JWT, permisos) |
 | `CompanyDropdownField` | `lib/shared/widgets/company_dropdown_field.dart` | Requisiciones, Conteo Físico, Inventario (Selector estándar de Empresas) |
 | `WarehouseDropdownField` | `lib/shared/widgets/warehouse_dropdown_field.dart` | Conteo Físico, Inventario, Traspasos (Selector estándar de Bodegas) |
+| `AppErrorWidget` | `lib/shared/widgets/app_error_widget.dart` | Todos los módulos (Renderizado estandarizado de errores: inline, banner y view) |
+| `WarehouseModel` | `lib/shared/models/warehouse_model.dart` | Inventario, Traspasos, Conteo Físico (Bodega con `tipo` y getter `isPersonal`) |
+| `CompanyModel` | `lib/shared/models/company_model.dart` | Requisiciones, Conteo Físico, Inventario (Empresas) |
 | `DropdownTemplates` | `lib/utils/dropdown_template.dart` | Todos los selectores desplegables con búsqueda interna |
 
 ---
@@ -383,16 +392,17 @@ main.dart
  ├── Provider<NotificationService>        ← InAppNotificationService
  │
  ├── [MÓDULO INVENTARIO]
- │   ├── InventoryProvider                ← HttpInventoryRepository(backendDio)
- │   ├── TransferRequestProvider          ← MockTransferRepository + NotificationService
- │   ├── TransferApprovalProvider         ← MockTransferRepository
- │   ├── TransferDeliveryProvider         ← MockTransferRepository
- │   ├── TransferFormProvider             ← HttpCatalogRepository(backendDio)
+ │   ├── InventoryProvider                ← HttpInventoryRepository(backendDio) + HttpTransferRepository
+ │   ├── TransferRequestProvider          ← HttpTransferRepository(backendDio) + NotificationService
+ │   ├── TransferApprovalProvider         ← HttpTransferRepository(backendDio) + CatalogRepository
+ │   ├── TransferDeliveryProvider         ← HttpTransferRepository(backendDio) + CatalogRepository
+ │   ├── TransferFormProvider             ← HttpTransferRepository(backendDio) + CatalogRepository
  │   ├── AssetVerificationProvider        ← (sin repositorio externo)
  │   └── GeolocationProvider              ← HttpGeolocationRepository(backendDio)
  │
  ├── [MÓDULO REQUISICIONES]
- │   └── RequisitionApprovalProvider      ← HttpRequisitionRepository(backendDio)
+ │   ├── RequisitionApprovalProvider      ← HttpRequisitionRepository(backendDio)
+ │   └── RequisitionSignatureProvider     ← HttpRequisitionRepository(backendDio)
  │
  ├── [MÓDULO CONTEO FÍSICO]
  │   ├── PhysicalCountProvider            ← HttpPhysicalCountRepository(backendDio)

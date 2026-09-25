@@ -10,7 +10,6 @@ import 'package:sigo_app/modules/inventory/models/transfer_asset_model.dart';
 import 'package:sigo_app/modules/inventory/repositories/catalog_repository.dart';
 import 'package:sigo_app/modules/inventory/repositories/transfer_repository.dart';
 import 'package:sigo_app/utils/app_logger.dart';
-import 'package:sigo_app/utils/dialog_utils.dart';
 
 /// Implementación HTTP real del [TransferRepository] adaptada a la especificación
 /// del backend Spring Boot refactorizado.
@@ -24,16 +23,16 @@ class HttpTransferRepository implements TransferRepository {
     if (data is Map<String, dynamic> && data.containsKey('code')) {
       final code = data['code'];
       if (code != null && code != 0) {
-        final rawMsg = data['msg']?.toString() ?? fallbackError;
-        final friendlyMsg = DialogUtils.extractFriendlyMessage(rawMsg);
+        final rawMsg = data['msg']?.toString().trim();
+        final message = (rawMsg != null && rawMsg.isNotEmpty) ? rawMsg : fallbackError;
         final techDetails = [
           if (endpoint != null) 'Endpoint: $endpoint',
           'Código de negocio: $code',
-          'Detalle del servidor:\n$rawMsg',
+          'Detalle del servidor:\n$message',
         ].join('\n');
 
         throw TransferBusinessException(
-          friendlyMsg,
+          message,
           statusCode: code is int ? code : null,
           endpoint: endpoint,
           technicalDetails: techDetails,
@@ -58,7 +57,7 @@ class HttpTransferRepository implements TransferRepository {
 
     final String userMsg;
     if (serverMsg != null && serverMsg.trim().isNotEmpty) {
-      userMsg = DialogUtils.extractFriendlyMessage(serverMsg.trim());
+      userMsg = serverMsg.trim();
     } else if (statusCode == 500) {
       userMsg = 'Error interno en el servidor al procesar el traspaso.';
     } else if (statusCode == 404) {

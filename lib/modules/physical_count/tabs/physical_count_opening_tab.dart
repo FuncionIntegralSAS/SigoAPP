@@ -7,6 +7,7 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:sigo_app/utils/dropdown_template.dart';
 import 'package:sigo_app/shared/widgets/company_dropdown_field.dart';
 import 'package:sigo_app/shared/widgets/warehouse_dropdown_field.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 
 class PhysicalCountOpeningTab extends StatefulWidget {
   const PhysicalCountOpeningTab({super.key});
@@ -39,9 +40,11 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
     super.dispose();
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+  void _showErrorDialog(String message) {
+    DialogUtils.showErrorDialog(
+      context,
+      title: 'Error en Apertura de Conteo',
+      message: message,
     );
   }
 
@@ -89,7 +92,7 @@ class _PhysicalCountOpeningTabState extends State<PhysicalCountOpeningTab> {
               provider.errorMessage != null) {
             _lastHandledState = provider.state;
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _showErrorSnackBar(provider.errorMessage!);
+              _showErrorDialog(provider.errorMessage!);
               provider.clearError();
               _lastHandledState = null;
             });

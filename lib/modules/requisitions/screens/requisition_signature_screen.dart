@@ -5,6 +5,7 @@ import 'package:sigo_app/modules/requisitions/models/requisition_model.dart';
 import 'package:sigo_app/modules/auth/providers/auth_provider.dart';
 import 'package:sigo_app/modules/requisitions/providers/requisition_signature_provider.dart';
 import 'package:sigo_app/utils/dialog_utils.dart';
+import 'package:sigo_app/shared/widgets/app_error_widget.dart';
 import 'package:sigo_app/utils/permission_utils.dart';
 import 'package:sigo_app/modules/requisitions/widgets/requisition_filter_header.dart';
 import 'package:sigo_app/modules/requisitions/screens/requisition_signature_capture_screen.dart';
@@ -223,41 +224,11 @@ class _RequisitionSignatureScreenState
       children: [
         SizedBox(
           height: MediaQuery.of(context).size.height * 0.65,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline_rounded,
-                    size: 56,
-                    color: Colors.red.shade700,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Error al consultar requisiciones',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red.shade700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    provider.errorMessage!,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey.shade700),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () =>
-                        provider.loadDeliveredRequisitions(forceRefresh: true),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Reintentar'),
-                  ),
-                ],
-              ),
-            ),
+          child: AppErrorWidget.view(
+            title: 'Error al consultar requisiciones',
+            message: provider.errorMessage!,
+            onRetry: () =>
+                provider.loadDeliveredRequisitions(forceRefresh: true),
           ),
         ),
       ],
@@ -343,6 +314,7 @@ class _RequisitionSignatureCardState extends State<_RequisitionSignatureCard> {
     required String label,
     required bool signed,
     String? persona,
+    String? nombre,
     String? fecha,
   }) {
     final color = signed ? Colors.green.shade800 : Colors.orange.shade800;
@@ -377,6 +349,15 @@ class _RequisitionSignatureCardState extends State<_RequisitionSignatureCard> {
                   color: color,
                 ),
               ),
+              if (signed && nombre != null && nombre.isNotEmpty)
+                Text(
+                  nombre,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: color.withValues(alpha: 0.95),
+                  ),
+                ),
               if (signed && persona != null && persona.isNotEmpty)
                 Text(
                   'Cédula: $persona',
@@ -396,6 +377,30 @@ class _RequisitionSignatureCardState extends State<_RequisitionSignatureCard> {
     BuildContext context,
     RequisitionSignatureProvider provider,
   ) async {
+    final detail = provider.getDetail(
+      widget.document.empresa,
+      widget.document.tipoDocumento,
+      widget.document.numero,
+    );
+    final String currentCedula = context.read<AuthProvider>().currentCedula?.trim() ?? '';
+    final bool isDispatcher = detail?.responsableBodega != null &&
+        detail!.responsableBodega!.isNotEmpty &&
+        currentCedula == detail.responsableBodega!.trim();
+    final bool isSourceSigned = detail?.firmas.any((f) => f.tipo.toUpperCase() == 'SA' && f.firmada) == true;
+    final bool isTargetSigned = detail?.firmas.any((f) => f.tipo.toUpperCase() == 'RE' && f.firmada) == true;
+
+    if (!isSourceSigned || !isTargetSigned || !isDispatcher) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Se requiere que ambas firmas estén capturadas y que sea el responsable de la bodega para registrar salida.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
@@ -525,7 +530,9 @@ class _RequisitionSignatureCardState extends State<_RequisitionSignatureCard> {
     // 2. Validación de Receptor (Firma RE - Recibe)
     final bool isReceiver =
         currentCedula.isNotEmpty &&
-        (currentCedula == terceroSolicitante ||
+        ((terceroSolicitante != null &&
+                terceroSolicitante.isNotEmpty &&
+                currentCedula == terceroSolicitante) ||
             (respBodegaDestino != null &&
                 respBodegaDestino.isNotEmpty &&
                 currentCedula == respBodegaDestino));
@@ -724,12 +731,14 @@ class _RequisitionSignatureCardState extends State<_RequisitionSignatureCard> {
                             label: 'Firma Salida (SA)',
                             signed: isSourceSigned,
                             persona: firmaSA?.persona,
+                            nombre: firmaSA?.nombre,
                             fecha: firmaSA?.fechaFirma,
                           ),
                           _buildSignatureBadge(
                             label: 'Firma Recibo (RE)',
                             signed: isTargetSigned,
                             persona: firmaRE?.persona,
+                            nombre: firmaRE?.nombre,
                             fecha: firmaRE?.fechaFirma,
                           ),
                         ],

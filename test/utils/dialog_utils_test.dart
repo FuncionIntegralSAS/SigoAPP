@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sigo_app/exceptions/transfer_business_exception.dart';
+import 'package:sigo_app/modules/physical_count/providers/physical_count_provider.dart';
 import 'package:sigo_app/utils/dialog_utils.dart';
 
 void main() {
@@ -145,5 +147,116 @@ void main() {
       // No debe haber excepciones de desbordamiento (overflow)
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('showInferredErrorDialog infiere correctamente los datos desde TransferBusinessException', (tester) async {
+      const exception = TransferBusinessException(
+        'La bodega origen no permite traspasos',
+        technicalDetails: 'Code: -1 | Bodega FI no permitida',
+        statusCode: 400,
+        endpoint: 'POST /api/v1/traspasos/crear',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  DialogUtils.showInferredErrorDialog(
+                    context,
+                    title: 'Error de Traspaso',
+                    error: exception,
+                  );
+                },
+                child: const Text('Abrir Inferido'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Abrir Inferido'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Error de Traspaso'), findsOneWidget);
+      expect(find.text('La bodega origen no permite traspasos'), findsOneWidget);
+
+      await tester.tap(find.text('Ver detalles técnicos (Desarrollador)'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Code: -1 | Bodega FI no permitida'), findsOneWidget);
+    });
+
+    testWidgets('showInferredErrorDialog maneja strings directos', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  DialogUtils.showInferredErrorDialog(
+                    context,
+                    title: 'Error Simple',
+                    error: 'Error de validación manual',
+                  );
+                },
+                child: const Text('Abrir String'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Abrir String'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Error Simple'), findsOneWidget);
+      expect(find.text('Error de validación manual'), findsOneWidget);
+    });
+
+    testWidgets('showPendingWarehousesErrorDialog muestra modal estandarizado y limpia error al aceptar', (tester) async {
+      final fakeProvider = _FakePhysicalCountProvider();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  DialogUtils.showPendingWarehousesErrorDialog(context, fakeProvider);
+                },
+                child: const Text('Abrir Error Bodegas'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Abrir Error Bodegas'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Error en Bodegas Pendientes'), findsOneWidget);
+      expect(find.text('No fue posible cargar las bodegas pendientes.'), findsOneWidget);
+      expect(find.text('Aceptar'), findsOneWidget);
+
+      await tester.tap(find.text('Aceptar'));
+      await tester.pumpAndSettle();
+
+      // Debe haber cerrado el diálogo y limpiado el error en el provider
+      expect(find.text('Error en Bodegas Pendientes'), findsNothing);
+      expect(fakeProvider.pendingWarehousesErrorMessage, isNull);
+    });
   });
+}
+
+class _FakePhysicalCountProvider extends Fake implements PhysicalCountProvider {
+  String? _error = 'No fue posible cargar las bodegas pendientes.';
+
+  @override
+  String? get pendingWarehousesErrorMessage => _error;
+
+  @override
+  void clearPendingWarehousesError() {
+    _error = null;
+  }
 }

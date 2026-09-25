@@ -268,6 +268,16 @@ class RequisitionSignatureProvider extends ChangeNotifier {
     required dynamic numero,
     RequisicionRegistrarRequest? request,
   }) async {
+    final key = _docKey(empresa, tipoDocumento, numero);
+    final existingDetail = _documentDetails[key];
+
+    // Idempotencia inmediata si ya se encuentra en estado 'rg' en memoria local
+    if (existingDetail != null && existingDetail.estado.toLowerCase() == 'rg') {
+      await loadDeliveredRequisitions(forceRefresh: true);
+      _documentDetails[key] = existingDetail;
+      return true;
+    }
+
     _isRegisteringExit = true;
     _actionError = null;
     _technicalDetails = null;
@@ -284,8 +294,31 @@ class RequisitionSignatureProvider extends ChangeNotifier {
 
       // Refrescamos la lista de requisiciones entregadas
       await loadDeliveredRequisitions(forceRefresh: true);
+
+      // Actualizar estado del documento a 'rg' en memoria
+      if (existingDetail != null) {
+        _documentDetails[key] = existingDetail.copyWith(estado: 'rg');
+      } else {
+        _markDocumentAsRegistered(empresa, tipoDocumento, numero);
+      }
       return true;
     } on RequisitionBusinessException catch (e) {
+      final lowerMsg = e.message.toLowerCase();
+      final isAlreadyRegistered = lowerMsg.contains('ya fue registrada') ||
+          lowerMsg.contains('ya se encuentra registrada') ||
+          lowerMsg.contains('estado [rg]') ||
+          lowerMsg.contains('estado rg');
+
+      if (isAlreadyRegistered) {
+        await loadDeliveredRequisitions(forceRefresh: true);
+        if (existingDetail != null) {
+          _documentDetails[key] = existingDetail.copyWith(estado: 'rg');
+        } else {
+          _markDocumentAsRegistered(empresa, tipoDocumento, numero);
+        }
+        return true;
+      }
+
       _actionError = DialogUtils.extractFriendlyMessage(e.message);
       _technicalDetails = e.technicalDetails;
       _statusCode = e.statusCode;
@@ -298,6 +331,25 @@ class RequisitionSignatureProvider extends ChangeNotifier {
     } finally {
       _isRegisteringExit = false;
       notifyListeners();
+    }
+  }
+
+  void _markDocumentAsRegistered(String empresa, String tipoDocumento, dynamic numero) {
+    final key = _docKey(empresa, tipoDocumento, numero);
+    final detail = _documentDetails[key];
+    if (detail != null) {
+      _documentDetails[key] = detail.copyWith(estado: 'rg');
+    }
+
+    final numStr = numero.toString();
+    final idx = _documents.indexWhere(
+      (d) =>
+          d.empresa == empresa &&
+          d.tipoDocumento == tipoDocumento &&
+          d.numero.toString() == numStr,
+    );
+    if (idx != -1) {
+      _documents[idx] = _documents[idx].copyWith(estado: 'rg');
     }
   }
 

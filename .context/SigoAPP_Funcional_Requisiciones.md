@@ -210,16 +210,18 @@ Devuelve la cabecera completa, las líneas con todo el historial de cantidades y
       {
         "posicion": 1,
         "tipo": "SA",
-        "persona": null,
-        "fechaFirma": null,
-        "firmada": false,
-        "firma": null
+        "persona": "80123456",
+        "nombre": "JUAN PEREZ (ALMACENISTA)",
+        "fecha": "2026-09-21T10:15:00",
+        "firmada": true,
+        "firma": "data:image/png;base64,..."
       },
       {
         "posicion": 2,
         "tipo": "RE",
         "persona": null,
-        "fechaFirma": null,
+        "nombre": null,
+        "fecha": null,
         "firmada": false,
         "firma": null
       }
@@ -227,6 +229,8 @@ Devuelve la cabecera completa, las líneas con todo el historial de cantidades y
   }
 }
 ```
+
+*Regla de Negocio de Firmas:* El campo `firmada` se deriva automáticamente como `(fecha != null && fecha.isNotEmpty) || firmada == true`. El campo `nombre` expone el nombre oficial del firmante para despliegue directo en badges y tarjetas.
 
 ---
 
@@ -336,8 +340,11 @@ Cierra el trámite y genera el documento formal de salida en el ERP (`DOCUINVE` 
 
 #### Precondiciones Obligatorias:
 1. Las líneas deben estar en estado entregado (`en`).
-2. Ambas firmas (`SA` y `RE`) deben estar registradas (`firmada == true`).
-3. La acción debe ser ejecutada estrictamente por el responsable oficial de la bodega fuente (`responsableBodega`).
+2. Ambas firmas (`SA` y `RE`) deben estar capturadas (`bothSigned == true`).
+3. La acción debe ser ejecutada estrictamente por el responsable oficial de la bodega fuente (`responsableBodega`), validado comparando `auth.currentCedula == detail.responsableBodega`.
+
+#### Mecanismo de Idempotencia:
+Si la requisición ya se encuentra en estado asentado (`rg`), o si el backend responde confirmando que ya fue procesada, el cliente Flutter actualiza inmediatamente el estado del documento en memoria a `rg` y recarga la bandeja de documentos sin lanzar excepciones ni alertas de error al usuario.
 
 #### Request Body (`RequisicionRegistrarRequest` - Opcional):
 * **Caso Habitual (Recepción Total Conforme):** Se envía sin body o con body vacío `{}`. El backend asume que se recibe el 100% de lo entregado.
@@ -431,5 +438,48 @@ class RequisicionLineaItem {
     'cantidad': cantidad,
     if (placas != null && placas!.isNotEmpty) 'placas': placas,
   };
+}
+```
+
+### Modelo de Firma Digital
+```dart
+class RequisicionFirma {
+  final int posicion;
+  final String tipo; // "SA" (Salida) o "RE" (Recibo)
+  final String? persona;
+  final String? nombre;
+  final String? fecha;
+  final bool firmada;
+  final String? firma;
+
+  const RequisicionFirma({
+    this.posicion = 0,
+    required this.tipo,
+    this.persona,
+    this.nombre,
+    this.fecha,
+    required this.firmada,
+    this.firma,
+  });
+
+  String? get fechaFirma => fecha;
+
+  factory RequisicionFirma.fromJson(Map<String, dynamic> json) {
+    final rawFecha = json['fecha']?.toString() ?? json['fechaFirma']?.toString();
+    final hasFecha = rawFecha != null && rawFecha.trim().isNotEmpty;
+    final isExplicitFirmada = json['firmada'] == true || json['firmada']?.toString() == 'true';
+
+    return RequisicionFirma(
+      posicion: json['posicion'] is int
+          ? json['posicion'] as int
+          : int.tryParse(json['posicion']?.toString() ?? '0') ?? 0,
+      tipo: json['tipo']?.toString() ?? '',
+      persona: json['persona']?.toString(),
+      nombre: json['nombre']?.toString() ?? json['nombrePersona']?.toString(),
+      fecha: rawFecha,
+      firmada: hasFecha || isExplicitFirmada,
+      firma: json['firma']?.toString(),
+    );
+  }
 }
 ```

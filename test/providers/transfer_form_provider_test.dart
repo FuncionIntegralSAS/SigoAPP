@@ -231,6 +231,45 @@ void main() {
       expect(provider.isFormValid, isTrue);
     });
 
+    test('selectOriginBodega rechaza bodegas que no sean de tipo personal PE', () async {
+      await provider.selectOriginBodega('B01', tipo: 'FI');
+
+      expect(provider.selectedOriginBodega, equals('B01'));
+      expect(provider.selectedOriginBodegaTipo, equals('FI'));
+      expect(provider.originPersonsError, contains('bodegas personales [PE]'));
+      expect(provider.originPersons, isEmpty);
+      expect(provider.isFormValid, isFalse);
+    });
+
+    test('toggleAssetSelection impide seleccionar más de 50 artículos', () {
+      for (int i = 1; i <= 50; i++) {
+        provider.addPreselectedAsset(TransferAssetModel(
+          articulo: 'ART-$i',
+          placa: 'PLA-$i',
+          nombre: 'Artículo $i',
+          centroInformacion: 'CI-01',
+          tercero: '900123456',
+        ));
+      }
+      expect(provider.selectedAssets.length, equals(50));
+
+      const extraAsset = TransferAssetModel(
+        articulo: 'ART-51',
+        placa: 'PLA-51',
+        nombre: 'Artículo 51',
+        centroInformacion: 'CI-01',
+        tercero: '900123456',
+      );
+
+      expect(provider.isAssetSelectable(extraAsset), isFalse);
+      expect(provider.getAssetIncompatibilityReason(extraAsset), contains('50 artículos'));
+
+      final added = provider.toggleAssetSelection(extraAsset);
+      expect(added, isFalse);
+      expect(provider.selectedAssets.length, equals(50));
+      expect(provider.selectionLimitError, contains('50 artículos'));
+    });
+
     test('setEmpresa reinicia el flujo secuencial ante cambio de empresa', () async {
       await provider.selectOriginBodega('B01');
       await provider.selectOriginPerson(provider.originPersons.first);

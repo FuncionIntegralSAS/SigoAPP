@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:sigo_app/modules/inventory/providers/transfer_delivery_provider.dart';
 import 'package:sigo_app/modules/auth/providers/auth_provider.dart';
 import 'package:sigo_app/modules/inventory/models/transfer_request.dart';
+import 'package:sigo_app/shared/widgets/app_error_widget.dart';
 import 'package:sigo_app/utils/dialog_utils.dart';
 import 'package:sigo_app/modules/inventory/screens/signature_capture_screen.dart';
 
@@ -48,7 +49,13 @@ class _TransferDeliveryScreenState extends State<TransferDeliveryScreen> {
         onRefresh: () => provider.loadTransfers(),
         child: provider.loading && transfers.isEmpty
             ? const Center(child: CircularProgressIndicator())
-            : transfers.isEmpty
+            : provider.error != null && transfers.isEmpty
+                ? AppErrorWidget.view(
+                    title: 'Error al consultar entregas',
+                    message: provider.error!,
+                    onRetry: () => provider.loadTransfers(),
+                  )
+                : transfers.isEmpty
                 ? ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: [

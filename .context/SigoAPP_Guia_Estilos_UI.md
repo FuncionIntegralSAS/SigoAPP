@@ -202,11 +202,13 @@ Todo diálogo modal (`showDialog` / `AlertDialog`) debe respetar:
 * Campos de entrada con `OutlineInputBorder(borderRadius: BorderRadius.circular(8))`.
 * Botones de acción alineados al pie con esquinas `r: 8`.
 
-#### Directrices para Diálogos de Error (`DialogUtils.showErrorDialog`)
+#### Directrices para Diálogos de Error (`DialogUtils.showErrorDialog` y `DialogUtils.showInferredErrorDialog`)
 1. **Desacoplamiento Funcional vs Técnico:**
    * **Cuerpo Principal:** Debe mostrar exclusivamente un mensaje amigable y conciso para el operador final (procesado con `DialogUtils.extractFriendlyMessage`), libre de volcados de JDBC, ORA de base de datos o stack traces crudos.
    * **Sección de Diagnóstico Expandible:** El acordeón "Ver detalles técnicos (Desarrollador)" aloja la información completa de depuración (código HTTP, endpoint consultado, traza del servidor y botón de copiado al portapapeles) en un contenedor monoespaciado (`11px`) con fondo `Colors.grey.shade100` y borde sutil.
-2. **Prevención Estricta de Desbordamientos Visuales (`Overflow`):**
+2. **Inferencia Automática Universal (`DialogUtils.showInferredErrorDialog`):**
+   * Permite a cualquier módulo invocar el diálogo modal pasando directamente la excepción tipada (`TransferBusinessException`, `RequisitionBusinessException`, `CatalogBusinessException`, etc.), `DioException`, o cadena de error. El método extrae de forma tipada y segura el mensaje funcional, código HTTP, endpoint y `technicalDetails`.
+3. **Prevención Estricta de Desbordamientos Visuales (`Overflow`):**
    * La fila del encabezado del acordeón desplegable debe utilizar `MainAxisSize.min` y envolver el texto explicativo con `Flexible` para evitar errores de renderizado (`RenderFlex overflowed`) en ventanas compactas de Windows o dispositivos móviles.
    * Queda prohibido ubicar badges adicionales (ej. chips de método o código HTTP) en la misma fila horizontal del toggle desplegable; dichos metadatos deben residir estructurados dentro del área expandida.
 
@@ -302,7 +304,10 @@ ScaffoldMessenger.of(context).showSnackBar(
 2. **Estado Vacío (`items.isEmpty`):**
    * Contenedor centrado con icono gris temático de tamaño medio (`48px` a `56px`), título en negrita (`16px`, `Colors.grey.shade700`) y subtítulo explicativo conciso en gris.
 3. **Estado de Error (`errorMessage != null`):**
-   * Banner o contenedor con fondo `Colors.red.shade50`, borde `Border.all(color: Colors.red.shade200)`, icono de alerta `Icons.error_outline_rounded` en rojo corporativo y botón formal de "Reintentar".
+   * **Widget Canónico Transversal:** Se debe utilizar obligatoriamente [`AppErrorWidget`](../lib/shared/widgets/app_error_widget.dart) para cualquier renderizado en pantalla:
+     - `AppErrorWidget.inline(message: ...)`: Contenedor horizontal compacto (`r: 6`, fondo `Colors.red.shade50` o `Colors.amber.shade50`, borde sutil `0.8px`, icono 16px y tipografía 12px) ubicado inmediatamente debajo de inputs, selectores o límites de conteo.
+     - `AppErrorWidget.banner(title: ..., message: ..., onRetry: ..., onShowDetails: ...)`: Banner de bloque en tarjetas o secciones (`r: 8`, fondo `Colors.red.shade50`, borde `1.0px`, icono 20px, título en negrita `13px` y descripción amigable `12px`), con soporte opcional para reintento y visualización de detalles técnicos.
+     - `AppErrorWidget.view(title: ..., message: ..., onRetry: ...)`: Vista completa centrada para errores de pantalla completa con icono circular de 48px y botón formal de reintento (`FilledButton.tonalIcon`). Obligatorio en bandejas maestras cuando la lista de documentos esté vacía debido a un fallo de red o backend (`ApprovalTabView`, `DeliveryTabView`, `RequisitionSignatureScreen`, `TransferApprovalScreen`, `TransferDeliveryScreen`).
 
 ---
 
@@ -547,6 +552,7 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
      * **Pestaña Apertura:** Formulario ordenado en tarjetas blancas con selectores estándar en cascada (`DropdownTemplates`) de empresa, bodega y fecha de corte. Botón de apertura destacado al pie.
      * **Pestaña Asignación:** Selector de conteo activo y lista de colaboradores con casillas de verificación o chips interactivos (`r: 8`).
      * **Pestaña Cierre:** Panel de resumen con tarjeta semafórica de bodegas pendientes (icono de advertencia ámbar si hay bodegas sin cerrar) y botón de cierre definitivo con confirmación modal obligatoria.
+   * **Manejo Estandarizado de Errores Transaccionales:** Los fallos en apertura (`PhysicalCountOpeningTab`), asignación (`PhysicalCountAssignmentTab`), cierre (`PhysicalCountClosingTab`) y consulta de bodegas se gestionan obligatoriamente mediante `DialogUtils.showErrorDialog` o `DialogUtils.showPendingWarehousesErrorDialog` (evitando SnackBars efímeros que se pierdan o desborden ante trazas de backend), garantizando la sanitización de errores vía `extractFriendlyMessage` y exponiendo el acordeón de soporte para desarrolladores.
 2. **Ejecución en Piso / Conteo Offline (`ActiveCountScreen`):**
    * **Cabecera Fija de Sesión:** Contenedor blanco con ID de conteo, nombre de bodega actual y badge de conectividad (`Offline` en gris/ámbar, `Sincronizado` en verde).
    * **Campo de Captura Rápida:** Campo de texto de alta reactividad con `autofocus: true` persistente para pistolas lectoras de código de barras láser bluetooth.
@@ -580,6 +586,8 @@ Para revisar las implementaciones canónicas vigentes en el código fuente:
 
 | Pantalla / Widget | Archivo | Patrón Destacado |
 |---|---|---|
+| **Renderizado de Errores** | `lib/shared/widgets/app_error_widget.dart` | Constructores canónicos `.inline`, `.banner` y `.view` con icono 48px, reintento y detalles técnicos. |
+| **Modales de Error y Sanitización** | `lib/utils/dialog_utils.dart` | `showErrorDialog` y `showInferredErrorDialog` con extracción de mensajes de negocio y acordeón de depuración. |
 | **Aprobación de Traspasos** | `lib/modules/inventory/screens/transfer_approval_screen.dart` | AppBar sólido, franja métrica, tarjetas con franja de 5px, flujo en una línea, botones `r: 8`. |
 | **Panel de Filtros** | `lib/modules/inventory/widgets/transfer_filter_panel.dart` | Selectores rectangulares `r: 8`, código de color temático por estado, badge de filtros activos. |
 | **Tarjeta de Inventario** | `lib/modules/inventory/widgets/inventory_article_tile.dart` | Franja vertical de 5px, badges de placa monoespacio, soporte modo individual y selección múltiple. |

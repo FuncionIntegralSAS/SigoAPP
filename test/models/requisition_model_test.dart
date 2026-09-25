@@ -84,4 +84,48 @@ void main() {
       expect(serialized['responsableBodegaDestino'], isNull);
     });
   });
+
+  group('RequisicionFirma Model Tests', () {
+    test('fromJson mapea tipo, persona, nombre y fecha, y deriva firmada = true cuando hay fecha', () {
+      final json = {
+        'tipo': 'SA',
+        'persona': '1098765432',
+        'nombre': 'JUAN CAMILO DIAZ',
+        'fecha': '2026-09-24T15:30:00',
+        'firmada': false, // Aunque venga false, al haber fecha debe derivar true
+      };
+
+      final firma = RequisicionFirma.fromJson(json);
+
+      expect(firma.tipo, 'SA');
+      expect(firma.persona, '1098765432');
+      expect(firma.nombre, 'JUAN CAMILO DIAZ');
+      expect(firma.fecha, '2026-09-24T15:30:00');
+      expect(firma.fechaFirma, '2026-09-24T15:30:00');
+      expect(firma.firmada, isTrue);
+
+      final serialized = firma.toJson();
+      expect(serialized['nombre'], 'JUAN CAMILO DIAZ');
+      expect(serialized['fecha'], '2026-09-24T15:30:00');
+      expect(serialized['firmada'], isTrue);
+    });
+
+    test('fromJson mantiene firmada = false cuando fecha es null o vacía', () {
+      final json = {
+        'tipo': 'RE',
+        'persona': null,
+        'nombre': null,
+        'fecha': null,
+        'firmada': false,
+      };
+
+      final firma = RequisicionFirma.fromJson(json);
+
+      expect(firma.tipo, 'RE');
+      expect(firma.persona, isNull);
+      expect(firma.nombre, isNull);
+      expect(firma.fecha, isNull);
+      expect(firma.firmada, isFalse);
+    });
+  });
 }

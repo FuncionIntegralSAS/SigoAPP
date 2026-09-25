@@ -23,6 +23,7 @@ class MockRequisitionRepository implements RequisitionRepository {
 
   bool shouldThrowOnSign = false;
   bool shouldThrowOnRegisterExit = false;
+  String? registerExitExceptionMessage;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -139,8 +140,8 @@ class MockRequisitionRepository implements RequisitionRepository {
     registerExitCallCount++;
 
     if (shouldThrowOnRegisterExit) {
-      throw const RequisitionBusinessException(
-        'ORA-20002|La requisición no cuenta con ambas firmas',
+      throw RequisitionBusinessException(
+        registerExitExceptionMessage ?? 'ORA-20002|La requisición no cuenta con ambas firmas',
         statusCode: 400,
       );
     }
@@ -315,6 +316,57 @@ void main() {
         provider.actionError,
         'La requisición no cuenta con ambas firmas',
       );
+    });
+
+    test('registerExit es idempotente si la requisición ya está en estado rg en memoria', () async {
+      await provider.loadDetail('01', 'RS', '10543');
+      final detail = provider.getDetail('01', 'RS', '10543');
+      expect(detail, isNotNull);
+
+      // Simulamos que el detalle ya fue marcado con estado rg
+      provider.setDesde(DateTime(2026, 9, 18));
+      repository.registerExitCallCount = 0;
+      repository.getRequisitionsCallCount = 0;
+
+      // Primer registro
+      final success1 = await provider.registerExit(
+        empresa: '01',
+        tipoDocumento: 'RS',
+        numero: '10543',
+      );
+      expect(success1, isTrue);
+      expect(repository.registerExitCallCount, 1);
+      expect(provider.getDetail('01', 'RS', '10543')?.estado, 'rg');
+
+      // Segundo registro (idempotencia en memoria): no debe llamar al repositorio nuevamente
+      final success2 = await provider.registerExit(
+        empresa: '01',
+        tipoDocumento: 'RS',
+        numero: '10543',
+      );
+      expect(success2, isTrue);
+      expect(repository.registerExitCallCount, 1);
+    });
+
+    test('registerExit es idempotente si el backend responde que ya se encuentra registrada', () async {
+      await provider.loadDetail('01', 'RS', '10543');
+      provider.setDesde(DateTime(2026, 9, 18));
+      repository.registerExitCallCount = 0;
+      repository.getRequisitionsCallCount = 0;
+
+      repository.shouldThrowOnRegisterExit = true;
+      repository.registerExitExceptionMessage = 'La requisición ya fue registrada previamente';
+
+      final success = await provider.registerExit(
+        empresa: '01',
+        tipoDocumento: 'RS',
+        numero: '10543',
+      );
+
+      expect(success, isTrue);
+      expect(provider.actionError, isNull);
+      expect(provider.getDetail('01', 'RS', '10543')?.estado, 'rg');
+      expect(repository.getRequisitionsCallCount, 1);
     });
 
     test('reset limpia todos los estados y filtros en memoria', () async {

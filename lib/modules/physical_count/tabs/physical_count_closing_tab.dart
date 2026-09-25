@@ -40,9 +40,11 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
     super.dispose();
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+  void _showErrorDialog(String message) {
+    DialogUtils.showErrorDialog(
+      context,
+      title: 'Error en Cierre de Conteo',
+      message: message,
     );
   }
 
@@ -101,11 +103,11 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
     final bodega = _selectedWarehouse?.bodega ?? _warehouseCodeController.text.trim();
 
     if (empresa.isEmpty) {
-      _showErrorSnackBar('Debe ingresar el código de la empresa.');
+      _showErrorDialog('Debe ingresar el código de la empresa.');
       return;
     }
     if (bodega.isEmpty) {
-      _showErrorSnackBar('Debe ingresar el código de la bodega.');
+      _showErrorDialog('Debe ingresar el código de la bodega.');
       return;
     }
 
@@ -113,7 +115,7 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
     final token = authProvider.currentToken;
 
     if (token == null || token.isEmpty) {
-      _showErrorSnackBar('No hay sesión activa. Inicie sesión nuevamente.');
+      _showErrorDialog('No hay sesión activa. Inicie sesión nuevamente.');
       return;
     }
 
@@ -229,7 +231,7 @@ class _PhysicalCountClosingTabState extends State<PhysicalCountClosingTab> {
               provider.closeErrorMessage != null) {
             _lastHandledCloseState = provider.closeState;
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _showErrorSnackBar(provider.closeErrorMessage!);
+              _showErrorDialog(provider.closeErrorMessage!);
               provider.clearCloseError();
               _lastHandledCloseState = null;
             });

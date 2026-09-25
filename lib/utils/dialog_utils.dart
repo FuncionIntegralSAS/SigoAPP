@@ -3,52 +3,19 @@ import 'package:flutter/services.dart';
 import 'package:sigo_app/modules/physical_count/providers/physical_count_provider.dart';
 
 class DialogUtils {
-  static void showPendingWarehousesErrorDialog(
-      BuildContext context, PhysicalCountProvider provider) {
-    final message = provider.pendingWarehousesErrorMessage ??
+  static Future<void> showPendingWarehousesErrorDialog(
+      BuildContext context, PhysicalCountProvider provider) async {
+    final rawMessage = provider.pendingWarehousesErrorMessage ??
         'Ocurrió un error al obtener las bodegas pendientes.';
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-        title: const Text(
-          'ERROR EN BODEGAS',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: Colors.red,
-          ),
-        ),
-        content: Text(
-          message,
-          style: const TextStyle(fontSize: 16, height: 1.5),
-        ),
-        actionsAlignment: MainAxisAlignment.end,
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade700,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: const StadiumBorder(),
-              elevation: 2,
-            ),
-            onPressed: () {
-              Navigator.of(context).pop();
-              provider.clearPendingWarehousesError();
-            },
-            child: const Text(
-              'Aceptar',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
+    final friendly = extractFriendlyMessage(rawMessage);
+
+    await showErrorDialog(
+      context,
+      title: 'Error en Bodegas Pendientes',
+      message: friendly,
+      technicalDetails: rawMessage != friendly ? rawMessage : null,
     );
+    provider.clearPendingWarehousesError();
   }
 
   /// Extrae un mensaje amigable y conciso a partir de una traza cruda de error
@@ -157,7 +124,7 @@ class DialogUtils {
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
           actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
@@ -320,6 +287,79 @@ class DialogUtils {
           ],
         ),
       ),
+    );
+  }
+
+  /// Infiere automáticamente el mensaje amigable, código de estado, endpoint y
+  /// detalles técnicos a partir de cualquier excepción o error del backend, y
+  /// despliega el modal estandarizado para el usuario final.
+  ///
+  /// Soporta instancias tipadas de negocio ([TransferBusinessException],
+  /// [RequisitionBusinessException], [CatalogBusinessException], etc.),
+  /// [DioException], cadenas simples ([String]) o cualquier [Object].
+  static Future<void> showInferredErrorDialog(
+    BuildContext context, {
+    required String title,
+    required dynamic error,
+    String? fallbackMessage,
+    String? endpoint,
+    int? statusCode,
+    String? technicalDetails,
+    String buttonText = 'Aceptar',
+    VoidCallback? onAccept,
+    VoidCallback? onRetry,
+  }) async {
+    String resolvedMessage =
+        fallbackMessage ?? 'Ha ocurrido un error en la operación.';
+    String? resolvedTechnicalDetails = technicalDetails;
+    int? resolvedStatusCode = statusCode;
+    String? resolvedEndpoint = endpoint;
+
+    if (error != null) {
+      if (error is String) {
+        resolvedMessage = error;
+      } else {
+        try {
+          final dynamic dyn = error;
+          if (dyn.message != null &&
+              dyn.message is String &&
+              (dyn.message as String).trim().isNotEmpty) {
+            resolvedMessage = dyn.message as String;
+          } else {
+            resolvedMessage = error.toString().replaceAll('Exception: ', '');
+          }
+
+          if (resolvedTechnicalDetails == null &&
+              dyn.technicalDetails != null &&
+              dyn.technicalDetails is String) {
+            resolvedTechnicalDetails = dyn.technicalDetails as String;
+          }
+          if (resolvedStatusCode == null &&
+              dyn.statusCode != null &&
+              dyn.statusCode is int) {
+            resolvedStatusCode = dyn.statusCode as int;
+          }
+          if (resolvedEndpoint == null &&
+              dyn.endpoint != null &&
+              dyn.endpoint is String) {
+            resolvedEndpoint = dyn.endpoint as String;
+          }
+        } catch (_) {
+          resolvedMessage = error.toString().replaceAll('Exception: ', '');
+        }
+      }
+    }
+
+    await showErrorDialog(
+      context,
+      title: title,
+      message: resolvedMessage,
+      technicalDetails: resolvedTechnicalDetails,
+      statusCode: resolvedStatusCode,
+      endpoint: resolvedEndpoint,
+      buttonText: buttonText,
+      onAccept: onAccept,
+      onRetry: onRetry,
     );
   }
 }

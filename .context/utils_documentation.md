@@ -4,14 +4,19 @@ Este documento describe las clases y métodos utilitarios de la carpeta `lib/uti
 
 ## `dialog_utils.dart`
 - **Propósito**: Provee métodos estáticos para mostrar cuadros de diálogo reutilizables (*Alerts* / Modales) y sanitización inteligente de errores de servidor y base de datos.
-  - `showPendingWarehousesErrorDialog`: Error estandarizado cuando falla la carga de bodegas pendientes en conteo físico.
-  - `showErrorDialog`: Modal de error para el usuario final con redacción concisa y amigable. Si el mensaje recibido contiene volcados de base de datos o stack traces, invoca automáticamente `extractFriendlyMessage` para presentar únicamente la causa funcional en el cuerpo principal, y resguarda la traza técnica completa (`technicalDetails`, código HTTP, endpoint y botón de copiado al portapapeles) dentro del acordeón expandible para desarrollador, garantizando adaptabilidad responsiva sin desbordamientos visuales.
+  - `showPendingWarehousesErrorDialog`: Modal institucional estandarizado que delega en `showErrorDialog`. Sanitiza la traza del error mediante `extractFriendlyMessage`, expone detalles técnicos en el acordeón y adopta el radio de borde `r: 12`, reseteando el error del provider (`clearPendingWarehousesError`) al cerrar.
+  - `showErrorDialog`: Modal de error para el usuario final con redacción concisa y amigable. Si el mensaje recibido contiene volcados de base de datos o stack traces, invoca automáticamente `extractFriendlyMessage` para presentar únicamente la causa funcional en el cuerpo principal, y resguarda la traza técnica completa (`technicalDetails`, código HTTP, endpoint y botón de copiado al portapapeles) dentro del acordeón expandible para desarrollador, garantizando adaptabilidad responsiva sin desbordamientos visuales (radio institucional `r: 12` y botones `r: 8`).
+  - `showInferredErrorDialog`: Método universal que infiere automáticamente mensaje amigable, código de estado HTTP, endpoint y detalles técnicos a partir de cualquier excepción tipada de negocio (`TransferBusinessException`, `RequisitionBusinessException`, `CatalogBusinessException`, etc.), `DioException`, cadenas crudas o cualquier `Object`, desplegando el modal estandarizado `showErrorDialog` sin acoplamiento entre capas.
   - `extractFriendlyMessage`: Método utilitario que procesa cadenas crudas de error provenientes de Oracle PL/SQL (`ORA-20xxx`), extrayendo el mensaje de negocio tras pipes (`121|...`), limpiando prefijos de JDBC/Spring Boot (`CallableStatement`, `HikariProxy`, etc.) y retornando una descripción clara para el usuario final.
 - **Lugares de uso**: 
+  - `lib/modules/physical_count/tabs/physical_count_opening_tab.dart`
+  - `lib/modules/physical_count/tabs/physical_count_assignment_tab.dart`
   - `lib/modules/physical_count/tabs/physical_count_closing_tab.dart`
   - `lib/modules/inventory/widgets/transfer_form_widget.dart`
   - `lib/modules/inventory/screens/transfer_delivery_screen.dart`
   - `lib/modules/inventory/screens/transfer_approval_screen.dart`
+  - `lib/modules/requisitions/screens/requisition_signature_screen.dart`
+  - `lib/modules/requisitions/screens/requisition_signature_capture_screen.dart`
   - `lib/modules/inventory/repositories/http_transfer_repository.dart`
   - `lib/modules/inventory/providers/transfer_delivery_provider.dart`
 

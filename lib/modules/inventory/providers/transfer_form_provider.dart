@@ -30,6 +30,9 @@ class TransferFormProvider extends ChangeNotifier {
   String? _selectedOriginBodega;
   String? get selectedOriginBodega => _selectedOriginBodega;
 
+  String? _selectedOriginBodegaTipo;
+  String? get selectedOriginBodegaTipo => _selectedOriginBodegaTipo;
+
   bool _isLoadingOriginPersons = false;
   bool get isLoadingOriginPersons => _isLoadingOriginPersons;
 
@@ -46,6 +49,7 @@ class TransferFormProvider extends ChangeNotifier {
     if (_selectedEmpresa == empresa) return;
     _selectedEmpresa = empresa;
     _selectedOriginBodega = null;
+    _selectedOriginBodegaTipo = null;
     _originPersons = [];
     _selectedOriginPerson = null;
     _personAssets = [];
@@ -57,14 +61,21 @@ class TransferFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> selectOriginBodega(String? bodega, {String? empresa}) async {
+  Future<void> selectOriginBodega(String? bodega, {String? empresa, String? tipo}) async {
     _selectedOriginBodega = bodega;
+    _selectedOriginBodegaTipo = tipo;
     _selectedOriginPerson = null;
     _personAssets = [];
     _selectedAssets.clear();
     _originPersons = [];
     _originPersonsError = null;
     notifyListeners();
+
+    if (tipo != null && tipo.trim().toUpperCase() != 'PE') {
+      _originPersonsError = 'Solo se pueden traspasar activos de bodegas personales [PE].';
+      notifyListeners();
+      return;
+    }
 
     if (bodega != null && bodega.trim().isNotEmpty) {
       final activeEmpresa = empresa ?? _selectedEmpresa ?? '01';
@@ -209,9 +220,13 @@ class TransferFormProvider extends ChangeNotifier {
     return true;
   }
 
+  String? _selectionLimitError;
+  String? get selectionLimitError => _selectionLimitError;
+
   /// Determina si un activo es seleccionable por el usuario.
   bool isAssetSelectable(TransferAssetModel asset) {
     if (asset.enTramite) return false;
+    if (_selectedAssets.length >= 50 && !isAssetSelected(asset)) return false;
     return isAssetCompatible(asset);
   }
 
@@ -220,6 +235,9 @@ class TransferFormProvider extends ChangeNotifier {
     if (asset.enTramite) {
       return 'En trámite pendiente';
     }
+    if (_selectedAssets.length >= 50 && !isAssetSelected(asset)) {
+      return 'Límite alcanzado: Máximo 50 artículos por solicitud.';
+    }
     if (!isAssetCompatible(asset)) {
       final first = _selectedAssets.first;
       return 'Incompatible: difiere en CI (${asset.centroInformacion ?? "N/A"} vs ${first.centroInformacion ?? "N/A"}) o Tercero (${asset.tercero ?? "N/A"} vs ${first.tercero ?? "N/A"}) con los ya seleccionados.';
@@ -227,10 +245,11 @@ class TransferFormProvider extends ChangeNotifier {
     return null;
   }
 
-  /// Alterna la selección de un activo respetando enTramite y compatibilidad.
+  /// Alterna la selección de un activo respetando enTramite, compatibilidad y límite de 50 ítems.
   bool toggleAssetSelection(TransferAssetModel asset) {
     if (isAssetSelected(asset)) {
       _selectedAssets.removeWhere((a) => _isSameAsset(a, asset));
+      _selectionLimitError = null;
       notifyListeners();
       return true;
     }
@@ -240,11 +259,19 @@ class TransferFormProvider extends ChangeNotifier {
       return false;
     }
 
+    // Bloqueo por límite de 50 artículos por traspaso
+    if (_selectedAssets.length >= 50) {
+      _selectionLimitError = 'No se pueden agregar más de 50 artículos por solicitud de traspaso.';
+      notifyListeners();
+      return false;
+    }
+
     // Bloqueo por incompatibilidad PL/SQL
     if (!isAssetCompatible(asset)) {
       return false;
     }
 
+    _selectionLimitError = null;
     _selectedAssets.add(asset);
     notifyListeners();
     return true;
@@ -352,10 +379,54 @@ class TransferFormProvider extends ChangeNotifier {
   }
 
   bool get isFormValid {
-    return _selectedOriginPerson != null &&
-        _selectedDestinationPerson != null &&
-        _selectedAssets.isNotEmpty &&
-        _selectedOriginPerson!.cedula != _selectedDestinationPerson!.cedula;
+    // 1. Origen y Destino requeridos y distintos
+    if (_selectedOriginPerson == null || _selectedDestinationPerson == null) {
+      return false;
+    }
+    if (_selectedOriginPerson!.cedula.trim() == _selectedDestinationPerson!.cedula.trim()) {
+      return false;
+    }
+
+    // 2. Bodega personal PE (si se conoce el tipo)
+    if (_selectedOriginBodegaTipo != null &&
+        _selectedOriginBodegaTipo!.trim().toUpperCase() != 'PE') {
+      return false;
+    }
+
+    // 3. Cantidad de artículos: al menos 1 y máximo 50
+    if (_selectedAssets.isEmpty || _selectedAssets.length > 50) {
+      return false;
+    }
+
+    // 4. Ningún artículo en trámite pendiente
+    if (_selectedAssets.any((a) => a.enTramite)) {
+      return false;
+    }
+
+    // 5. Sin artículos repetidos (clave articulo + placa)
+    final seenKeys = <String>{};
+    for (final a in _selectedAssets) {
+      final key = '${a.articulo.trim().toLowerCase()}_${(a.placa ?? '').trim().toLowerCase()}';
+      if (!seenKeys.add(key)) {
+        return false;
+      }
+    }
+
+    // 6. Compatibilidad estricta: Mismo centroInformacion y mismo tercero
+    final firstCi = _selectedAssets.first.centroInformacion?.trim();
+    final firstTercero = _selectedAssets.first.tercero?.trim();
+    for (final a in _selectedAssets) {
+      final ci = a.centroInformacion?.trim();
+      final t = a.tercero?.trim();
+      if (ci != null && firstCi != null && ci != firstCi) {
+        return false;
+      }
+      if (t != null && firstTercero != null && t != firstTercero) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   // ==========================================
@@ -584,6 +655,7 @@ class TransferFormProvider extends ChangeNotifier {
   void resetForm() {
     _selectedEmpresa = '01';
     _selectedOriginBodega = null;
+    _selectedOriginBodegaTipo = null;
     _isLoadingOriginPersons = false;
     _originPersons = [];
     _originPersonsError = null;
@@ -592,6 +664,7 @@ class TransferFormProvider extends ChangeNotifier {
     _isLoadingAssets = false;
     _personAssets = [];
     _assetsError = null;
+    _selectionLimitError = null;
     _selectedAssets.clear();
 
     _selectedDestinationBodega = null;

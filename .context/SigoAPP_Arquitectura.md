@@ -40,9 +40,10 @@ Modelo de transporte (DTO) para registrar la firma digital en el flujo de entreg
 
 ### 2.5 requisition_model.dart
 Representa una solicitud administrativa de consumo o salida de inventario.
-* Responsabilidades: Preservar la trazabilidad jerárquica de cantidades (Solicitada -> Aprobada -> Entregada).
+* Responsabilidades: Preservar la trazabilidad jerárquica de cantidades (Solicitada -> Aprobada -> Entregada -> Registrada ERP) y gestión inmutable de estado (`copyWith` en `RequisicionDetalle` y `RequisicionResumen`).
 * Llave Primaria: compositeId (generada a partir de empresa, tipo de documento, número, bodega y artículo).
-* Estados soportados: 'pe' (Pendiente), 'ap' (Aprobada), 'na' (Rechazada/No aprobada), 'pr' (Procesada).
+* Estados soportados: 'in' (Ingresada/Solicitada), 'ap' (Aprobada), 'en' (Entregada/Firmas pendientes), 'rg' (Registrada en ERP), 'an' (Anulada).
+* `RequisicionFirma`: Mapea `tipo` ('SA' Salida, 'RE' Recibo), `persona` (cédula), `nombre` (nombre completo del firmante) y `fecha` (ISO 8601 con getter `fechaFirma`). La condición `firmada` se deriva formalmente como `(fecha != null && fecha.isNotEmpty) || firmada == true`.
 
 ### 2.6 physical_count_model.dart y company_model.dart (Módulo de Conteo Físico - Apertura)
 Modelos encargados de la recolección de datos para la generación de la apertura de un conteo físico de inventario.
@@ -59,7 +60,7 @@ Modelos diseñados para la operación offline del conteo físico en piso (SQLite
 ### 2.8 Modelos de Soporte
 * `personal_model.dart`: Modelo de datos del personal de la empresa para el módulo de Conteo Físico. Almacena los datos de identificación del empleado bajo la nomenclatura de base de datos (`perscodi`, `persnomb`, `persapel`, `perscoel`, `persdivi`, `persesta`). Su factory constructor `fromJson` implementa un mapeo tolerante a múltiples formatos de llave (minúsculas, mayúsculas, camelCase y las llaves directas del endpoint de personal: `cedula`, `nombre`, `apellido`, `correo`, `division`, `estado`).
 * `user_model.dart`: Modelo básico de usuario autenticado (id, name, email).
-* `warehouse_model.dart`: Bodega o centro de costos con deserialización desde API. Extiende `Equatable` con `bodeCodi`, `bodeDesc` y `bodeEsta` como `props`, permitiendo la comparación por valor requerida por `DropdownButton`.
+* `warehouse_model.dart`: Bodega o centro de costos con deserialización desde API (`bodeCodi`, `bodeDesc`, `bodeEsta`, `tipo`). Incluye el getter `isPersonal` (`(tipo ?? '').toUpperCase() == 'PE'`) utilizado por el módulo de inventario y traspasos para filtrar y validar que solo se originen traspasos desde bodegas personales. Extiende `Equatable` con `[bodeCodi, bodeDesc, bodeEsta, tipo]` como `props`, permitiendo la comparación por valor requerida por `DropdownButton`.
 
 ### 2.9 Modelos de Asignación y Cierre de Conteo Físico (physical_count_model.dart)
 Además de `PhysicalCountRequest`, este archivo contiene los modelos para el flujo de asignación y cierre:

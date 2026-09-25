@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:sigo_app/modules/inventory/providers/transfer_approval_provider.dart';
 import 'package:sigo_app/modules/inventory/widgets/transfer_filter_panel.dart';
 import 'package:sigo_app/modules/inventory/models/transfer_request.dart';
+import 'package:sigo_app/shared/widgets/app_error_widget.dart';
 import 'package:sigo_app/utils/dialog_utils.dart';
 
 class TransferApprovalScreen extends StatefulWidget {
@@ -101,50 +102,10 @@ class _TransferApprovalScreenState extends State<TransferApprovalScreen> {
             child: RefreshIndicator(
               onRefresh: () => provider.loadTransfers(),
               child: provider.error != null && transfers.isEmpty
-                  ? Center(
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade50,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.error_outline_rounded,
-                                size: 48,
-                                color: Colors.red.shade600,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Error al cargar trámites',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              provider.error!,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            FilledButton.tonalIcon(
-                              icon: const Icon(Icons.refresh_rounded),
-                              label: const Text('Reintentar'),
-                              onPressed: () => provider.loadTransfers(),
-                            ),
-                          ],
-                        ),
-                      ),
+                  ? AppErrorWidget.view(
+                      title: 'Error al cargar trámites',
+                      message: provider.error!,
+                      onRetry: () => provider.loadTransfers(),
                     )
                   : transfers.isEmpty
                       ? Center(

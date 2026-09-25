@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:sigo_app/modules/requisitions/models/requisition_model.dart';
 import 'package:sigo_app/modules/requisitions/providers/requisition_approval_provider.dart';
 import 'package:sigo_app/utils/dialog_utils.dart';
+import 'package:sigo_app/shared/widgets/app_error_widget.dart';
 import 'package:sigo_app/modules/requisitions/widgets/requisition_action_card.dart';
 import 'package:sigo_app/modules/requisitions/widgets/requisition_filter_header.dart';
 
@@ -90,36 +91,10 @@ class ApprovalTabView extends StatelessWidget {
 
     // 3. Manejo de errores
     if (provider.errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline_rounded, size: 56, color: Colors.red.shade700),
-              const SizedBox(height: 12),
-              Text(
-                'Error al consultar requisiciones',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red.shade700,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                provider.errorMessage!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => provider.loadRequisitions('in'),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Reintentar'),
-              ),
-            ],
-          ),
-        ),
+      return AppErrorWidget.view(
+        title: 'Error al consultar requisiciones',
+        message: provider.errorMessage!,
+        onRetry: () => provider.loadRequisitions('in'),
       );
     }
 

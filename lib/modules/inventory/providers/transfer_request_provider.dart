@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sigo_app/exceptions/transfer_business_exception.dart';
 import 'package:sigo_app/services/notification_service.dart';
 import 'package:sigo_app/modules/inventory/models/transfer_create_request.dart';
 import 'package:sigo_app/modules/inventory/models/transfer_request.dart';
@@ -11,7 +12,27 @@ class TransferRequestProvider extends ChangeNotifier {
   bool _loading = false;
   bool get loading => _loading;
 
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
+
+  String? _technicalDetails;
+  String? get technicalDetails => _technicalDetails;
+
+  int? _statusCode;
+  int? get statusCode => _statusCode;
+
+  String? _endpoint;
+  String? get endpoint => _endpoint;
+
   TransferRequestProvider(this.repository, this.notificationService);
+
+  void clearError() {
+    _errorMessage = null;
+    _technicalDetails = null;
+    _statusCode = null;
+    _endpoint = null;
+    notifyListeners();
+  }
 
   Future<bool> createRequest({
     required String codigoActivo,
@@ -29,6 +50,10 @@ class TransferRequestProvider extends ChangeNotifier {
     String? tipoMovimiento,
   }) async {
     _setLoading(true);
+    _errorMessage = null;
+    _technicalDetails = null;
+    _statusCode = null;
+    _endpoint = null;
 
     final resolvedFuente = personaFuente?.trim().isNotEmpty == true
         ? personaFuente!.trim()
@@ -58,9 +83,18 @@ class TransferRequestProvider extends ChangeNotifier {
         'Solicitud de traspaso enviada correctamente',
       );
       return true;
+    } on TransferBusinessException catch (e) {
+      _errorMessage = e.message;
+      _technicalDetails = e.technicalDetails;
+      _statusCode = e.statusCode;
+      _endpoint = e.endpoint;
+      notificationService.error(e.message);
+      return false;
     } catch (e) {
       final cleanError = e.toString().replaceAll('Exception: ', '');
-      notificationService.error('Error al crear la solicitud: $cleanError');
+      _errorMessage = 'Error al crear la solicitud: $cleanError';
+      _technicalDetails = e.toString();
+      notificationService.error(_errorMessage!);
       return false;
     } finally {
       _setLoading(false);
