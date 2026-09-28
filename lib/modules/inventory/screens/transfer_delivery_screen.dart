@@ -35,6 +35,7 @@ class _TransferDeliveryScreenState extends State<TransferDeliveryScreen> {
     final transfers = provider.getAssignedTransfers(cedula, username);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Entrega / Recepción'),
         actions: [
@@ -50,52 +51,55 @@ class _TransferDeliveryScreenState extends State<TransferDeliveryScreen> {
         child: provider.loading && transfers.isEmpty
             ? const Center(child: CircularProgressIndicator())
             : provider.error != null && transfers.isEmpty
-                ? AppErrorWidget.view(
-                    title: 'Error al consultar entregas',
-                    message: provider.error!,
-                    onRetry: () => provider.loadTransfers(),
-                  )
-                : transfers.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.7,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.inventory_2_outlined,
-                                  size: 64, color: Colors.grey.shade400),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'No tienes traspasos pendientes de firma o recepción.',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton.icon(
-                                onPressed: () => provider.loadTransfers(),
-                                icon: const Icon(Icons.refresh),
-                                label: const Text('Actualizar'),
-                              ),
-                            ],
+            ? AppErrorWidget.view(
+                title: 'Error al consultar entregas',
+                message: provider.error!,
+                onRetry: () => provider.loadTransfers(),
+              )
+            : transfers.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.7,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 64,
+                            color: Colors.grey.shade400,
                           ),
-                        ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No tienes traspasos pendientes de firma o recepción.',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () => provider.loadTransfers(),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Actualizar'),
+                          ),
+                        ],
                       ),
-                    ],
-                  )
-                : ListView.builder(
-                    itemCount: transfers.length,
-                    itemBuilder: (context, index) {
-                      final request = transfers[index];
-                      return _DeliveryCard(request: request);
-                    },
+                    ),
                   ),
+                ],
+              )
+            : ListView.builder(
+                itemCount: transfers.length,
+                itemBuilder: (context, index) {
+                  final request = transfers[index];
+                  return _DeliveryCard(request: request);
+                },
+              ),
       ),
     );
   }
@@ -106,10 +110,7 @@ class _DeliveryCard extends StatelessWidget {
 
   const _DeliveryCard({required this.request});
 
-  Widget _buildSignatureBadge({
-    required String label,
-    required bool signed,
-  }) {
+  Widget _buildSignatureBadge({required String label, required bool signed}) {
     final color = signed ? Colors.green : Colors.orange.shade800;
     final bgColor = signed ? Colors.green.shade50 : Colors.orange.shade50;
     final borderColor = signed ? Colors.green.shade200 : Colors.orange.shade200;
@@ -175,12 +176,18 @@ class _DeliveryCard extends StatelessWidget {
       request.responsablePropuesto,
     );
 
-    final bool canUserSign = (isDispatcher && !request.isSourceSigned) ||
+    final bool canUserSign =
+        (isDispatcher && !request.isSourceSigned) ||
         (isReceiver && !request.isTargetSigned);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       elevation: 2,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade300, width: 1.0),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -201,8 +208,10 @@ class _DeliveryCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(4),
@@ -258,49 +267,108 @@ class _DeliveryCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // Si ambas están firmadas, botón destacado para asentar en ERP
-                if (request.bothSigned)
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
-                      foregroundColor: Colors.white,
+                // Si ambas están firmadas: solo el colaborador Destino puede aceptar/recibir
+                if (request.bothSigned) ...[
+                  if (isReceiver)
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade700,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Confirmar Recepción'),
+                      onPressed: provider.loading
+                          ? null
+                          : () async {
+                              final confirmed =
+                                  await DialogUtils.showConfirmationDialog(
+                                context,
+                                title: 'Aceptar Traspaso',
+                                message:
+                                    '¿Desea aceptar y confirmar formalmente la recepción del traspaso #${request.id}?\n\nEsta acción afectará de inmediato las existencias en el inventario del ERP.',
+                                confirmText: 'Aceptar Traspaso',
+                                cancelText: 'Cancelar',
+                                confirmButtonColor: Colors.green.shade700,
+                                icon: Icons.check_circle_outline,
+                              );
+                              if (confirmed != true) return;
+
+                              final success = await provider.confirmReceipt(
+                                request.id,
+                              );
+                              if (!context.mounted) return;
+                              if (success) {
+                                DialogUtils.showSuccessSnackBar(
+                                  context,
+                                  'Recepción confirmada.',
+                                );
+                              } else {
+                                DialogUtils.showErrorDialog(
+                                  context,
+                                  title: 'Error al Confirmar Recepción',
+                                  message:
+                                      provider.error ??
+                                      'No fue posible registrar la recepción en el ERP.',
+                                  technicalDetails: provider.technicalDetails,
+                                  statusCode: provider.statusCode,
+                                  buttonText: 'Aceptar',
+                                );
+                              }
+                            },
+                    )
+                  else
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 16,
+                              color: Colors.green.shade700,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Firmas completas. Pendiente aceptación por el colaborador destino.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Confirmar Recepción ERP'),
-                    onPressed: provider.loading
-                        ? null
-                        : () async {
-                            final success =
-                                await provider.confirmReceipt(request.id);
-                            if (!context.mounted) return;
-                            if (success) {
-                              DialogUtils.showSuccessSnackBar(
-                                context,
-                                'Recepción confirmada e inventario actualizado en ERP',
-                              );
-                            } else {
-                              DialogUtils.showErrorDialog(
-                                context,
-                                title: 'Error al Confirmar Recepción',
-                                message: provider.error ??
-                                    'No fue posible registrar la recepción en el ERP.',
-                                technicalDetails: provider.technicalDetails,
-                                statusCode: provider.statusCode,
-                                buttonText: 'Aceptar',
-                              );
-                            }
-                          },
-                  )
-                else if (canUserSign)
+                ] else if (canUserSign) ...[
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blueAccent,
                       foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     icon: const Icon(Icons.draw),
-                    label: Text(isDispatcher && !request.isSourceSigned
-                        ? 'Firmar Entrega (FU)'
-                        : 'Firmar Recepción (DE)'),
+                    label: Text(
+                      isDispatcher && !request.isSourceSigned
+                          ? 'Firmar Entrega (FU)'
+                          : 'Firmar Recepción (DE)',
+                    ),
                     onPressed: () async {
                       await Navigator.push(
                         context,
@@ -314,6 +382,43 @@ class _DeliveryCard extends StatelessWidget {
                       }
                     },
                   ),
+                ] else if ((isDispatcher && request.isSourceSigned) ||
+                    (isReceiver && request.isTargetSigned)) ...[
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey.shade50,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.blueGrey.shade200),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.hourglass_top_rounded,
+                            size: 16,
+                            color: Colors.blueGrey.shade700,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Su firma ya fue registrada. Esperando firma de la contraparte.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.blueGrey.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ],

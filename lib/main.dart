@@ -162,7 +162,46 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'App Gestión Administrativa',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true, primarySwatch: Colors.blue),
+      theme: ThemeData(
+        useMaterial3: true,
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.white,
+        cardColor: Colors.white,
+        canvasColor: Colors.white,
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+        ),
+        colorScheme: ColorScheme.fromSwatch(
+          primarySwatch: Colors.blue,
+        ).copyWith(
+          surface: Colors.white,
+          surfaceTint: Colors.transparent,
+          outline: Colors.black,
+        ),
+        popupMenuTheme: const PopupMenuThemeData(
+          color: Colors.white,
+          surfaceTintColor: Colors.transparent,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Colors.black, width: 1.0),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Colors.black, width: 1.0),
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Colors.black, width: 1.0),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(8)),
+            borderSide: BorderSide(color: Colors.deepPurple, width: 1.5),
+          ),
+        ),
+      ),
       navigatorKey: AppConfig.navigatorKey,
       scaffoldMessengerKey: messengerKey ?? AppConfig.scaffoldMessengerKey,
       home: const AuthWrapper(),

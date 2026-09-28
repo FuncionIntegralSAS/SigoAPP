@@ -68,6 +68,7 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
 
   bool _initializedWithArticles = false;
   bool _isSelectedAssetsExpanded = false;
+  bool _hasAutoExpandedConflicts = false;
 
   bool get _isContextualized =>
       (widget.initialSelectedArticles != null &&
@@ -200,9 +201,9 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
         articulo: art.codigoActivo,
         placa: hasArtPlaca ? artPlaca : null,
         nombre: art.nombre,
-        centroInformacion: null,
-        tercero: null,
-        enTramite: false,
+        centroInformacion: art.centroInformacion,
+        tercero: art.tercero,
+        enTramite: art.enTramite,
       );
       formProvider.addPreselectedAsset(asset);
     }
@@ -246,6 +247,7 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
       await formProvider.selectOriginBodega(
         matchedWarehouse.codigoBodega,
         empresa: _selectedCompany?.codigo ?? '01',
+        tipo: matchedWarehouse.tipo,
       );
     }
 
@@ -487,7 +489,21 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                     valueListenable: _targetPersonNotifier,
                     decoration: InputDecoration(
                       labelText: 'Colaborador Destino (Nuevo Responsable)',
-                      border: const OutlineInputBorder(),
+                      border: const OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.black, width: 1.0),
+                      ),
+                      enabledBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.black, width: 1.0),
+                      ),
+                      disabledBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.black, width: 1.0),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 1.5,
+                        ),
+                      ),
                       prefixIcon: const Icon(Icons.person_add_alt_1_outlined),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -514,12 +530,18 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                         ? const Text('Sin colaboradores en esta bodega')
                         : const Text('Seleccione el colaborador destino'),
                     items: formProvider.destinationPersons.map((p) {
-                      final isOriginPerson =
+                      final isSameWarehouse =
+                          formProvider.selectedOriginBodega != null &&
+                          formProvider.selectedDestinationBodega != null &&
+                          formProvider.selectedOriginBodega!.trim().toLowerCase() ==
+                              formProvider.selectedDestinationBodega!.trim().toLowerCase();
+                      final isOriginPersonInSameWarehouse = isSameWarehouse &&
                           formProvider.selectedOriginPerson != null &&
-                          p.cedula == formProvider.selectedOriginPerson!.cedula;
+                          p.cedula.trim() ==
+                              formProvider.selectedOriginPerson!.cedula.trim();
                       return DropdownItem<TransferPersonModel>(
                         value: p,
-                        enabled: !isOriginPerson,
+                        enabled: !isOriginPersonInSameWarehouse,
                         child: Row(
                           children: [
                             Expanded(
@@ -527,16 +549,18 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                                 '${p.nombreCompleto} (${p.cedula})',
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: isOriginPerson ? Colors.grey : null,
-                                  fontStyle: isOriginPerson
+                                  color: isOriginPersonInSameWarehouse
+                                      ? Colors.grey
+                                      : null,
+                                  fontStyle: isOriginPersonInSameWarehouse
                                       ? FontStyle.italic
                                       : null,
                                 ),
                               ),
                             ),
-                            if (isOriginPerson)
+                            if (isOriginPersonInSameWarehouse)
                               Text(
-                                '(Es origen)',
+                                '(Mismo origen)',
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Colors.red.shade400,
@@ -566,6 +590,7 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                             );
                       },
                     ),
+                    dropdownStyleData: DropdownTemplates.styleData(),
                   ),
 
                   if (formProvider.destinationPersonsError != null) ...[
@@ -619,42 +644,61 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
           // =========================================================
           SafeArea(
             top: false,
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed:
-                    (!formProvider.isFormValid || requestProvider.loading)
-                    ? null
-                    : () => _handleCreateTransfer(
-                        formProvider,
-                        requestProvider,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!formProvider.isFormValid &&
+                    formProvider.formValidationErrorMessage != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: AppErrorWidget.inline(
+                      message: formProvider.formValidationErrorMessage!,
+                      isWarning: formProvider.selectedDestinationPerson == null,
+                      icon: formProvider.selectedDestinationPerson == null
+                          ? Icons.info_outline
+                          : Icons.warning_amber_rounded,
+                    ),
+                  ),
+                ],
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed:
+                        (!formProvider.isFormValid || requestProvider.loading)
+                        ? null
+                        : () => _handleCreateTransfer(
+                            formProvider,
+                            requestProvider,
+                          ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    ),
+                    icon: requestProvider.loading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send_rounded),
+                    label: Text(
+                      requestProvider.loading
+                          ? 'Procesando...'
+                          : 'Crear Solicitud (${formProvider.selectedAssets.length} activo${formProvider.selectedAssets.length != 1 ? 's' : ''})',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
-                icon: requestProvider.loading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.send_rounded),
-                label: Text(
-                  requestProvider.loading
-                      ? 'Procesando...'
-                      : 'Crear Solicitud (${formProvider.selectedAssets.length} activo${formProvider.selectedAssets.length != 1 ? 's' : ''})',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              ],
             ),
           ),
         ],
@@ -1344,40 +1388,132 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
               .toList();
 
     final count = displayAssets.length;
+    final hasEnTramite = displayAssets.any((a) => a.enTramite);
+    final hasIncompatibility = displayAssets.any(
+      (a) => formProvider.isAssetInConflict(a) && !a.enTramite,
+    );
+    final hasConflicts = hasEnTramite || hasIncompatibility;
+
+    // Auto-expandir si se detectan conflictos para dar visibilidad inmediata al usuario
+    if (hasConflicts && !_hasAutoExpandedConflicts) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_isSelectedAssetsExpanded) {
+          setState(() {
+            _isSelectedAssetsExpanded = true;
+            _hasAutoExpandedConflicts = true;
+          });
+        }
+      });
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50.withValues(alpha: 0.5),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.shade200),
+        border: Border.all(
+          color: Colors.grey.shade300,
+          width: 1.0,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Activos a traspasar ($count)',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: Theme.of(context).colorScheme.primary,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      hasConflicts
+                          ? Icons.warning_amber_rounded
+                          : Icons.inventory_2_outlined,
+                      size: 16,
+                      color: hasConflicts
+                          ? Colors.amber.shade900
+                          : Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Activos a traspasar ($count)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: hasConflicts
+                            ? Colors.amber.shade900
+                            : Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                if (hasEnTramite)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.shade400),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.lock_clock,
+                          size: 12,
+                          color: Colors.amber.shade900,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Activo en trámite',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.amber.shade900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (hasIncompatibility)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.shade300),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 12,
+                          color: Colors.red.shade900,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Incompatibles',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade900,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
           InkWell(
             onTap: () => setState(() {
               _isSelectedAssetsExpanded = !_isSelectedAssetsExpanded;
@@ -1426,42 +1562,127 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 140),
+                constraints: const BoxConstraints(maxHeight: 180),
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: displayAssets.length,
                   separatorBuilder: (_, _) => const Divider(height: 8),
                   itemBuilder: (context, index) {
                     final asset = displayAssets[index];
-                    return Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade100,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            asset.placa ?? asset.articulo,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                    final isConflict = formProvider.isAssetInConflict(asset);
+                    final conflictDesc =
+                        formProvider.getAssetConflictDescription(asset);
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isConflict
+                                  ? Colors.red.shade100
+                                  : Colors.blue.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                              border: isConflict
+                                  ? Border.all(color: Colors.red.shade300)
+                                  : null,
+                            ),
+                            child: Text(
+                              asset.placa ?? asset.articulo,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isConflict
+                                    ? Colors.red.shade900
+                                    : Colors.blue.shade900,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            asset.nombre,
-                            style: const TextStyle(fontSize: 11),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  asset.nombre,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: isConflict
+                                        ? Colors.red.shade900
+                                        : Colors.black87,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Wrap(
+                                  spacing: 4,
+                                  runSpacing: 2,
+                                  children: [
+                                    if (asset.centroInformacion != null &&
+                                        asset.centroInformacion!.isNotEmpty)
+                                      _buildTagChip(
+                                        'CI: ${asset.centroInformacion}',
+                                        isConflict,
+                                      ),
+                                    if (asset.tercero != null &&
+                                        asset.tercero!.isNotEmpty)
+                                      _buildTagChip(
+                                        'Tercero: ${asset.tercero}',
+                                        isConflict,
+                                      ),
+                                    if (isConflict && conflictDesc != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 5,
+                                          vertical: 1,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade100,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          conflictDesc,
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red.shade900,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                          if (displayAssets.length > 1) ...[
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: Icon(
+                                Icons.remove_circle_outline,
+                                size: 18,
+                                color: Colors.red.shade700,
+                              ),
+                              tooltip: 'Quitar de la solicitud',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 28,
+                                minHeight: 28,
+                              ),
+                              onPressed: () {
+                                formProvider.removeAsset(asset);
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
                     );
                   },
                 ),
@@ -1531,7 +1752,21 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
           valueListenable: _originPersonNotifier,
           decoration: InputDecoration(
             labelText: 'Colaborador Fuente (Responsable Actual)',
-            border: const OutlineInputBorder(),
+            border: const OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.black, width: 1.0),
+            ),
+            enabledBorder: const OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.black, width: 1.0),
+            ),
+            disabledBorder: const OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.black, width: 1.0),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.primary,
+                width: 1.5,
+              ),
+            ),
             prefixIcon: const Icon(Icons.person_pin_circle_outlined),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 10,
@@ -1585,6 +1820,7 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                   p.cedula.toLowerCase().contains(searchValue.toLowerCase());
             },
           ),
+          dropdownStyleData: DropdownTemplates.styleData(),
         ),
 
         if (formProvider.originPersonsError != null) ...[

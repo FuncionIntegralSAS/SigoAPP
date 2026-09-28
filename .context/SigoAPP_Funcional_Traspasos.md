@@ -92,11 +92,17 @@ stateDiagram-v2
    - **Validación y Alerta:** `TransferFormProvider.selectOriginBodega` valida el tipo de bodega origen. Si el backend responde `code: -1` con el mensaje *"La bodega ... es de tipo [FI]: solo se pueden traspasar activos de bodegas personales [PE]"*, o ante cualquier error en la consulta de activos, el provider captura el mensaje, vacía la lista de activos (`personAssets` y `selectedAssets`), y la UI renderiza un banner visible de alerta destacada.
 3. **Consulta de Activos Asignados (`GET /api/v1/traspasos/activos`):**
    - **Query Parameters:** `persona` (Requerido), `bodega` (Requerido), `empresa` (Opcional).
-   - **Mapeo del Modelo (`TransferAssetModel`):** Deserializa `articulo`, `placa`, `nombre`, `centroInformacion`, `tercero` y `enTramite`.
-   - **Bloqueo por Trámite Abierto (`enTramite: true`):** Si un activo ya está comprometido en otro trámite abierto, su checkbox de selección en la UI queda inhabilitado y se muestra la etiqueta/badge *"En trámite pendiente"*.
+   - **Mapeo del Modelo (`TransferAssetModel` y `ArticleModel`):** Deserializa `articulo`, `placa`, `nombre`, `centroInformacion`, `tercero` y `enTramite`.
+   - **Bloqueo Preventivo desde el Listado de Inventario (`enTramite: true`):**
+     - Si un activo ya está comprometido en otro trámite abierto (`enTramite: true`), el listado de inventario (`InventoryScreen` / `InventoryArticleTile`) lo resalta con un badge ámbar institucional *"En trámite pendiente"* (`Icons.lock_clock`).
+     - Se impide su selección tanto individual como masiva: la acción *"Seleccionar todos"* omite automáticamente los activos en trámite e informa cuántos fueron excluidos; el tap individual dispara un `DialogUtils.showWarningSnackBar` explicativo; y el botón de traspaso individual directo se bloquea.
+     - En el modal de traspaso (`TransferFormWidget`), se mantiene la defensa en profundidad inhabilitando su checkbox en caso de ser consultado.
 4. **Selección de Colaboradores:**
    - Origen consultado vía `GET /api/v1/traspasos/personas?bodega={bodega}&empresa={empresa}`.
-   - **Regla de Personas Distintas:** La Persona Destino no puede ser igual a la Persona Fuente (`personaDestino != personaFuente`). Spring Boot valida y rechaza con `code: -1` (*"La persona fuente y la persona destino no pueden ser la misma"*).
+   - **Regla de Personas Distintas Condicionada a la Misma Bodega:**
+     - La Persona Destino **no puede ser igual a la Persona Fuente únicamente cuando la Bodega Destino es la misma Bodega Origen** (`isSameBodega == true && personaDestino == personaFuente`).
+     - Si la Bodega Destino es diferente a la Bodega Origen (`isSameBodega == false`), el sistema **permite expresamente** transferir al mismo colaborador (caso de uso institucional para reubicación de activos o traslado de sede del custodio).
+     - En la interfaz (`TransferFormWidget`), el colaborador origen solo aparece deshabilitado y rotulado con `"(Mismo origen)"` en el selector de destinatario cuando ambas bodegas son idénticas.
 5. **Selección, Límites y Compatibilidad de Activos:**
    - **Rango Permitido:** Mínimo 1 y máximo 50 artículos por solicitud de traspaso. Al intentar agregar más de 50 artículos, se notifica de inmediato al usuario en `SnackBar` y se impide la selección adicional.
    - **Sin Artículos Repetidos:** Validación estricta por combinación de clave única `articulo` + `placa` tanto en el provider (`isFormValid`) como previo al envío (`_handleCreateTransfer`).
@@ -167,8 +173,10 @@ stateDiagram-v2
    - La parte despachadora registra su firma manuscrita con `tipoFirma: "FU"` (`PUT /api/v1/traspasos/sign/{id}`).
    - La parte receptora registra su firma manuscrita con `tipoFirma: "DE"` (`PUT /api/v1/traspasos/sign/{id}`).
    - Las firmas se gestionan en la entidad `FI_MOTRFIRM` y no modifican el estado `ap` del trámite.
-3. **Recepción Final en ERP (`re`):**
-   - Una vez que ambas firmas están capturadas (`bothSigned: true`), la UI habilita el botón destacado **"Confirmar Recepción ERP"**.
+3. **Recepción Final en ERP (`re`) — Aceptación Exclusiva por el Destino:**
+   - **Sin Disparo Automático:** El registro de firmas nunca asienta de forma automática el trámite en el ERP (`receiveTransfer` no se invoca en `submitDelivery`). Ambas firmas pueden completarse sin alterar el estado `ap` del documento.
+   - **Habilitación Condicionada:** Una vez que ambas firmas están capturadas (`bothSigned: true`), el botón destacado **"Aceptar Traspaso (ERP)"** se habilita **única y exclusivamente para el colaborador Destino** (`isReceiver == true`), exigiendo diálogo previo de confirmación (`DialogUtils.showConfirmationDialog`).
+   - **Visibilidad Informativa para la Fuente:** Si quien consulta el trámite con firmas completas es el colaborador Fuente (`isDispatcher`), la interfaz oculta el botón de acción y despliega un indicador informativo: *"Firmas completas. Pendiente aceptación por el colaborador destino."*.
    - Invoca `PUT /api/v1/traspasos/recibir/{id}`, asentando cabeceras en `DOCUINVE` y líneas en `MOVIINVE`, cambiando el estado a `re`.
    - **Regla de Bodegas de Tipo Personal (`PE`)**: En el procedimiento de base de datos Oracle (`PKG_FI_MOVITRAS`), la afectación de existencias exige que tanto la bodega fuente como la bodega destino sean de tipo Personal (`PE`) (custodios individuales). Si alguna bodega asociada es de tipo físico (`FI`), la base de datos abortará con `ORA-20008: ... Bodega Destino [...] o Bodega Fuente [...] Deben ser de Tipo Personal`.
    - **Sanitización Inteligente y Desacoplamiento de Errores**: Si la confirmación de recepción falla por validación de Oracle o error de servidor, `HttpTransferRepository` procesa la respuesta en una `TransferBusinessException` desacoplando dos mensajes:

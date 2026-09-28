@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sigo_app/modules/inventory/models/article_model.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 
 /// Tarjeta visual reutilizable para representar un activo físico en la lista de inventario.
 ///
@@ -45,19 +46,28 @@ class InventoryArticleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor = _getStatusColor(article.estado);
+    final isEnTramite = article.enTramite;
 
     return Card(
-      elevation: isSelected ? 3 : 2,
+      elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 6),
-      color: isSelected ? primaryColor.withValues(alpha: 0.06) : Colors.white,
+      color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isSelected
-            ? BorderSide(color: primaryColor, width: 1.5)
-            : BorderSide(color: Colors.grey.shade200, width: 1),
+        side: BorderSide(
+          color: isSelected ? primaryColor : Colors.grey.shade300,
+          width: 1.0,
+        ),
       ),
       child: ListTile(
-        onTap: onTap,
+        onTap: (isSelectionMode && isEnTramite)
+            ? () {
+                DialogUtils.showWarningSnackBar(
+                  context,
+                  'El activo "${article.nombre}" se encuentra en trámite pendiente y no puede ser seleccionado.',
+                );
+              }
+            : onTap,
         leading: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -75,20 +85,26 @@ class InventoryArticleTile extends StatelessWidget {
               Checkbox(
                 value: isSelected,
                 activeColor: primaryColor,
-                onChanged: onToggleSelect,
+                onChanged: isEnTramite ? null : onToggleSelect,
               ),
             ],
           ],
         ),
         title: Text(
           article.nombre,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isEnTramite ? Colors.grey.shade700 : Colors.black87,
+          ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Placa: ${article.placa} • Resp: ${article.responsable ?? 'N/A'}',
+              style: TextStyle(
+                color: isEnTramite ? Colors.grey.shade600 : null,
+              ),
             ),
             if (article.comentarios != null && article.comentarios!.isNotEmpty)
               Text(
@@ -100,14 +116,44 @@ class InventoryArticleTile extends StatelessWidget {
                   fontStyle: FontStyle.italic,
                 ),
               ),
-            Text(
-              'Estado: ${article.estado ?? "Operativo"}',
-              style: TextStyle(
-                color: statusColor,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Text(
+                  'Estado: ${article.estado ?? "Operativo"}',
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
+            if (isEnTramite) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.amber.shade400),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_clock, size: 12, color: Colors.amber.shade900),
+                    const SizedBox(width: 4),
+                    Text(
+                      'En trámite pendiente',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber.shade900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
         trailing: isSelectionMode
@@ -117,9 +163,21 @@ class InventoryArticleTile extends StatelessWidget {
                 children: [
                   if (canCreateTransfer)
                     IconButton(
-                      icon: const Icon(Icons.swap_horiz, color: Colors.orange),
-                      tooltip: 'Traspasar Activo',
-                      onPressed: onTransfer,
+                      icon: Icon(
+                        Icons.swap_horiz,
+                        color: isEnTramite ? Colors.grey.shade400 : Colors.orange,
+                      ),
+                      tooltip: isEnTramite
+                          ? 'Activo en trámite pendiente'
+                          : 'Traspasar Activo',
+                      onPressed: isEnTramite
+                          ? () {
+                              DialogUtils.showWarningSnackBar(
+                                context,
+                                'El activo "${article.nombre}" ya tiene una solicitud de traspaso en trámite pendiente.',
+                              );
+                            }
+                          : onTransfer,
                     ),
                   const Icon(Icons.chevron_right, color: Colors.grey),
                 ],

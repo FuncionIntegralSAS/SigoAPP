@@ -269,8 +269,8 @@ class TransferDeliveryProvider extends ChangeNotifier {
 
   /// Registra la firma manuscrita de cualquiera de las partes (sin orden requerido).
   ///
-  /// Si ambas partes ya han firmado, intenta automáticamente concretar la recepción
-  /// en el ERP vía [receiveTransfer].
+  /// La recepción formal en el ERP no se dispara automáticamente; queda reservada
+  /// para ser activada explícitamente por el colaborador Destino vía [confirmReceipt].
   Future<bool> submitDelivery(
     String transferId, {
     String? dispatcherBase64,
@@ -297,16 +297,6 @@ class TransferDeliveryProvider extends ChangeNotifier {
           tipoFirma: 'DE',
           firmaBase64: receiverBase64,
         );
-      }
-
-      // Consultamos el estado actualizado del trámite para verificar si ambas partes ya firmaron
-      final updatedTransfer = await repository.getTransferById(transferId);
-      if (updatedTransfer != null && updatedTransfer.bothSigned) {
-        try {
-          await repository.receiveTransfer(transferId);
-        } catch (_) {
-          // Si la recepción automática no se concreta, se deja lista para confirmar manualmente
-        }
       }
 
       await loadTransfers();

@@ -19,12 +19,18 @@ class HttpTransferRepository implements TransferRepository {
 
   HttpTransferRepository(this.dio, {this.catalogRepository});
 
-  void _checkResponseCode(dynamic data, String fallbackError, {String? endpoint}) {
+  void _checkResponseCode(
+    dynamic data,
+    String fallbackError, {
+    String? endpoint,
+  }) {
     if (data is Map<String, dynamic> && data.containsKey('code')) {
       final code = data['code'];
       if (code != null && code != 0) {
         final rawMsg = data['msg']?.toString().trim();
-        final message = (rawMsg != null && rawMsg.isNotEmpty) ? rawMsg : fallbackError;
+        final message = (rawMsg != null && rawMsg.isNotEmpty)
+            ? rawMsg
+            : fallbackError;
         final techDetails = [
           if (endpoint != null) 'Endpoint: $endpoint',
           'Código de negocio: $code',
@@ -50,9 +56,9 @@ class HttpTransferRepository implements TransferRepository {
     final statusCode = e.response?.statusCode;
     final serverMsg = (e.response?.data is Map)
         ? (e.response?.data['msg'] ??
-                e.response?.data['message'] ??
-                e.response?.data['error'])
-            ?.toString()
+                  e.response?.data['message'] ??
+                  e.response?.data['error'])
+              ?.toString()
         : (e.response?.data is String ? e.response?.data as String : null);
 
     final String userMsg;
@@ -107,7 +113,7 @@ class HttpTransferRepository implements TransferRepository {
                   {
                     'articulo': request.idArticulo,
                     if (request.placa != null) 'placa': request.placa,
-                  }
+                  },
                 ],
           'observacion': request.motivoSolicitud,
           'tipoMovimiento': null,
@@ -126,17 +132,25 @@ class HttpTransferRepository implements TransferRepository {
       final response = await dio.post(
         '/api/v1/traspasos/crear',
         data: payload,
-        options: Options(headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        }),
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
       );
 
-      _checkResponseCode(response.data, 'Error al crear solicitud de traspaso',
-          endpoint: endpoint);
+      _checkResponseCode(
+        response.data,
+        'Error al crear solicitud de traspaso',
+        endpoint: endpoint,
+      );
     } on DioException catch (e) {
       throw _mapDioException(
-          e, endpoint, 'Error de red al crear la solicitud de traspaso');
+        e,
+        endpoint,
+        'Error de red al crear la solicitud de traspaso',
+      );
     }
   }
 
@@ -161,19 +175,24 @@ class HttpTransferRepository implements TransferRepository {
         options: Options(headers: {'Accept': 'application/json'}),
       );
 
-      _checkResponseCode(response.data, 'Error al listar traspasos',
-          endpoint: endpoint);
+      _checkResponseCode(
+        response.data,
+        'Error al listar traspasos',
+        endpoint: endpoint,
+      );
 
       dynamic extracted = response.data;
       if (extracted is Map) {
-        extracted = extracted['data'] ??
+        extracted =
+            extracted['data'] ??
             extracted['list'] ??
             extracted['object'] ??
             extracted['content'] ??
             extracted;
       }
       if (extracted is Map) {
-        extracted = extracted['data'] ??
+        extracted =
+            extracted['data'] ??
             extracted['list'] ??
             extracted['content'] ??
             extracted['object'] ??
@@ -183,28 +202,36 @@ class HttpTransferRepository implements TransferRepository {
       final List<dynamic> dataList = extracted is List ? extracted : [];
       final basicList = dataList
           .whereType<Map>()
-          .map((json) =>
-              TransferRequest.fromJson(Map<String, dynamic>.from(json)))
+          .map(
+            (json) => TransferRequest.fromJson(Map<String, dynamic>.from(json)),
+          )
           .toList();
 
       // Enriquecimiento concurrente de detalles si está habilitado
       if (fetchDetails && basicList.isNotEmpty) {
-        final enriched = await Future.wait(basicList.map((item) async {
-          try {
-            final detail = await getTransferById(item.id);
-            return detail ?? item;
-          } catch (e) {
-            AppLogger.w('No fue posible enriquecer trámite ID="${item.id}": $e');
-            return item;
-          }
-        }));
+        final enriched = await Future.wait(
+          basicList.map((item) async {
+            try {
+              final detail = await getTransferById(item.id);
+              return detail ?? item;
+            } catch (e) {
+              AppLogger.w(
+                'No fue posible enriquecer trámite ID="${item.id}": $e',
+              );
+              return item;
+            }
+          }),
+        );
         return enriched;
       }
 
       return basicList;
     } on DioException catch (e) {
       throw _mapDioException(
-          e, endpoint, 'Error al obtener la lista de traspasos');
+        e,
+        endpoint,
+        'Error al obtener la lista de traspasos',
+      );
     }
   }
 
@@ -213,7 +240,9 @@ class HttpTransferRepository implements TransferRepository {
   Future<TransferRequest?> getTransferById(String id) async {
     final endpoint = 'GET /api/v1/traspasos/get/$id';
     // ignore: avoid_print
-    print('>>> [HttpTransferRepository] Consultando firmas y detalle -> Enviando trámite ID: "$id" ($endpoint)');
+    print(
+      '>>> [HttpTransferRepository] Consultando firmas y detalle -> Enviando trámite ID: "$id" ($endpoint)',
+    );
     try {
       final response = await dio.get(
         '/api/v1/traspasos/get/$id',
@@ -221,21 +250,25 @@ class HttpTransferRepository implements TransferRepository {
       );
 
       _checkResponseCode(
-          response.data, 'Error al consultar detalle del traspaso',
-          endpoint: endpoint);
+        response.data,
+        'Error al consultar detalle del traspaso',
+        endpoint: endpoint,
+      );
 
       final dynamic rawObject = response.data is Map
           ? (response.data['data'] ??
-              response.data['object'] ??
-              response.data['item'] ??
-              response.data)
+                response.data['object'] ??
+                response.data['item'] ??
+                response.data)
           : response.data;
 
       if (rawObject == null || rawObject is! Map) {
         return null;
       }
 
-      final parsed = TransferRequest.fromJson(Map<String, dynamic>.from(rawObject));
+      final parsed = TransferRequest.fromJson(
+        Map<String, dynamic>.from(rawObject),
+      );
 
       if (catalogRepository != null) {
         return _enrichTransferDetail(parsed);
@@ -243,17 +276,23 @@ class HttpTransferRepository implements TransferRepository {
       return parsed;
     } on DioException catch (e) {
       throw _mapDioException(
-          e, endpoint, 'Error al consultar el detalle del traspaso $id');
+        e,
+        endpoint,
+        'Error al consultar el detalle del traspaso $id',
+      );
     }
   }
 
-  Future<TransferRequest> _enrichTransferDetail(TransferRequest transfer) async {
+  Future<TransferRequest> _enrichTransferDetail(
+    TransferRequest transfer,
+  ) async {
     try {
       final sourceQuery = transfer.codigoFuente;
       final destQuery = transfer.codigoDestino;
       final bodegaActual = transfer.bodegaActual.trim();
 
-      final shouldFetchAssets = bodegaActual.isNotEmpty &&
+      final shouldFetchAssets =
+          bodegaActual.isNotEmpty &&
           bodegaActual != 'BOD-ORIGEN' &&
           bodegaActual != 'Sin bodega';
 
@@ -301,9 +340,14 @@ class HttpTransferRepository implements TransferRepository {
     }
   }
 
-  Future<String> _resolvePersonName(String personQuery, [String? fallbackName]) async {
+  Future<String> _resolvePersonName(
+    String personQuery, [
+    String? fallbackName,
+  ]) async {
     final clean = personQuery.trim();
-    if (clean.isEmpty || clean == 'Sin responsable') return fallbackName ?? personQuery;
+    if (clean.isEmpty || clean == 'Sin responsable') {
+      return fallbackName ?? personQuery;
+    }
     if (catalogRepository == null) return fallbackName ?? personQuery;
 
     try {
@@ -350,34 +394,45 @@ class HttpTransferRepository implements TransferRepository {
         options: Options(headers: {'Content-Type': 'application/json'}),
       );
 
-      _checkResponseCode(response.data, 'Error al aprobar traspaso',
-          endpoint: endpoint);
+      _checkResponseCode(
+        response.data,
+        'Error al aprobar traspaso',
+        endpoint: endpoint,
+      );
     } on DioException catch (e) {
       throw _mapDioException(
-          e, endpoint, 'Error al aprobar la solicitud de traspaso');
+        e,
+        endpoint,
+        'Error al aprobar la solicitud de traspaso',
+      );
     }
   }
 
   // --- 5. RECHAZAR (POST /api/v1/traspasos/process/{id} con estado='na') ---
   @override
-  Future<void> rejectTransfer(
-      {required String requestId, required String motivoRechazo}) async {
+  Future<void> rejectTransfer({
+    required String requestId,
+    required String motivoRechazo,
+  }) async {
     final endpoint = 'POST /api/v1/traspasos/process/$requestId';
     try {
       final response = await dio.post(
         '/api/v1/traspasos/process/$requestId',
-        data: {
-          'estado': 'na',
-          'observacion': motivoRechazo,
-        },
+        data: {'estado': 'na', 'observacion': motivoRechazo},
         options: Options(headers: {'Content-Type': 'application/json'}),
       );
 
-      _checkResponseCode(response.data, 'Error al rechazar traspaso',
-          endpoint: endpoint);
+      _checkResponseCode(
+        response.data,
+        'Error al rechazar traspaso',
+        endpoint: endpoint,
+      );
     } on DioException catch (e) {
       throw _mapDioException(
-          e, endpoint, 'Error al rechazar la solicitud de traspaso');
+        e,
+        endpoint,
+        'Error al rechazar la solicitud de traspaso',
+      );
     }
   }
 
@@ -392,19 +447,21 @@ class HttpTransferRepository implements TransferRepository {
     try {
       final response = await dio.put(
         '/api/v1/traspasos/sign/$transferId',
-        data: {
-          'tipoFirma': tipoFirma,
-          'firma': firmaBase64,
-        },
+        data: {'tipoFirma': tipoFirma, 'firma': firmaBase64},
         options: Options(headers: {'Content-Type': 'application/json'}),
       );
 
       _checkResponseCode(
-          response.data, 'Error al registrar firma ($tipoFirma)',
-          endpoint: endpoint);
+        response.data,
+        'Error al registrar firma ($tipoFirma)',
+        endpoint: endpoint,
+      );
     } on DioException catch (e) {
       throw _mapDioException(
-          e, endpoint, 'Error al registrar la firma del traspaso');
+        e,
+        endpoint,
+        'Error al registrar la firma del traspaso',
+      );
     }
   }
 
@@ -419,11 +476,16 @@ class HttpTransferRepository implements TransferRepository {
       );
 
       _checkResponseCode(
-          response.data, 'Error al confirmar recepción del traspaso',
-          endpoint: endpoint);
+        response.data,
+        'Error al confirmar recepción del traspaso',
+        endpoint: endpoint,
+      );
     } on DioException catch (e) {
       throw _mapDioException(
-          e, endpoint, 'Error al confirmar la recepción del traspaso');
+        e,
+        endpoint,
+        'Error al confirmar la recepción del traspaso',
+      );
     }
   }
 
@@ -465,15 +527,15 @@ class HttpTransferRepository implements TransferRepository {
     try {
       final response = await dio.get(
         '/api/v1/traspasos/personas',
-        queryParameters: {
-          'bodega': bodega,
-          'empresa': empresa,
-        },
+        queryParameters: {'bodega': bodega, 'empresa': empresa},
         options: Options(headers: {'Accept': 'application/json'}),
       );
 
-      _checkResponseCode(response.data, 'Error al consultar colaboradores de la bodega',
-          endpoint: endpoint);
+      _checkResponseCode(
+        response.data,
+        'Error al consultar colaboradores de la bodega',
+        endpoint: endpoint,
+      );
 
       final dynamic rawList = response.data is Map<String, dynamic>
           ? (response.data['list'] ?? response.data['data'] ?? [])
@@ -486,7 +548,10 @@ class HttpTransferRepository implements TransferRepository {
           .toList();
     } on DioException catch (e) {
       throw _mapDioException(
-          e, endpoint, 'Error de red al consultar colaboradores de la bodega');
+        e,
+        endpoint,
+        'Error de red al consultar colaboradores de la bodega',
+      );
     }
   }
 
@@ -513,8 +578,11 @@ class HttpTransferRepository implements TransferRepository {
         options: Options(headers: {'Accept': 'application/json'}),
       );
 
-      _checkResponseCode(response.data, 'Error al consultar activos del colaborador',
-          endpoint: endpoint);
+      _checkResponseCode(
+        response.data,
+        'Error al consultar activos del colaborador',
+        endpoint: endpoint,
+      );
 
       final dynamic rawList = response.data is Map<String, dynamic>
           ? (response.data['list'] ?? response.data['data'] ?? [])
@@ -527,7 +595,10 @@ class HttpTransferRepository implements TransferRepository {
           .toList();
     } on DioException catch (e) {
       throw _mapDioException(
-          e, endpoint, 'Error de red al consultar los activos asignados al colaborador');
+        e,
+        endpoint,
+        'Error de red al consultar los activos asignados al colaborador',
+      );
     }
   }
 }

@@ -21,6 +21,8 @@ class DropdownTemplates {
           controller: controller,
           decoration: InputDecoration(
             isDense: true,
+            filled: true,
+            fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 10,
               vertical: 8,
@@ -34,4 +36,23 @@ class DropdownTemplates {
       searchMatchFn: searchMatchFn,
     );
   }
+
+  /// Configuración visual estándar para el menú desplegable en SigoAPP:
+  /// Fondo blanco puro inmutable, elevación sutil y contorno gris neutro.
+  static DropdownStyleData styleData({
+    double? maxHeight,
+    BorderRadius? borderRadius,
+    int elevation = 3,
+  }) {
+    return DropdownStyleData(
+      maxHeight: maxHeight,
+      elevation: elevation,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: borderRadius ?? BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300, width: 1.0),
+      ),
+    );
+  }
 }
+

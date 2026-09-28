@@ -97,14 +97,33 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   void _toggleArticleSelection(ArticleModel article) {
+    final provider = context.read<InventoryProvider>();
     setState(() {
       final key = _getArticleKey(article);
       final isAlreadySelected = _selectedArticles.containsKey(key);
       if (isAlreadySelected) {
         _selectedArticles.remove(key);
       } else {
+        if (article.enTramite) {
+          DialogUtils.showWarningSnackBar(
+            context,
+            'El activo "${article.nombre}" (${article.placa.isNotEmpty ? article.placa : article.codigoActivo}) se encuentra en trámite pendiente y no puede ser seleccionado.',
+          );
+          return;
+        }
+
+        if (_selectedArticles.length >= 50) {
+          DialogUtils.showWarningSnackBar(
+            context,
+            'Límite alcanzado: Máximo 50 artículos por solicitud de traspaso.',
+          );
+          return;
+        }
+
         if (_selectedArticles.isNotEmpty) {
           final first = _selectedArticles.values.first;
+
+          // 1. Mismo responsable
           final firstResp = first.responsable?.trim().toLowerCase();
           final artResp = article.responsable?.trim().toLowerCase();
           if (firstResp != null &&
@@ -120,7 +139,35 @@ class _InventoryScreenState extends State<InventoryScreen> {
             );
             return;
           }
+
+          // 2. Misma bodega origen
+          final firstBodega = first.bodega.trim().toLowerCase();
+          final artBodega = article.bodega.trim().toLowerCase();
+          if (firstBodega.isNotEmpty &&
+              artBodega.isNotEmpty &&
+              firstBodega != 'n/a' &&
+              artBodega != 'n/a' &&
+              firstBodega != artBodega) {
+            DialogUtils.showWarningSnackBar(
+              context,
+              'Todos los activos del traspaso deben pertenecer a la misma bodega de origen (${first.bodega}).',
+            );
+            return;
+          }
         }
+
+        // 3. Advertencia preventiva si la bodega no es de custodia personal [PE]
+        final artBodegaCode = article.bodega.trim().toLowerCase();
+        final matchedWarehouse = provider.warehouses.where(
+          (w) => w.codigoBodega.trim().toLowerCase() == artBodegaCode,
+        ).firstOrNull;
+        if (matchedWarehouse != null && !matchedWarehouse.isPersonal) {
+          DialogUtils.showWarningSnackBar(
+            context,
+            'Atención: La bodega "${matchedWarehouse.descripcionBodega}" no es de tipo personal [PE]. Solo se permiten traspasos desde bodegas personales.',
+          );
+        }
+
         _selectedArticles[key] = article;
       }
     });
@@ -140,27 +187,57 @@ class _InventoryScreenState extends State<InventoryScreen> {
       if (_selectedArticles.length == visibleArticles.length) {
         _selectedArticles.clear();
       } else {
-        final firstResp = visibleArticles.first.responsable?.trim().toLowerCase() ?? '';
-        final hasMultipleResp = visibleArticles.any(
+        final availableArticles =
+            visibleArticles.where((a) => !a.enTramite).toList();
+        final inTransitCount = visibleArticles.length - availableArticles.length;
+
+        if (availableArticles.isEmpty) {
+          DialogUtils.showWarningSnackBar(
+            context,
+            'Todos los activos visibles se encuentran en trámite pendiente.',
+          );
+          return;
+        }
+
+        final firstResp =
+            availableArticles.first.responsable?.trim().toLowerCase() ?? '';
+        final firstBodega = availableArticles.first.bodega.trim().toLowerCase();
+        final hasMultipleResp = availableArticles.any(
           (a) => (a.responsable?.trim().toLowerCase() ?? '') != firstResp,
         );
+        final hasMultipleBodegas = availableArticles.any(
+          (a) => a.bodega.trim().toLowerCase() != firstBodega,
+        );
 
-        if (hasMultipleResp && firstResp.isNotEmpty && firstResp != 'n/a') {
-          final compatible = visibleArticles.where(
-            (a) => (a.responsable?.trim().toLowerCase() ?? '') == firstResp,
-          ).toList();
+        if ((hasMultipleResp || hasMultipleBodegas) &&
+            firstResp.isNotEmpty &&
+            firstResp != 'n/a') {
+          final compatible = availableArticles
+              .where(
+                (a) =>
+                    (a.responsable?.trim().toLowerCase() ?? '') == firstResp &&
+                    a.bodega.trim().toLowerCase() == firstBodega,
+              )
+              .take(50)
+              .toList();
           _selectedArticles.clear();
           for (final a in compatible) {
             _selectedArticles[_getArticleKey(a)] = a;
           }
-          DialogUtils.showInfoSnackBar(
-            context,
-            'Se marcaron ${compatible.length} activos del responsable (${visibleArticles.first.responsable}).',
-          );
+          final notice = inTransitCount > 0
+              ? 'Se marcaron ${compatible.length} activos compatibles (se omitieron $inTransitCount en trámite pendiente).'
+              : 'Se marcaron ${compatible.length} activos compatibles (${availableArticles.first.responsable} en ${availableArticles.first.bodega}).';
+          DialogUtils.showInfoSnackBar(context, notice);
         } else {
           _selectedArticles.clear();
-          for (final a in visibleArticles) {
+          for (final a in availableArticles.take(50)) {
             _selectedArticles[_getArticleKey(a)] = a;
+          }
+          if (inTransitCount > 0) {
+            DialogUtils.showInfoSnackBar(
+              context,
+              'Se marcaron ${_selectedArticles.length} activos (se omitieron $inTransitCount en trámite pendiente).',
+            );
           }
         }
       }
@@ -169,6 +246,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   /// MÉTODO PARA MOSTRAR EL FORMULARIO DE TRASPASO INDIVIDUAL
   Future<void> _showTransferForm(ArticleModel? article, InventoryProvider provider) async {
+    if (article != null && article.enTramite) {
+      DialogUtils.showWarningSnackBar(
+        context,
+        'El activo "${article.nombre}" ya tiene una solicitud de traspaso en trámite pendiente.',
+      );
+      return;
+    }
+
     final success = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -194,6 +279,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final selectedList = _selectedArticles.values.toList();
     if (selectedList.isEmpty) return;
 
+    if (selectedList.length > 50) {
+      await DialogUtils.showErrorDialog(
+        context,
+        title: 'Límite Superado',
+        message: 'No es posible crear un traspaso con más de 50 artículos (${selectedList.length} seleccionados).',
+      );
+      return;
+    }
+
+    final firstBodega = selectedList.first.bodega.trim().toLowerCase();
+    final matchedWarehouse = provider.warehouses.where(
+      (w) => w.codigoBodega.trim().toLowerCase() == firstBodega,
+    ).firstOrNull;
+
     final success = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -201,7 +300,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       builder: (context) => TransferFormWidget(
         initialSelectedArticles: selectedList,
         initialCompany: provider.selectedCompany,
-        initialWarehouse: provider.selectedWarehouse,
+        initialWarehouse: provider.selectedWarehouse ?? matchedWarehouse,
         initialCollaborator: provider.selectedCollaborator,
       ),
     );
@@ -518,7 +617,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
             : (provider.isLoadingCollaborators
                 ? 'Cargando colaboradores...'
                 : 'Seleccione un colaborador'),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.black, width: 1.0),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.black, width: 1.0),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.black, width: 1.0),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: primaryColor, width: 1.5),
+        ),
         suffixIcon: provider.isLoadingCollaborators
             ? const SizedBox(
                 width: 20,
@@ -566,6 +680,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               person.cedula.toLowerCase().contains(searchValue.toLowerCase());
         },
       ),
+      dropdownStyleData: DropdownTemplates.styleData(),
       onMenuStateChange: (isOpen) {
         if (!isOpen) _collaboratorSearchController.clear();
       },

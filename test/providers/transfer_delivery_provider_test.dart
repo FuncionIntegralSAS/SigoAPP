@@ -211,6 +211,30 @@ void main() {
       expect(repository.calls, contains('signTransfer:105:DE'));
     });
 
+    test('submitDelivery no dispara receiveTransfer automáticamente cuando ambas partes han firmado', () async {
+      repository.transfers = [
+        TransferRequest(
+          id: '105',
+          responsableActual: '12345',
+          responsablePropuesto: '67890',
+          fechaSolicitud: DateTime.now(),
+          firmas: [
+            const TransferFirmItem(posicion: 1, tipo: 'FU', firmada: true),
+            const TransferFirmItem(posicion: 2, tipo: 'DE', firmada: true),
+          ],
+        ),
+      ];
+
+      final success = await provider.submitDelivery(
+        '105',
+        dispatcherBase64: 'base64-firma-despachador',
+      );
+
+      expect(success, isTrue);
+      expect(repository.calls, contains('signTransfer:105:FU'));
+      expect(repository.calls, isNot(contains('receiveTransfer:105')));
+    });
+
     test('confirmReceipt invoca receiveTransfer en backend y recarga', () async {
       final success = await provider.confirmReceipt('105');
 

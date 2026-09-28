@@ -544,6 +544,7 @@ class _SecondaryFiltersModalState extends State<_SecondaryFiltersModal> {
                     .contains(searchValue.toLowerCase());
               },
             ),
+            dropdownStyleData: DropdownTemplates.styleData(),
             onMenuStateChange: (isOpen) {
               if (!isOpen) _warehouseSearchController.clear();
             },

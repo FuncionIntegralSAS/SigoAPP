@@ -186,28 +186,27 @@ void main() {
       expect(provider.isAssetCompatible(assetWithInfo), isTrue);
     });
 
-    test('selectDestinationPerson valida que no sea la misma persona fuente', () async {
+    test('selectDestinationPerson rechaza la misma persona solo en la misma bodega y la permite en bodegas distintas', () async {
       await provider.selectOriginBodega('B01');
       final personFuente = provider.originPersons.first; // PI26055
       await provider.selectOriginPerson(personFuente);
 
-      await provider.selectDestinationBodega('B02');
-      expect(provider.destinationPersons, isNotEmpty);
+      // Caso 1: Misma bodega origen y destino ('B01') -> debe rechazar la misma persona
+      await provider.selectDestinationBodega('B01');
+      final samePersonInSameWarehouse = provider.destinationPersons.firstWhere((p) => p.cedula == personFuente.cedula);
+      final sameWarehouseSuccess = provider.selectDestinationPerson(samePersonInSameWarehouse);
 
-      // Intentar seleccionar la misma persona fuente como destino
-      final samePerson = provider.destinationPersons.firstWhere((p) => p.cedula == personFuente.cedula);
-      final success = provider.selectDestinationPerson(samePerson);
-
-      expect(success, isFalse);
+      expect(sameWarehouseSuccess, isFalse);
       expect(provider.selectedDestinationPerson, isNull);
-      expect(provider.destinationPersonValidationError, contains('no puede ser igual'));
+      expect(provider.destinationPersonValidationError, contains('misma bodega'));
 
-      // Seleccionar una persona diferente
-      final differentPerson = provider.destinationPersons.firstWhere((p) => p.cedula != personFuente.cedula);
-      final validSuccess = provider.selectDestinationPerson(differentPerson);
+      // Caso 2: Distinta bodega destino ('B02') -> se permite el mismo colaborador
+      await provider.selectDestinationBodega('B02');
+      final samePersonInDifferentWarehouse = provider.destinationPersons.firstWhere((p) => p.cedula == personFuente.cedula);
+      final differentWarehouseSuccess = provider.selectDestinationPerson(samePersonInDifferentWarehouse);
 
-      expect(validSuccess, isTrue);
-      expect(provider.selectedDestinationPerson, equals(differentPerson));
+      expect(differentWarehouseSuccess, isTrue);
+      expect(provider.selectedDestinationPerson, equals(samePersonInDifferentWarehouse));
       expect(provider.destinationPersonValidationError, isNull);
     });
 
@@ -228,6 +227,72 @@ void main() {
       );
       provider.selectDestinationPerson(differentPerson);
 
+      expect(provider.isFormValid, isTrue);
+    });
+
+    test('formValidationErrorMessage detalla la razón exacta de invalidación en cada etapa', () async {
+      // 1. Inicialmente: falta origen
+      expect(provider.formValidationErrorMessage, equals('Debe seleccionar el colaborador origen.'));
+      expect(provider.isFormValid, isFalse);
+
+      await provider.selectOriginBodega('B01');
+      await provider.selectOriginPerson(provider.originPersons.first);
+
+      // 2. Con origen pero sin destino
+      expect(provider.formValidationErrorMessage, equals('Debe seleccionar el colaborador destino.'));
+      expect(provider.isFormValid, isFalse);
+
+      // 3. Con origen y destino pero sin activos
+      await provider.selectDestinationBodega('B02');
+      final differentPerson = provider.destinationPersons.firstWhere(
+        (p) => p.cedula != provider.selectedOriginPerson!.cedula,
+      );
+      provider.selectDestinationPerson(differentPerson);
+      expect(provider.formValidationErrorMessage, contains('Debe seleccionar al menos un activo'));
+      expect(provider.isFormValid, isFalse);
+
+      // 4. Con activo en trámite seleccionado
+      const inTransitAsset = TransferAssetModel(
+        articulo: 'TEST-TRA',
+        nombre: 'Laptop en trámite',
+        enTramite: true,
+      );
+      provider.addPreselectedAsset(inTransitAsset);
+      expect(provider.formValidationErrorMessage, contains('trámite pendiente'));
+      expect(provider.isFormValid, isFalse);
+      expect(provider.isAssetInConflict(inTransitAsset), isTrue);
+      expect(provider.getAssetConflictDescription(inTransitAsset), contains('En trámite pendiente'));
+
+      // Remover activo en trámite con removeAsset
+      provider.removeAsset(inTransitAsset);
+      expect(provider.selectedAssets, isEmpty);
+
+      // 5. Con activos incompatibles (difieren en Centro de Información)
+      const assetA = TransferAssetModel(
+        articulo: 'ART-A',
+        nombre: 'Monitor Dell',
+        centroInformacion: 'CI-10',
+        tercero: '900111222',
+      );
+      const assetB = TransferAssetModel(
+        articulo: 'ART-B',
+        nombre: 'Impresora HP',
+        centroInformacion: 'CI-20',
+        tercero: '900111222',
+      );
+      provider.addPreselectedAsset(assetA);
+      provider.addPreselectedAsset(assetB);
+
+      expect(provider.hasAssetConflicts, isTrue);
+      expect(provider.isAssetInConflict(assetB), isTrue);
+      expect(provider.getAssetConflictDescription(assetB), contains('CI incompatible'));
+      expect(provider.formValidationErrorMessage, contains('Centro de Información'));
+      expect(provider.isFormValid, isFalse);
+
+      // Al remover el activo incompatible, el formulario queda válido
+      provider.removeAsset(assetB);
+      expect(provider.hasAssetConflicts, isFalse);
+      expect(provider.formValidationErrorMessage, isNull);
       expect(provider.isFormValid, isTrue);
     });
 

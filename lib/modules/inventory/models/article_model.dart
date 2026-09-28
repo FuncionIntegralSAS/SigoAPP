@@ -19,6 +19,11 @@ class ArticleModel extends Equatable {
   final String? comentarios;  // Comentarios o notas adicionales
   final String? rutaFoto; // Ruta local de la fotografía en el dispositivo
 
+  // ESTADO DE TRÁMITE Y COMPATIBILIDAD
+  final bool enTramite;
+  final String? centroInformacion;
+  final String? tercero;
+
   const ArticleModel({
     this.id,
     required this.codigoActivo,
@@ -31,6 +36,9 @@ class ArticleModel extends Equatable {
     this.estado,
     this.comentarios,
     this.rutaFoto,
+    this.enTramite = false,
+    this.centroInformacion,
+    this.tercero,
   });
 
   factory ArticleModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +49,11 @@ class ArticleModel extends Equatable {
       placa: json['artiPlac']?.toString() ?? json['placa']?.toString() ?? json['licensePlate']?.toString() ?? '',
       bodega: json['bodeCodi']?.toString() ?? json['codigoBodega']?.toString() ?? json['warehouse']?.toString() ?? json['bodega']?.toString() ?? '',
       responsable: json['responsable']?.toString() ?? json['responsible']?.toString(),
+      enTramite: json['enTramite'] == true ||
+          json['enTramite'] == 1 ||
+          json['enTramite']?.toString().toLowerCase() == 'true',
+      centroInformacion: json['centroInformacion']?.toString().trim(),
+      tercero: json['tercero']?.toString().trim(),
     );
   }
 
@@ -69,6 +82,9 @@ class ArticleModel extends Equatable {
     String? estado,
     String? comentarios,
     String? rutaFoto,
+    bool? enTramite,
+    String? centroInformacion,
+    String? tercero,
   }) {
     return ArticleModel(
       id: id ?? this.id,
@@ -82,9 +98,12 @@ class ArticleModel extends Equatable {
       estado: estado ?? this.estado,
       comentarios: comentarios ?? this.comentarios,
       rutaFoto: rutaFoto ?? this.rutaFoto,
+      enTramite: enTramite ?? this.enTramite,
+      centroInformacion: centroInformacion ?? this.centroInformacion,
+      tercero: tercero ?? this.tercero,
     );
   }
 
   @override
-  List<Object?> get props => [id, codigoActivo, bodega];
+  List<Object?> get props => [id, codigoActivo, bodega, enTramite, centroInformacion, tercero];
 }

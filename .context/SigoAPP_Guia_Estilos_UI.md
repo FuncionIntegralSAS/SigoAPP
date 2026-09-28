@@ -411,12 +411,18 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
    * **Filtros en Cascada (`CascadingCatalogsWidget`):** Selectores empresa → bodega → colaborador en contenedor blanco superior delimitado.
    * **Franja Métrica:** `"Activos en lista: ${articulos.length}"` con separador continuo.
    * **Tarjeta de Activo (`InventoryArticleTile`):**
-     * Franja vertical de 5px: Verde si el activo ya fue auditado/verificado, gris si está pendiente de conteo, ámbar si tiene solicitud de traspaso en curso.
+     * Franja vertical de 5px: Verde si el activo ya fue auditado/verificado, gris si está pendiente de conteo, ámbar si tiene solicitud de traspaso en curso (`enTramite == true`).
      * Placa y Serial: Placa destacada en badge gris claro con fuente monoespacio en negrita (`Placa: ACT-9847`).
-     * Botón de Acción Rápida: Botón de transferencia individual `⇄` en el lateral derecho para abrir directamente la creación de traspaso pre-cargado.
+     * **Badge de Activo en Trámite:** Etiqueta ámbar (`Colors.amber.shade50`, borde `amber.shade200`, texto e icono `amber.shade800`) con icono `Icons.lock_clock` y texto *"En trámite pendiente"* para identificar artículos comprometidos en otro flujo.
+     * **Tratamiento de Bloqueo Preventivo (`enTramite == true`):**
+       - Opacidad reducida (`0.55`) en el contenido de la tarjeta para comunicar su estado inactivo de forma inmediata.
+       - Checkbox deshabilitado (`onChanged: null`).
+       - Toque interceptado (`onTap`): En lugar de seleccionar, despliega advertencia flotante vía `DialogUtils.showWarningSnackBar` (*"El activo se encuentra en un trámite pendiente y no puede ser seleccionado."*).
+     * Botón de Acción Rápida: Botón de transferencia individual `⇄` en el lateral derecho. Si el activo está en trámite, se presenta atenuado en gris (`Colors.grey.shade400`) y al pulsarlo emite un aviso en `SnackBar` impidiendo abrir el formulario.
    * **Modo Selección Múltiple (`_isSelectionMode`):**
      * Activado desde el Floating Action Button institucional.
-     * Checkboxes integrados en cada tarjeta de activo con animación suave.
+     * Checkboxes integrados en cada tarjeta de activo con animación suave (inhabilitados para activos con `enTramite == true`).
+     * **Acción 'Seleccionar todos':** Omite preventivamente todos los activos con `enTramite == true` y notifica mediante `DialogUtils.showInfoSnackBar` la cantidad de artículos omitidos por encontrarse en trámite.
      * Barra inferior fija de acciones: Conteo de seleccionados (`"N seleccionados"`), botón cancelar selección y botón `"Crear Traspaso Múltiple"` en color primario.
 2. **Modal de Edición Rápida de Artículo (`ArticleEditModal`):**
    * Diálogo modal o modal bottom sheet con esquinas `BorderRadius.circular(12)`.

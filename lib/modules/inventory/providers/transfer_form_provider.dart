@@ -110,13 +110,19 @@ class TransferFormProvider extends ChangeNotifier {
     _selectedAssets.clear();
     _assetsError = null;
 
-    // Validación si la persona destino actual coincide con la nueva persona origen
+    final isSameBodega = _selectedOriginBodega != null &&
+        _selectedDestinationBodega != null &&
+        _selectedOriginBodega!.trim().toLowerCase() ==
+            _selectedDestinationBodega!.trim().toLowerCase();
+
+    // Validación si la persona destino actual coincide con la nueva persona origen en la misma bodega
     if (_selectedDestinationPerson != null &&
         person != null &&
-        _selectedDestinationPerson!.cedula == person.cedula) {
+        isSameBodega &&
+        _selectedDestinationPerson!.cedula.trim() == person.cedula.trim()) {
       _selectedDestinationPerson = null;
       _destinationPersonValidationError =
-          'El responsable destino no puede ser igual al responsable origen.';
+          'El colaborador destino no puede ser igual al origen en la misma bodega.';
     } else {
       _destinationPersonValidationError = null;
     }
@@ -294,6 +300,55 @@ class TransferFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Remueve un activo de la lista de seleccionados y notifica a los oyentes.
+  void removeAsset(TransferAssetModel asset) {
+    _selectedAssets.removeWhere((a) => _isSameAsset(a, asset));
+    _selectionLimitError = null;
+    notifyListeners();
+  }
+
+  /// Determina si un activo individual presenta conflicto dentro de la selección actual
+  /// (por estar en trámite pendiente o por diferir en CI/Tercero respecto al primer activo).
+  bool isAssetInConflict(TransferAssetModel asset) {
+    if (asset.enTramite) return true;
+    if (_selectedAssets.isEmpty) return false;
+    final first = _selectedAssets.first;
+    final ci = asset.centroInformacion?.trim();
+    final firstCi = first.centroInformacion?.trim();
+    if (ci != null && firstCi != null && ci.isNotEmpty && firstCi.isNotEmpty && ci != firstCi) {
+      return true;
+    }
+    final t = asset.tercero?.trim();
+    final firstT = first.tercero?.trim();
+    if (t != null && firstT != null && t.isNotEmpty && firstT.isNotEmpty && t != firstT) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Retorna una descripción corta y precisa del conflicto que presenta un activo.
+  String? getAssetConflictDescription(TransferAssetModel asset) {
+    if (asset.enTramite) {
+      return 'En trámite pendiente';
+    }
+    if (_selectedAssets.isEmpty) return null;
+    final first = _selectedAssets.first;
+    final ci = asset.centroInformacion?.trim();
+    final firstCi = first.centroInformacion?.trim();
+    if (ci != null && firstCi != null && ci.isNotEmpty && firstCi.isNotEmpty && ci != firstCi) {
+      return 'CI incompatible: $ci (solicitud usa $firstCi)';
+    }
+    final t = asset.tercero?.trim();
+    final firstT = first.tercero?.trim();
+    if (t != null && firstT != null && t.isNotEmpty && firstT.isNotEmpty && t != firstT) {
+      return 'Tercero incompatible: $t (solicitud usa $firstT)';
+    }
+    return null;
+  }
+
+  /// Indica si al menos uno de los activos seleccionados presenta conflicto (en trámite o incompatibilidad).
+  bool get hasAssetConflicts => _selectedAssets.any((a) => isAssetInConflict(a));
+
   // ==========================================
   // 3. BODEGA Y COLABORADOR DESTINO
   // ==========================================
@@ -351,12 +406,18 @@ class TransferFormProvider extends ChangeNotifier {
   }
 
   bool selectDestinationPerson(TransferPersonModel? person) {
+    final isSameBodega = _selectedOriginBodega != null &&
+        _selectedDestinationBodega != null &&
+        _selectedOriginBodega!.trim().toLowerCase() ==
+            _selectedDestinationBodega!.trim().toLowerCase();
+
     if (person != null &&
         _selectedOriginPerson != null &&
-        person.cedula == _selectedOriginPerson!.cedula) {
+        isSameBodega &&
+        person.cedula.trim() == _selectedOriginPerson!.cedula.trim()) {
       _selectedDestinationPerson = null;
       _destinationPersonValidationError =
-          'El responsable destino no puede ser igual al responsable origen.';
+          'El colaborador destino no puede ser igual al origen en la misma bodega.';
       notifyListeners();
       return false;
     }
@@ -378,56 +439,81 @@ class TransferFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get isFormValid {
-    // 1. Origen y Destino requeridos y distintos
-    if (_selectedOriginPerson == null || _selectedDestinationPerson == null) {
-      return false;
+  /// Detalla explícitamente cuál condición de negocio está impidiendo la creación
+  /// del traspaso, o retorna `null` si el formulario es completamente válido.
+  String? get formValidationErrorMessage {
+    // 1. Origen y Destino requeridos y distintos en la misma bodega
+    if (_selectedOriginPerson == null) {
+      return 'Debe seleccionar el colaborador origen.';
     }
-    if (_selectedOriginPerson!.cedula.trim() == _selectedDestinationPerson!.cedula.trim()) {
-      return false;
+    if (_selectedDestinationPerson == null) {
+      return 'Debe seleccionar el colaborador destino.';
+    }
+    final isSameBodega = _selectedOriginBodega != null &&
+        _selectedDestinationBodega != null &&
+        _selectedOriginBodega!.trim().toLowerCase() ==
+            _selectedDestinationBodega!.trim().toLowerCase();
+    if (isSameBodega &&
+        _selectedOriginPerson!.cedula.trim() ==
+            _selectedDestinationPerson!.cedula.trim()) {
+      return 'El colaborador destino no puede ser igual al origen en la misma bodega.';
     }
 
     // 2. Bodega personal PE (si se conoce el tipo)
     if (_selectedOriginBodegaTipo != null &&
         _selectedOriginBodegaTipo!.trim().toUpperCase() != 'PE') {
-      return false;
+      return 'Solo se pueden traspasar activos de bodegas personales [PE]. La bodega origen actual es de tipo [${_selectedOriginBodegaTipo!}].';
     }
 
     // 3. Cantidad de artículos: al menos 1 y máximo 50
-    if (_selectedAssets.isEmpty || _selectedAssets.length > 50) {
-      return false;
+    if (_selectedAssets.isEmpty) {
+      return 'Debe seleccionar al menos un activo para generar la solicitud.';
+    }
+    if (_selectedAssets.length > 50) {
+      return 'Ha superado el límite máximo de 50 artículos por solicitud (${_selectedAssets.length} seleccionados).';
     }
 
     // 4. Ningún artículo en trámite pendiente
-    if (_selectedAssets.any((a) => a.enTramite)) {
-      return false;
+    final inTramiteAssets = _selectedAssets.where((a) => a.enTramite).toList();
+    if (inTramiteAssets.isNotEmpty) {
+      if (inTramiteAssets.length == 1) {
+        final a = inTramiteAssets.first;
+        final placaOArticulo = (a.placa != null && a.placa!.isNotEmpty && a.placa!.toLowerCase() != 'n/a')
+            ? 'Placa: ${a.placa}'
+            : 'Cód: ${a.articulo}';
+        return 'El activo "${a.nombre}" ($placaOArticulo) ya tiene una solicitud en trámite pendiente.';
+      }
+      return '${inTramiteAssets.length} activos seleccionados ya tienen solicitudes en trámite pendiente.';
     }
 
     // 5. Sin artículos repetidos (clave articulo + placa)
     final seenKeys = <String>{};
     for (final a in _selectedAssets) {
-      final key = '${a.articulo.trim().toLowerCase()}_${(a.placa ?? '').trim().toLowerCase()}';
+      final key =
+          '${a.articulo.trim().toLowerCase()}_${(a.placa ?? '').trim().toLowerCase()}';
       if (!seenKeys.add(key)) {
-        return false;
+        return 'El activo "${a.nombre}" (${a.placa ?? a.articulo}) está repetido en la solicitud.';
       }
     }
 
-    // 6. Compatibilidad estricta: Mismo centroInformacion y mismo tercero
+    // 6. Compatibilidad estricta: Mismo centroInformacion y mismo tercero (PKG_FI_MOVITRAS)
     final firstCi = _selectedAssets.first.centroInformacion?.trim();
     final firstTercero = _selectedAssets.first.tercero?.trim();
     for (final a in _selectedAssets) {
       final ci = a.centroInformacion?.trim();
       final t = a.tercero?.trim();
-      if (ci != null && firstCi != null && ci != firstCi) {
-        return false;
+      if (ci != null && firstCi != null && ci.isNotEmpty && firstCi.isNotEmpty && ci != firstCi) {
+        return 'Los activos no son compatibles: difieren en Centro de Información ("${a.nombre}" [CI: $ci] vs "${_selectedAssets.first.nombre}" [CI: $firstCi]).';
       }
-      if (t != null && firstTercero != null && t != firstTercero) {
-        return false;
+      if (t != null && firstTercero != null && t.isNotEmpty && firstTercero.isNotEmpty && t != firstTercero) {
+        return 'Los activos no son compatibles: difieren en Tercero ("${a.nombre}" [Tercero: $t] vs "${_selectedAssets.first.nombre}" [Tercero: $firstTercero]).';
       }
     }
 
-    return true;
+    return null;
   }
+
+  bool get isFormValid => formValidationErrorMessage == null;
 
   // ==========================================
   // 5. MÉTODOS DE COMPATIBILIDAD (LEGACY CATALOG)

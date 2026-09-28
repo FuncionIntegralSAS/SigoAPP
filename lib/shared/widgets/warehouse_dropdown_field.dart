@@ -95,6 +95,19 @@ class _WarehouseDropdownFieldState extends State<WarehouseDropdownField> {
             : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.black, width: 1.0),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.black, width: 1.0),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.black, width: 1.0),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.deepPurple, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
@@ -133,6 +146,7 @@ class _WarehouseDropdownFieldState extends State<WarehouseDropdownField> {
               wh.codigoBodega.toLowerCase().contains(query);
         },
       ),
+      dropdownStyleData: DropdownTemplates.styleData(),
       onMenuStateChange: (isOpen) {
         if (!isOpen) {
           _searchController.clear();

@@ -169,6 +169,9 @@ class InventoryProvider extends ChangeNotifier {
           placa: asset.placa ?? '',
           bodega: warehouseCode.trim(),
           responsable: selectedCollaborator!.nombreCompleto,
+          enTramite: asset.enTramite,
+          centroInformacion: asset.centroInformacion,
+          tercero: asset.tercero,
         );
       }).toList();
       _allArticles = List.from(articles);

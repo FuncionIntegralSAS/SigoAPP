@@ -9,11 +9,11 @@ Este documento consolida el estado actual derivado del análisis exhaustivo de a
 | Bloque | Pendientes Técnicos | Pendientes de Definición Funcional | Total Pendientes |
 | :--- | :---: | :---: | :---: |
 | **Fase 2: Alto / Robustez y Ciclo de Vida** | 3 | 0 | 3 |
-| **Fase 3: Medio / Calidad de Código & UX** | 5 | 0 | 5 |
+| **Fase 3: Medio / Calidad de Código & UX** | 6 | 0 | 6 |
 | **Fase 4: Menor / Estandarización** | 1 | 0 | 1 |
 | **Definición de Negocio y Permisos** | 0 | 3 | 3 |
 | **Sincronización de Documentación (`.context/`)** | 3 | 0 | 3 |
-| **Total General** | **12** | **3** | **15** |
+| **Total General** | **13** | **3** | **16** |
 
 ---
 
@@ -87,6 +87,39 @@ Este documento consolida el estado actual derivado del análisis exhaustivo de a
   2. Si el interceptor de red ([auth_interceptor.dart](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/utils/auth_interceptor.dart)) o un listener centralizado en `main.dart` debería capturar el 401/403 y redirigir directamente a Login mediante `AuthUtils.logout(context)` en vez de delegar la presentación a cada pantalla individual.
   3. Consistencia visual entre pantallas con formulario desplazable (`SingleChildScrollView`) vs pantallas basadas en listas (`ListView`).
 - **Estado:** Postergado para evaluación posterior a la implementación de `AuthUtils.logout`.
+
+#### [PENDIENTE] 3.6 Auditoría y Refactorización Arquitectónica de `InventoryScreen` (Desacoplamiento, Normalización de Botones y Modularización UI)
+- **Archivo afectado:** [inventory_screen.dart](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart)
+- **Diagnóstico General y Métricas:**
+  `InventoryScreen` acumula actualmente ~690 líneas de código y concentra múltiples responsabilidades que contravienen el Principio de Responsabilidad Única (SRP) y las directrices canónicas de desarrollo en Flutter. La pantalla mezcla la instanciación de UI con lógica de selección masiva, reglas de negocio de compatibilidad de traspasos, instanciación manual heterogénea de botones, orquestación de modales de navegación, sincronización imperativa de notifiers dentro del ciclo `build()`, y métodos constructores privados (`_build*`) que impiden la optimización de rebuilds.
+- **Hallazgos de la Auditoría según Mejores Prácticas de Flutter:**
+  1. **Falta de Normalización y Estandarización de Botones y Barras de Acción:**
+     - En el `bottomNavigationBar` ([L388-L454](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L388-L454)), se instancian tres botones de forma heterogénea con estilos inline manuales (`OutlinedButton.icon` con bordes rojos manuales para Cancelar, `OutlinedButton.icon` sin estilo para Marcar todos, y `ElevatedButton.icon` con `primaryColor` para Realizar traspaso).
+     - El `FloatingActionButton.extended` ([L368-L386](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L368-L386)) define colores y tipografías ad-hoc en lugar de consumir un tema centralizado.
+     - En el `AppBar` ([L330-L365](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L330-L365)) y en `_buildErrorBanner` ([L556-L568](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L556-L568)), se crean `IconButton` inline con configuraciones de iconos y tooltips repetitivas.
+     - *Recomendación:* Crear o emplear componentes reusables de acción (ej. `SelectionActionBar`, `AppPrimaryButton`, `AppOutlinedButton`) y normalizar la invocación de botones mediante una interfaz declarativa unificada.
+  2. **Acoplamiento de Reglas de Negocio en la Vista (`_toggleArticleSelection` y `_toggleSelectAll`):**
+     - Métodos que acumulan más de 135 líneas de reglas de negocio ([L99-L174](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L99-L174) y [L183-L245](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L183-L245)): validación de `enTramite`, límite de 50 activos, verificación de coincidencia de responsable actual (`firstResp == artResp`), validación de coincidencia de bodega origen (`firstBodega == artBodega`), y validación de bodega de custodia personal `PE`.
+     - *Recomendación:* Trasladar toda la lógica de validación, filtrado y selección de activos al `InventoryProvider` o a un controlador de selección dedicado (`InventorySelectionController`), dejando a la vista únicamente la invocación declarativa del evento (`controller.toggleSelection(article)`).
+  3. **Inconsistencia Arquitectónica en Selectores (`_buildCollaboratorSelector` vs `CompanyDropdownField` / `WarehouseDropdownField`):**
+     - Mientras que las empresas y las bodegas están modularizadas en widgets dedicados reutilizables ([`CompanyDropdownField`](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/shared/widgets/company_dropdown_field.dart) y [`WarehouseDropdownField`](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/shared/widgets/warehouse_dropdown_field.dart)), el selector de colaborador ([L602-L688](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L602-L688)) se encuentra acoplado dentro de `InventoryScreen` con más de 85 líneas inline.
+     - *Recomendación:* Extraer un nuevo widget reutilizable `CollaboratorDropdownField` en `lib/shared/widgets/` que encapsule el `DropdownButtonFormField2`, su buscador y sus estados (cargando, inhabilitado, selección).
+  4. **Generación de Claves Compuestas en la Vista (`_getArticleKey`):**
+     - La lógica para discernir la identidad única de un activo (placa, ID de registro o hash) reside en la vista ([L53-L62](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L53-L62)).
+     - *Recomendación:* Mover esta lógica al modelo [`ArticleModel`](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/models/article_model.dart) como getter inmutable (`article.uniqueSelectionKey`).
+  5. **Anti-patrón de Métodos Auxiliares `_build*` en lugar de Widgets Especializados:**
+     - Uso de `_buildErrorBanner`, `_buildCompanySelector`, `_buildWarehouseSelector` y `_buildCollaboratorSelector`. En Flutter, los métodos auxiliares de construcción impiden que el framework omita rebuilds mediante widgets `const` y fragmentan la legibilidad del árbol.
+     - *Recomendación:* Convertir estos bloques en widgets `StatelessWidget` / `StatefulWidget` independientes.
+  6. **Rebuilds Ineficientes por `context.watch` Global:**
+     - En [L321-L322](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L321-L322), `context.watch<AuthProvider>()` y `context.watch<InventoryProvider>()` rebuildean todo el `Scaffold` ante cualquier cambio en los providers.
+     - *Recomendación:* Usar `Consumer` o `Selector` localizados en los nodos que verdaderamente dependen del estado reactivo (contador de lista, body de artículos, etc.).
+  7. **Efectos Colaterales en el Ciclo `build()` (`_syncNotifiers`):**
+     - En [L323](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L323), se invoca `_syncNotifiers(provider)` durante la fase de construcción de widgets para mutar un `ValueNotifier`, lo cual puede provocar avisos y reentradas en el pipeline de renderizado de Flutter.
+     - *Recomendación:* Manejar la sincronización reactiva en listeners del provider o eliminar el `ValueNotifier` acoplado sustituyéndolo por el estado del propio provider.
+  8. **Orquestación Imperativa de Diálogos y Modales de Traspaso:**
+     - `_showTransferForm` ([L248-L275](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L248-L275)) y `_startMultipleTransfer` ([L278-L317](file:///f:/Juan_Camilo_Diaz/Projects/APP_Gestion_Administrativa/SigoAPP/lib/modules/inventory/screens/inventory_screen.dart#L278-L317)) combinan validaciones condicionales, resolución de bodegas coincidentes, apertura de `showModalBottomSheet` y refresco subsiguiente.
+     - *Recomendación:* Extraer un delegado o coordinador de navegación de traspasos (`TransferNavigationCoordinator`).
+- **Estado:** **PENDIENTE / TAREA FUTURA** (Evaluación completada sin modificaciones de código aplicadas por el momento).
 
 ---
 

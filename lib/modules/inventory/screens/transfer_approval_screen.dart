@@ -51,7 +51,7 @@ class _TransferApprovalScreenState extends State<TransferApprovalScreen> {
     final transfers = provider.filteredTransfers;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           'Aprobación de Traspasos',
@@ -696,12 +696,12 @@ class _TransferCardState extends State<_TransferCard> {
     final statusColor = _getStatusColor(request.estado);
 
     return Card(
-      elevation: 1.5,
+      elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 4),
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200, width: 1),
+        side: BorderSide(color: Colors.grey.shade300, width: 1.0),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
