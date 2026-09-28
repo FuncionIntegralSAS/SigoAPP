@@ -4,6 +4,7 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 
 import 'package:sigo_app/modules/inventory/models/article_model.dart';
 import 'package:sigo_app/modules/inventory/widgets/transfer_form_widget.dart';
+import 'package:sigo_app/modules/inventory/providers/inventory_provider.dart';
 import 'package:sigo_app/modules/inventory/providers/geolocation_provider.dart';
 import 'package:sigo_app/utils/dropdown_template.dart';
 import 'package:sigo_app/modules/debug/screens/scanner_screen.dart';
@@ -29,11 +30,41 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
   final TextEditingController _responsibleSearchController =
       TextEditingController();
 
-  final List<String> responsibles = [
-    'Juan Pérez',
-    'Maria López',
-    'Carlos Ruiz',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final inventory = context.read<InventoryProvider>();
+      if (inventory.collaborators.isNotEmpty) {
+        // Los colaboradores ya están cargados en memoria
+        return;
+      }
+      if (inventory.companies.isEmpty &&
+          inventory.state != InventoryState.loading) {
+        await inventory.loadCompanies();
+      }
+      if (!mounted) return;
+      if (inventory.selectedCompany == null &&
+          inventory.companies.isNotEmpty) {
+        inventory.selectCompany(inventory.companies.first, tipo: 'PE');
+      }
+      if (!mounted) return;
+      if (inventory.warehouses.isNotEmpty && inventory.collaborators.isEmpty) {
+        final wh = inventory.selectedWarehouse ??
+            inventory.warehouses.firstWhere(
+              (w) => w.codigoBodega != 'ALL' && w.isPersonal,
+              orElse: () => inventory.warehouses.first,
+            );
+        if (wh.codigoBodega != 'ALL') {
+          await inventory.loadCollaborators(
+            wh.codigoBodega,
+            inventory.selectedCompany?.codigo ?? '01',
+          );
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -139,7 +170,8 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
             DialogUtils.showErrorDialog(
               context,
               title: 'Error de Sincronización',
-              message: 'No se pudo sincronizar la ubicación: ${geoProvider.errorMessage ?? "Error de conexión"}',
+              message:
+                  'No se pudo sincronizar la ubicación: ${geoProvider.errorMessage ?? "Error de conexión"}',
             );
           }
         }
@@ -150,12 +182,21 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
   void _suggestTransfer() {
     if (verifiedArticle == null) return;
 
+    // Validación preventiva: activo ya en trámite pendiente
+    if (verifiedArticle!.enTramite) {
+      DialogUtils.showWarningSnackBar(
+        context,
+        'El activo ya se encuentra en un trámite de traspaso pendiente.',
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (_) => TransferFormWidget(
         article: verifiedArticle!,
-        responsablePropuesto: verifiedArticle!.responsable,
+        responsablePropuesto: selectedResponsible,
         bodegaPropuesta: verifiedArticle!.bodega,
       ),
     );
@@ -163,6 +204,27 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final inventoryProvider = context.watch<InventoryProvider>();
+    final responsibles = inventoryProvider.collaborators
+        .map((c) => c.nombreCompleto.trim().isNotEmpty
+            ? c.nombreCompleto.trim()
+            : c.cedula.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList();
+
+    if (selectedResponsible != null &&
+        !responsibles.contains(selectedResponsible)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            selectedResponsible = null;
+            _responsibleNotifier.value = null;
+          });
+        }
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Verificación de Activos'),
@@ -182,7 +244,13 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
             DropdownButtonFormField2<String>(
               isExpanded: true,
               valueListenable: _responsibleNotifier,
-              hint: const Text('Seleccione un responsable'),
+              hint: Text(
+                inventoryProvider.isLoadingCollaborators
+                    ? 'Cargando colaboradores...'
+                    : (responsibles.isEmpty
+                        ? 'Sin colaboradores disponibles'
+                        : 'Seleccione un responsable'),
+              ),
               items: responsibles
                   .map(
                     (r) => DropdownItem<String>(
@@ -195,24 +263,51 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
                     ),
                   )
                   .toList(),
-              onChanged: (value) {
-                setState(() {
-                  selectedResponsible = value;
-                  _responsibleNotifier.value = value;
-                });
-              },
-              decoration: const InputDecoration(border: OutlineInputBorder()),
+              onChanged: (inventoryProvider.isLoadingCollaborators ||
+                      responsibles.isEmpty)
+                  ? null
+                  : (value) {
+                      setState(() {
+                        selectedResponsible = value;
+                        _responsibleNotifier.value = value;
+                      });
+                    },
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                suffixIcon: inventoryProvider.isLoadingCollaborators
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : (selectedResponsible != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              setState(() {
+                                selectedResponsible = null;
+                                _responsibleNotifier.value = null;
+                              });
+                            },
+                            tooltip: 'Limpiar selección',
+                          )
+                        : null),
+              ),
               dropdownSearchData: DropdownTemplates.searchData(
                 controller: _responsibleSearchController,
                 hintText: 'Buscar responsable...',
                 searchMatchFn: (item, searchValue) {
                   return item.value!.toLowerCase().contains(
-                    searchValue.toLowerCase(),
-                  );
+                        searchValue.toLowerCase(),
+                      );
                 },
               ),
+              dropdownStyleData: DropdownTemplates.styleData(),
               onMenuStateChange: (isOpen) {
-                if (!isOpen) _responsibleSearchController.clear();
+                if (!isOpen && mounted) _responsibleSearchController.clear();
               },
             ),
 
@@ -292,6 +387,41 @@ class _AssetVerificationScreenState extends State<AssetVerificationScreen> {
                   ),
                 ],
               ),
+
+              if (verifiedArticle!.enTramite) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.shade400),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.lock_clock,
+                        size: 18,
+                        color: Colors.amber.shade900,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Activo en trámite de traspaso pendiente. No se pueden generar nuevas solicitudes.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.amber.shade900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               // =============================
               // SUGERENCIA DE TRASPASO

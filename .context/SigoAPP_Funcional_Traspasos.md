@@ -79,11 +79,18 @@ stateDiagram-v2
    - Invocado desde el Dashboard sin contexto previo.
    - El usuario selecciona paso a paso: Empresa → Bodega Origen → Colaborador Fuente → Activos asignados → Bodega Destino → Colaborador Destino.
 2. **Modo Contextualizado Compacto (`_isContextualized: true`):**
-   - Invocado directamente desde la pantalla de inventario con 1 o más artículos seleccionados (`ArticleModel`).
+   - Invocado directamente desde la pantalla de inventario (`InventoryScreen`) con 1 o más artículos seleccionados (`ArticleModel`).
    - **Origen Fijo e Inmutable:** Muestra una tarjeta compacta informativa con la empresa, bodega y colaborador origen ya resueltos. No permite alterar el origen para evitar discrepancias con el inventario filtrado.
    - **Tarjeta Compacta Desplegable de Activos (`_buildCompactAssetsCard`):** Presenta un componente interactivo (`_isSelectedAssetsExpanded`) que permite expandir y consultar detalles de los ítems (código, placa, nombre) de forma minimalista.
    - **Pre-carga Inmediata (Tolerancia a Latencia):** Los artículos seleccionados se convierten en memoria e inyectan vía `TransferFormProvider.addPreselectedAsset()` antes de las consultas de red, garantizando feedback visual instantáneo sin parpadeos de "0 activos".
    - **Foco Operativo:** El usuario solo necesita seleccionar la Bodega y Colaborador Destino, y redactar las observaciones.
+3. **Modo Contextualizado desde Verificación de Activos (`AssetVerificationScreen`):**
+   - Invocado cuando el activo escaneado no coincide con el custodio auditado y se pulsa el botón *"Se sugiere realizar un traspaso"*.
+   - **Alineación de Roles Fuente vs. Destino:**
+     - **Custodio Fuente / Origen:** Corresponde al custodio oficial registrado en base de datos (`verifiedArticle.responsable`).
+     - **Custodio Destino Propuesto:** Se transmite el colaborador esperado seleccionado por el auditor (`selectedResponsible`) como `responsablePropuesto`, junto con la bodega del activo como `bodegaPropuesta`.
+   - **Pre-selección Automática de Destino:** Al inicializar el formulario (`_initFromArticles`), el sistema resuelve la bodega destino propuesta y ejecuta `_tryPreselectDestinationPerson`, buscando al colaborador por coincidencia exacta de cédula, coincidencia exacta de nombre completo o matching tokenizado flexible. Si coincide con un colaborador de la bodega destino, lo preselecciona de forma transparente.
+   - **Preservación Íntegra de Metadatos PL/SQL:** Mantiene inalterados los valores de `centroInformacion`, `tercero` y `enTramite` en `TransferAssetModel`.
 
 #### Reglas de Negocio y Validación del Endpoint de Creación:
 1. **Selección de Empresa:** Restringe bodegas y se propaga en todas las consultas subsiguientes.
@@ -93,10 +100,10 @@ stateDiagram-v2
 3. **Consulta de Activos Asignados (`GET /api/v1/traspasos/activos`):**
    - **Query Parameters:** `persona` (Requerido), `bodega` (Requerido), `empresa` (Opcional).
    - **Mapeo del Modelo (`TransferAssetModel` y `ArticleModel`):** Deserializa `articulo`, `placa`, `nombre`, `centroInformacion`, `tercero` y `enTramite`.
-   - **Bloqueo Preventivo desde el Listado de Inventario (`enTramite: true`):**
-     - Si un activo ya está comprometido en otro trámite abierto (`enTramite: true`), el listado de inventario (`InventoryScreen` / `InventoryArticleTile`) lo resalta con un badge ámbar institucional *"En trámite pendiente"* (`Icons.lock_clock`).
-     - Se impide su selección tanto individual como masiva: la acción *"Seleccionar todos"* omite automáticamente los activos en trámite e informa cuántos fueron excluidos; el tap individual dispara un `DialogUtils.showWarningSnackBar` explicativo; y el botón de traspaso individual directo se bloquea.
-     - En el modal de traspaso (`TransferFormWidget`), se mantiene la defensa en profundidad inhabilitando su checkbox en caso de ser consultado.
+   - **Bloqueo Preventivo de Activos Comprometidos (`enTramite: true`):**
+     - **En Listado de Inventario (`InventoryScreen` / `InventoryArticleTile`):** Se resalta con badge ámbar institucional *"En trámite pendiente"* (`Icons.lock_clock`). Se impide su selección individual y masiva ("Seleccionar todos" los excluye automáticamente e informa al usuario); el tap individual dispara `DialogUtils.showWarningSnackBar` explicativo y el botón de traspaso individual directo se bloquea.
+     - **En Verificación Física (`AssetVerificationScreen`):** Si el activo escaneado tiene `enTramite == true`, la tarjeta de resultado despliega un banner de advertencia visual permanente. Si el usuario pulsa *"Se sugiere realizar un traspaso"*, se intercepta la acción de forma preventiva impidiendo abrir el modal e informando con `DialogUtils.showWarningSnackBar(context, 'El activo ya se encuentra en un trámite de traspaso pendiente.')`.
+     - **En Modal de Traspaso (`TransferFormWidget`):** Se mantiene la defensa en profundidad inhabilitando su checkbox en caso de ser consultado.
 4. **Selección de Colaboradores:**
    - Origen consultado vía `GET /api/v1/traspasos/personas?bodega={bodega}&empresa={empresa}`.
    - **Regla de Personas Distintas Condicionada a la Misma Bodega:**

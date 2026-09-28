@@ -429,6 +429,11 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
    * Secciones bien demarcadas con encabezados en gris oscuro: Datos del activo, Ubicación física, Coordenadas GPS y Evidencia fotográfica.
 3. **Verificación de Activos (`AssetVerificationScreen`):**
    * Visor de cámara en mitad superior y tarjeta de resultados en mitad inferior.
+   * **Selector de Responsable Auditado:** Dropdown con campo de búsqueda interactivo que consume reactivamente los colaboradores reales de la organización provistos por `InventoryProvider` (`inventoryProvider.collaborators`), evitando listas estáticas o hardcodeadas.
+   * **Tarjeta de Resultado y Sugerencia de Traspaso:**
+     * En caso de coincidencia entre custodio actual y esperado: indicador verde de verificación exitosa.
+     * En caso de discrepancia: indicador ámbar/rojo con botón contextual *"Se sugiere realizar un traspaso"* para iniciar el traslado hacia el custodio esperado.
+     * **Banner Preventivo de Activo en Trámite (`enTramite == true`):** Contenedor ámbar destacado (`amber.shade50`, borde `amber.shade300`, texto e icono `amber.shade900`) con icono `Icons.lock_clock` informando que el activo ya cuenta con un trámite de traspaso pendiente, bloqueando preventivamente la apertura del formulario de traspaso con un `DialogUtils.showWarningSnackBar`.
    * Badge de GPS satelital: Verde fijo cuando la precisión es `< 10m` con coordenadas visibles, ámbar titilante mientras calcula fijación geográfica.
 
 ---

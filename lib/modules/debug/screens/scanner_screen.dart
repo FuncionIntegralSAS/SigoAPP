@@ -68,7 +68,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
   bool _validateResponsible(ArticleModel article) {
     if (widget.expectedResponsible == null) return true;
 
-    return article.responsable == widget.expectedResponsible;
+    final expected = widget.expectedResponsible!.trim().toLowerCase();
+    final actual = (article.responsable ?? '').trim().toLowerCase();
+
+    return actual.isNotEmpty &&
+        (actual == expected ||
+            actual.contains(expected) ||
+            expected.contains(actual));
   }
 
   void _showResultDialog(

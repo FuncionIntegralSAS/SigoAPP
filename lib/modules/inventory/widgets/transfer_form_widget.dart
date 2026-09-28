@@ -106,12 +106,11 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
         if (inventoryProvider.selectedCompany?.codigo !=
             companyToSelect.codigo) {
           inventoryProvider.selectCompany(companyToSelect, tipo: 'PE');
-        } else {
-          await inventoryProvider.loadWarehouses(
-            companyToSelect.codigo,
-            tipo: 'PE',
-          );
         }
+        await inventoryProvider.loadWarehouses(
+          companyToSelect.codigo,
+          tipo: 'PE',
+        );
       }
 
       // 2. Si se invocó con artículos pre-seleccionados o un artículo individual
@@ -180,6 +179,39 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
               empresa: _selectedCompany?.codigo ?? '01',
             );
             _originPersonNotifier.value = targetPerson;
+          }
+
+          if (!mounted) return;
+
+          // Pre-seleccionar Bodega Destino y Colaborador Destino si se pasaron propuestos
+          if (widget.bodegaPropuesta != null &&
+              widget.bodegaPropuesta!.trim().isNotEmpty) {
+            final propBodega = widget.bodegaPropuesta!.trim();
+            final matchedTargetWarehouse = (widget.warehouses ??
+                    inventoryProvider.warehouses)
+                .where(
+                  (w) =>
+                      w.codigoBodega.trim().toLowerCase() ==
+                          propBodega.toLowerCase() ||
+                      w.descripcionBodega.trim().toLowerCase() ==
+                          propBodega.toLowerCase(),
+                )
+                .firstOrNull;
+
+            if (matchedTargetWarehouse != null) {
+              _selectedTargetWarehouse = matchedTargetWarehouse;
+              await formProvider.selectDestinationBodega(
+                matchedTargetWarehouse.codigoBodega,
+                empresa: _selectedCompany?.codigo ?? '01',
+              );
+              if (!mounted) return;
+              if (widget.responsablePropuesto != null) {
+                _tryPreselectDestinationPerson(
+                  formProvider,
+                  widget.responsablePropuesto!,
+                );
+              }
+            }
           }
         }
       }
@@ -325,12 +357,96 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
             placa: hasArtPlaca ? artPlaca : null,
             nombre: art.nombre,
             centroInformacion:
-                formProvider.selectedAssets.firstOrNull?.centroInformacion,
-            tercero: formProvider.selectedAssets.firstOrNull?.tercero,
-            enTramite: false,
+                art.centroInformacion ?? formProvider.selectedAssets.firstOrNull?.centroInformacion,
+            tercero: art.tercero ?? formProvider.selectedAssets.firstOrNull?.tercero,
+            enTramite: art.enTramite,
           );
 
       formProvider.addPreselectedAsset(assetToAdd);
+    }
+
+    if (!mounted) return;
+
+    // 4. Resolver bodega destino propuesta (si se proporcionó)
+    if (widget.bodegaPropuesta != null &&
+        widget.bodegaPropuesta!.trim().isNotEmpty) {
+      final propBodega = widget.bodegaPropuesta!.trim();
+      final matchedTargetWarehouse = availableWarehouses.where((w) =>
+          w.codigoBodega.trim().toLowerCase() == propBodega.toLowerCase() ||
+          w.descripcionBodega.trim().toLowerCase() == propBodega.toLowerCase(),
+      ).firstOrNull;
+
+      final targetWarehouse = matchedTargetWarehouse ??
+          WarehouseModel(
+            codigoBodega: propBodega,
+            descripcionBodega: propBodega,
+            estadoBodega: 'A',
+            tipo: 'PE',
+          );
+
+      _selectedTargetWarehouse = targetWarehouse;
+      await formProvider.selectDestinationBodega(
+        targetWarehouse.codigoBodega,
+        empresa: _selectedCompany?.codigo ?? '01',
+      );
+    }
+
+    if (!mounted) return;
+
+    // 5. Pre-seleccionar colaborador destino si se proporcionó responsablePropuesto
+    if (widget.responsablePropuesto != null &&
+        widget.responsablePropuesto!.trim().isNotEmpty) {
+      _tryPreselectDestinationPerson(
+        formProvider,
+        widget.responsablePropuesto!,
+      );
+    }
+  }
+
+  void _tryPreselectDestinationPerson(
+    TransferFormProvider formProvider,
+    String suggestedResponsible,
+  ) {
+    final query = suggestedResponsible.trim().toLowerCase();
+    if (query.isEmpty || formProvider.destinationPersons.isEmpty) return;
+
+    TransferPersonModel? matched;
+
+    // 1. Coincidencia exacta por cédula
+    matched = formProvider.destinationPersons.where((p) =>
+      p.cedula.trim().toLowerCase() == query
+    ).firstOrNull;
+
+    // 2. Coincidencia exacta por nombre completo
+    matched ??= formProvider.destinationPersons.where((p) =>
+      p.nombreCompleto.trim().toLowerCase() == query
+    ).firstOrNull;
+
+    // 3. Coincidencia si query contiene la cédula o viceversa
+    matched ??= formProvider.destinationPersons.where((p) {
+      final ced = p.cedula.trim().toLowerCase();
+      return ced.isNotEmpty && (query.contains(ced) || ced.contains(query));
+    }).firstOrNull;
+
+    // 4. Coincidencia si query contiene el nombre completo o viceversa
+    matched ??= formProvider.destinationPersons.where((p) {
+      final nom = p.nombreCompleto.trim().toLowerCase();
+      return nom.isNotEmpty && (query.contains(nom) || nom.contains(query));
+    }).firstOrNull;
+
+    // 5. Coincidencia por partes de nombre o apellido
+    matched ??= formProvider.destinationPersons.where((p) {
+      final nom = p.nombre.trim().toLowerCase();
+      final ape = p.apellido.trim().toLowerCase();
+      return (nom.isNotEmpty && query.contains(nom)) ||
+             (ape.isNotEmpty && query.contains(ape));
+    }).firstOrNull;
+
+    if (matched != null) {
+      final success = formProvider.selectDestinationPerson(matched);
+      if (success) {
+        _targetPersonNotifier.value = matched;
+      }
     }
   }
 
@@ -462,7 +578,16 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
 
                   // Selector de Bodega Destino
                   WarehouseDropdownField(
-                    value: _selectedTargetWarehouse,
+                    value: availableWarehouses
+                        .where(
+                          (w) =>
+                              w.codigoBodega.trim().toLowerCase() ==
+                              _selectedTargetWarehouse?.codigoBodega
+                                  .trim()
+                                  .toLowerCase(),
+                        )
+                        .firstOrNull ??
+                        _selectedTargetWarehouse,
                     warehouses: availableWarehouses,
                     labelText: 'Bodega Destino',
                     hintText: availableWarehouses.isEmpty
@@ -471,14 +596,20 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                     isRequired: true,
                     onChanged: availableWarehouses.isEmpty
                         ? null
-                        : (WarehouseModel? warehouse) {
+                        : (WarehouseModel? warehouse) async {
                             setState(() {
                               _selectedTargetWarehouse = warehouse;
                             });
-                            formProvider.selectDestinationBodega(
+                            await formProvider.selectDestinationBodega(
                               warehouse?.codigoBodega,
                               empresa: _selectedCompany?.codigo ?? '01',
                             );
+                            if (mounted && widget.responsablePropuesto != null) {
+                              _tryPreselectDestinationPerson(
+                                formProvider,
+                                widget.responsablePropuesto!,
+                              );
+                            }
                           },
                   ),
                   const SizedBox(height: 12),
@@ -1379,9 +1510,9 @@ class _TransferFormWidgetState extends State<TransferFormWidget> {
                         ? placaClean
                         : null,
                     nombre: a.nombre,
-                    centroInformacion: null,
-                    tercero: null,
-                    enTramite: false,
+                    centroInformacion: a.centroInformacion,
+                    tercero: a.tercero,
+                    enTramite: a.enTramite,
                   );
                 },
               )

@@ -30,6 +30,12 @@ class ArticleQrParser {
           : (map['LON'] != null && map['LON'] != 'No disp.'
               ? double.tryParse(map['LON']!)
               : null),
+      enTramite: map['EnTramite']?.toString().toLowerCase() == 'true' ||
+          map['EnTramite'] == '1' ||
+          map['TRAM']?.toString().toLowerCase() == 'true' ||
+          map['TRAM'] == '1',
+      centroInformacion: map['CI'] ?? map['CentroInformacion'],
+      tercero: map['TERCERO'] ?? map['Tercero'],
     );
   }
 }
