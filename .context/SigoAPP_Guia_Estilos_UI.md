@@ -207,7 +207,7 @@ Todo diálogo modal (`showDialog` / `AlertDialog`) debe respetar:
    * **Cuerpo Principal:** Debe mostrar exclusivamente un mensaje amigable y conciso para el operador final (procesado con `DialogUtils.extractFriendlyMessage`), libre de volcados de JDBC, ORA de base de datos o stack traces crudos.
    * **Sección de Diagnóstico Expandible:** El acordeón "Ver detalles técnicos (Desarrollador)" aloja la información completa de depuración (código HTTP, endpoint consultado, traza del servidor y botón de copiado al portapapeles) en un contenedor monoespaciado (`11px`) con fondo `Colors.grey.shade100` y borde sutil.
 2. **Inferencia Automática Universal (`DialogUtils.showInferredErrorDialog`):**
-   * Permite a cualquier módulo invocar el diálogo modal pasando directamente la excepción tipada (`TransferBusinessException`, `RequisitionBusinessException`, `CatalogBusinessException`, etc.), `DioException`, o cadena de error. El método extrae de forma tipada y segura el mensaje funcional, código HTTP, endpoint y `technicalDetails`.
+   * Permite a cualquier módulo invocar el diálogo modal pasando directamente la excepción tipada (`AuthBusinessException`, `TransferBusinessException`, `RequisitionBusinessException`, `CatalogBusinessException`, etc.), `DioException`, o cadena de error. El método extrae de forma tipada y segura el mensaje funcional, código HTTP, endpoint y `technicalDetails`.
 3. **Prevención Estricta de Desbordamientos Visuales (`Overflow`):**
    * La fila del encabezado del acordeón desplegable debe utilizar `MainAxisSize.min` y envolver el texto explicativo con `Flexible` para evitar errores de renderizado (`RenderFlex overflowed`) en ventanas compactas de Windows o dispositivos móviles.
    * Queda prohibido ubicar badges adicionales (ej. chips de método o código HTTP) en la misma fila horizontal del toggle desplegable; dichos metadatos deben residir estructurados dentro del área expandida.
@@ -276,7 +276,7 @@ WarehouseDropdownField(
 
 Toda notificación flotante debe gestionarse a través de la API estandarizada de [`DialogUtils`](../lib/utils/dialog_utils.dart). Queda estrictamente prohibido instanciar `SnackBar` ad-hoc o utilizar fondos oscuros genéricos.
 
-#### Tríada Semántica Institucional:
+#### Cuádruple Semántica Institucional (SnackBars):
 * **Éxito (`DialogUtils.showSuccessSnackBar`):**
   - **Fondo:** Verde Esmeralda Institucional `Colors.green.shade700` (`Color(0xFF1B5E20)`).
   - **Icono:** `Icons.check_circle_outline` (blanco, 24px).
@@ -289,6 +289,10 @@ Toda notificación flotante debe gestionarse a través de la API estandarizada d
   - **Fondo:** Ámbar Institucional `Colors.amber.shade800`.
   - **Icono:** `Icons.warning_amber_rounded` (blanco, 24px).
   - **Uso:** Restricciones de validación operativa (ej. *"Límite alcanzado: Máximo 50 artículos"*, *"Todos los activos deben pertenecer al mismo responsable"* o *"No se encontraron bodegas pendientes"*).
+* **Error Transitorio / No Bloqueante (`DialogUtils.showErrorSnackBar`):**
+  - **Fondo:** Rojo Carmesí Institucional `Colors.red.shade800`.
+  - **Icono:** `Icons.error_outline` (blanco, 24px).
+  - **Uso:** Retroalimentación inmediata ante fallos transitorios y corregibles en el mismo contexto sin interrumpir la interacción del usuario ni quitar el foco de los campos (ej. credenciales inválidas `SIGAPP_401` en login, errores tipográficos, validaciones de campos vacíos o código de barras no reconocido durante escaneo ágil).
 
 #### Reglas de Renderizado y Despacho:
 1. **Comportamiento Flotante:** `behavior: SnackBarBehavior.floating` con esquinas redondeadas compactas `shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))`.
@@ -343,6 +347,7 @@ DialogUtils.showSuccessSnackBar(
 > 3. **Tarjetas sin indicador visual de estado** cuando la entidad posee ciclo de vida (pendientes, aprobados, rechazados, completados).
 > 4. **Sombras difusas desmedidas (`elevation > 3`)** que generen efecto borroso en la interfaz.
 > 5. **Colores pastel sin contraste** para texto o badges operativos que dificulten la lectura en pantallas de dispositivos industriales bajo luz natural.
+> 6. **SnackBars rojos ad-hoc sin estandarizar (`ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.red))` con volcados técnicos de Dio `e.message`):** Toda notificación flotante de error debe realizarse exclusivamente mediante la API institucional `DialogUtils.showErrorSnackBar(context, message)`. Para errores críticos de infraestructura (500), bloqueos de cuenta (`SIGAPP_407`) o conflictos concurrentes, se debe emplear el diálogo modal `DialogUtils.showErrorDialog` / `DialogUtils.showInferredErrorDialog` (con acordeón de depuración técnica).
 
 ---
 
@@ -366,6 +371,7 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
    * **Campos de Entrada:** `TextFormField` para cédula/usuario y contraseña con `prefixIcon` institucional, borde rectangular `OutlineInputBorder(borderRadius: BorderRadius.circular(8))` y validación en tiempo real.
    * **Botón Principal:** Botón de acceso con ancho total (`double.infinity`), altura de 48px, fondo primario institucional y esquinas `r: 8`. Al procesar, sustituye el texto por `SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))`.
    * **Cambio de Servidor / Dominio:** Botón de texto discreto en el pie (`TextButton`) con icono `Icons.qr_code_scanner` para abrir el escáner de dominio.
+   * **Retroalimentación de Error:** Queda prohibido el uso de SnackBars rojos crudos con trazas de Dio. Ante credenciales incorrectas (`SIGAPP_401` o login mock) o campos vacíos, se debe desplegar el SnackBar institucional no intrusivo `DialogUtils.showErrorSnackBar` con el mensaje amigable de Spring Boot, preservando el foco y facilitando la corrección inmediata. Para bloqueos de cuenta (`SIGAPP_407`, `SIGAPP_406`) o caídas del servidor (HTTP 500) donde el usuario no puede resolverlo simplemente reintentando, se debe desplegar el modal institucional `DialogUtils.showErrorDialog` con el acordeón técnico de soporte.
 2. **Pantalla de Escáner de Dominio (`DomainScannerScreen`):**
    * **Layout:** Visor de cámara a pantalla completa con máscara oscura y marco de lectura cuadrado centrado con bordes en el color primario corporativo.
    * **Panel Inferior:** Tarjeta flotante blanca con opción de ingreso manual de URL/dominio mediante campo de texto `r: 8` y botón "Guardar y Conectar".

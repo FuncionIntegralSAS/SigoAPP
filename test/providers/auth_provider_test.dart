@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sigo_app/exceptions/auth_business_exception.dart';
 import 'package:sigo_app/modules/auth/models/auth_model.dart';
 import 'package:sigo_app/modules/physical_count/models/physical_count_model.dart';
 import 'package:sigo_app/modules/auth/providers/auth_provider.dart';
@@ -9,9 +10,11 @@ class FakeAuthRepository implements AuthRepository {
   AuthResponse? loginResponse;
   AuthResponse? loginContadorResponse;
   bool shouldThrowLogin = false;
+  Exception? exceptionToThrow;
 
   @override
   Future<AuthResponse> login(LoginRequest request) async {
+    if (exceptionToThrow != null) throw exceptionToThrow!;
     if (shouldThrowLogin) throw Exception('Error en login');
     return loginResponse ??
         const AuthResponse(
@@ -24,6 +27,7 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResponse> loginContador(LoginContadorRequest request) async {
+    if (exceptionToThrow != null) throw exceptionToThrow!;
     return loginContadorResponse ??
         const AuthResponse(
           token: 'mock-contador-jwt-token',
@@ -159,6 +163,67 @@ void main() {
       expect(await storage.read(key: 'auth_is_contador'), isNull);
       expect(await storage.read(key: 'auth_token'), isNull);
       expect(await storage.read(key: 'auth_cedula'), isNull);
+    });
+  });
+
+  group('AuthProvider - Manejo de Errores y AuthBusinessException', () {
+    test('login() ante AuthBusinessException almacena errorMessage limpio y lastAuthException', () async {
+      const expectedException = AuthBusinessException(
+        'Usuario o contraseña incorrectos',
+        code: 'SIGAPP_401',
+        statusCode: 400,
+        endpoint: 'POST /api/v1/auth/login',
+        technicalDetails: 'Endpoint: POST /api/v1/auth/login\nCódigo HTTP: 400\nCódigo de Negocio: SIGAPP_401',
+      );
+      fakeRepository.exceptionToThrow = expectedException;
+
+      final provider = AuthProvider(fakeRepository);
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      final success = await provider.login('usuario_invalido', 'clave_erronea');
+
+      expect(success, isFalse);
+      expect(provider.isAuthenticated, isFalse);
+      expect(provider.errorMessage, 'Usuario o contraseña incorrectos');
+      expect(provider.lastAuthException, isNotNull);
+      expect(provider.lastAuthException!.code, 'SIGAPP_401');
+      expect(provider.lastAuthException!.statusCode, 400);
+      expect(provider.lastAuthException!.endpoint, 'POST /api/v1/auth/login');
+      expect(provider.lastAuthException!.technicalDetails, contains('SIGAPP_401'));
+    });
+
+    test('loginContador() ante AuthBusinessException con código SIGAPP_407 almacena mensaje de bloqueo', () async {
+      const expectedException = AuthBusinessException(
+        'Usuario bloqueado',
+        code: 'SIGAPP_407',
+        statusCode: 400,
+        endpoint: 'POST /api/v1/auth/login/contador',
+      );
+      fakeRepository.exceptionToThrow = expectedException;
+
+      final provider = AuthProvider(fakeRepository);
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      final success = await provider.loginContador('12345678', '9999');
+
+      expect(success, isFalse);
+      expect(provider.isAuthenticated, isFalse);
+      expect(provider.errorMessage, 'Usuario bloqueado');
+      expect(provider.lastAuthException, isNotNull);
+      expect(provider.lastAuthException!.code, 'SIGAPP_407');
+    });
+
+    test('login() ante excepción técnica no tipada limpia errorMessage y deja lastAuthException nulo', () async {
+      fakeRepository.exceptionToThrow = Exception('Fallo inesperado del sistema');
+
+      final provider = AuthProvider(fakeRepository);
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      final success = await provider.login('user', 'pass');
+
+      expect(success, isFalse);
+      expect(provider.errorMessage, 'Fallo inesperado del sistema');
+      expect(provider.lastAuthException, isNull);
     });
   });
 }

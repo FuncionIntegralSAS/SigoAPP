@@ -5,6 +5,7 @@ import 'package:sigo_app/exceptions/auth_business_exception.dart';
 import 'package:sigo_app/modules/auth/providers/auth_provider.dart';
 import 'package:sigo_app/modules/physical_count/providers/active_count_provider.dart';
 import 'package:sigo_app/utils/auth_utils.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 import 'package:sigo_app/modules/physical_count/screens/active_count_screen.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -62,11 +63,22 @@ class _AccountScreenState extends State<AccountScreen> {
     if (success) {
       context.read<ActiveCountProvider>().loadLocalActiveCount(cedula);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Error al iniciar sesión'),
-        ),
-      );
+      final lastException = authProvider.lastAuthException;
+      if (lastException?.code == 'SIGAPP_407' || lastException?.statusCode == 500) {
+        await DialogUtils.showErrorDialog(
+          context,
+          title: 'Acceso Denegado',
+          message: authProvider.errorMessage ?? 'Usuario bloqueado.',
+          technicalDetails: lastException?.technicalDetails,
+          statusCode: lastException?.statusCode,
+          endpoint: lastException?.endpoint,
+        );
+      } else {
+        DialogUtils.showErrorSnackBar(
+          context,
+          authProvider.errorMessage ?? 'Error al iniciar sesión',
+        );
+      }
     }
   }
 

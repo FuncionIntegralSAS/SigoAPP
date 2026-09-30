@@ -34,18 +34,21 @@ Fecha de actualización: Agosto 2026
 | **Repositorio (contrato)** | `AuthRepository` | `lib/modules/auth/repositories/auth_repository.dart` |
 | **Repositorio (HTTP)** | `HttpAuthRepository` | `lib/modules/auth/repositories/http_auth_repository.dart` |
 | **Repositorio (mock)** | `MockAuthRepository` | `lib/modules/auth/repositories/mock_auth_repository.dart` |
+| **Excepción** | `AuthBusinessException` | `lib/exceptions/auth_business_exception.dart` |
 | **Modelo** | `AuthResponse`, `LoginRequest`, `LoginContadorRequest`, `AppPermission`, `Permiso` | `lib/modules/auth/models/auth_model.dart` |
 | **Modelo** | `UserModel` | `lib/modules/auth/models/user_model.dart` |
 | **Utilidad** | `AppConfig` | `lib/utils/app_config.dart` |
 | **Utilidad** | `PermissionUtils`, `PermissionListExtension` | `lib/utils/permission_utils.dart` |
 | **Utilidad** | `AppLogger` | `lib/utils/app_logger.dart` |
+| **Utilidad** | `DialogUtils` (Modales de error institucional y acordeón técnico) | `lib/utils/dialog_utils.dart` |
 | **Utilidad** | `JsonInterceptor` (Dio) | `lib/utils/json_interceptor.dart` |
 | **Utilidad** | `AuthInterceptor` (Dio) | `lib/utils/auth_interceptor.dart` |
 | **Utilidad** | `MockHttpInterceptor` (Dio simulación local) | `lib/utils/mock_http_interceptor.dart` |
 | **Utilidad** | `AuthUtils` (Cierre de sesión centralizado) | `lib/utils/auth_utils.dart` |
 | **Test Unitario** | `auth_provider_test.dart` | `test/providers/auth_provider_test.dart` |
+| **Test Unitario** | `http_auth_repository_test.dart` | `test/repositories/http_auth_repository_test.dart` |
 
-**Estados del Provider:** `AuthProvider` mantiene: `isAuthenticated`, `isContador` (bandera formal del tipo de sesión), `currentToken`, `currentCedula` (cédula del colaborador), `currentUsername`, `permisos`.
+**Estados del Provider:** `AuthProvider` mantiene: `isAuthenticated`, `isContador` (bandera formal del tipo de sesión), `currentToken`, `currentCedula` (cédula del colaborador), `currentUsername`, `permisos`, `errorMessage`, `lastAuthException` (excepción tipada de negocio para retroalimentación y depuración en UI).
 
 > [!NOTE]
 > **Identificación de Sesión y Enrutamiento Raíz:**
@@ -231,7 +234,7 @@ Fecha de actualización: Agosto 2026
 - **Flujo Master-Detail (Documento ➔ Movimientos):**
   - **Nivel 1 (Master):** La bandeja consume `GET /api/v1/requisiciones` y renderiza tarjetas de documentos de solicitud (`RequisicionResumen`) mediante `RequisitionActionCard`, exponiendo tipo y número de documento, bodega, fecha y estado de líneas. Para especificaciones visuales de la tarjeta, consultar [`SigoAPP_Guia_Estilos_UI.md`](./SigoAPP_Guia_Estilos_UI.md) (§ Módulo 6).
   - **Nivel 2 (Detail bajo demanda):** Al expandir cada documento (`ExpansionTile`), se consulta `GET /api/v1/requisiciones/{empresa}/{tipo}/{num}` con caché en el provider, desplegando los movimientos/artículos (`RequisicionDetalleLinea`) con sus estados, solicitante, observaciones y cantidades.
-  - **Procesamiento en Lote (FAB):** Cada línea permite validar y capturar cantidades autorizadas/entregadas ($>0 \land \le \text{máximo permitido}$) y seleccionarse mediante checkbox. El botón flotante `FloatingActionButton` ejecuta la aprobación (`PUT /aprobar`) o entrega (`PUT /entregar`) masiva, notificando vía `SnackBar` y refrescando la bandeja.
+  - **Procesamiento en Lote (FAB 'Procesar Selección'):** Las cantidades sugeridas de aprobación y entrega se toman automáticamente como válidas al marcar la casilla del documento cabecera en `RequisitionActionCard` (mediante `selectDocumentWithSuggestedQuantities` en `RequisitionApprovalProvider`), o bien pueden ajustarse individualmente por artículo en el `TextField` dentro del rango permitido ($>0 \land \le \text{máximo permitido}$). El botón flotante institucional `FloatingActionButton` ("Procesar Selección") ejecuta la aprobación (`PUT /aprobar`) o entrega (`PUT /entregar`) masiva, notificando vía `SnackBar` institucional y refrescando la bandeja.
 
 ---
 

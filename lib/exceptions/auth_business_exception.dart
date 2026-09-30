@@ -3,12 +3,22 @@
 /// Diferencia errores de negocio (credenciales incorrectas, sesión expirada,
 /// permisos insuficientes) de errores técnicos genéricos ([Exception]).
 ///
-/// Uso recomendado: lanzar desde [HttpAuthRepository] y capturar en
-/// [AuthProvider] para transformar en estados de UI descriptivos.
+/// Separa el mensaje amigable de usuario ([message]) de los detalles
+/// técnicos requeridos para depuración ([code], [technicalDetails], [statusCode], [endpoint]).
 class AuthBusinessException implements Exception {
   final String message;
+  final String? code;
+  final String? technicalDetails;
+  final int? statusCode;
+  final String? endpoint;
 
-  const AuthBusinessException(this.message);
+  const AuthBusinessException(
+    this.message, {
+    this.code,
+    this.technicalDetails,
+    this.statusCode,
+    this.endpoint,
+  });
 
   @override
   String toString() => message;

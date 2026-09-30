@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:sigo_app/exceptions/auth_business_exception.dart';
 import 'package:sigo_app/modules/auth/repositories/auth_repository.dart';
 import 'package:sigo_app/modules/auth/models/auth_model.dart';
 import 'package:sigo_app/modules/physical_count/models/physical_count_model.dart';
@@ -12,6 +13,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   String? _errorMessage;
+  AuthBusinessException? _lastAuthException;
   String? _token;
   String? _cedula; // Para saber qué contador inició sesión
   String? _username;
@@ -24,6 +26,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  AuthBusinessException? get lastAuthException => _lastAuthException;
   bool get isAuthenticated => _token != null;
   bool get isContador => _isContador;
   String? get currentCedula => _cedula;
@@ -51,6 +54,7 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> login(String username, String password) async {
     _isLoading = true;
     _errorMessage = null;
+    _lastAuthException = null;
     notifyListeners();
 
     try {
@@ -88,9 +92,16 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
+    } on AuthBusinessException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      _lastAuthException = e;
+      notifyListeners();
+      return false;
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _lastAuthException = null;
       notifyListeners();
       return false;
     }
@@ -99,6 +110,7 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> mockLogin(String username, String password) async {
     _isLoading = true;
     _errorMessage = null;
+    _lastAuthException = null;
     notifyListeners();
 
     await Future.delayed(const Duration(milliseconds: 800));
@@ -123,6 +135,7 @@ class AuthProvider extends ChangeNotifier {
     } else {
       _isLoading = false;
       _errorMessage = 'Credenciales inválidas. (Usa operador@inventario.com / 123456)';
+      _lastAuthException = null;
       notifyListeners();
       return false;
     }
@@ -131,6 +144,7 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> loginContador(String cedula, String codigoTemporal) async {
     _isLoading = true;
     _errorMessage = null;
+    _lastAuthException = null;
     notifyListeners();
 
     try {
@@ -164,9 +178,16 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
+    } on AuthBusinessException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      _lastAuthException = e;
+      notifyListeners();
+      return false;
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _lastAuthException = null;
       notifyListeners();
       return false;
     }
@@ -179,6 +200,7 @@ class AuthProvider extends ChangeNotifier {
 
     _isLoading = true;
     _errorMessage = null;
+    _lastAuthException = null;
     notifyListeners();
 
     try {
@@ -186,9 +208,16 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return pendientes;
+    } on AuthBusinessException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      _lastAuthException = e;
+      notifyListeners();
+      rethrow;
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _lastAuthException = null;
       notifyListeners();
       rethrow;
     }
@@ -202,6 +231,7 @@ class AuthProvider extends ChangeNotifier {
     _isContador = false;
     _isLoading = false;
     _errorMessage = null;
+    _lastAuthException = null;
 
     try {
       await Future.wait([

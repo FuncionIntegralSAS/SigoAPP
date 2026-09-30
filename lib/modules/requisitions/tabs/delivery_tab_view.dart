@@ -51,7 +51,7 @@ class DeliveryTabView extends StatelessWidget {
                   },
                   icon: const Icon(Icons.local_shipping_outlined),
                   label: Text(
-                    'Registrar Entrega (${provider.selectedDocumentsCount} ${provider.selectedDocumentsCount == 1 ? 'doc.' : 'docs.'})',
+                    'Procesar Selección (${provider.selectedDocumentsCount} ${provider.selectedDocumentsCount == 1 ? 'doc.' : 'docs.'})',
                   ),
                 )
               : null,

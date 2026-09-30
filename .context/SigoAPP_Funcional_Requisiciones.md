@@ -27,6 +27,13 @@ El Módulo de Requisiciones gestiona el flujo operativo de despacho de insumos, 
    - Al abrir la pantalla de Requisiciones, la app móvil únicamente carga el catálogo de empresas (`GET /api/v1/empresas/getAll`) y permanece en espera reactiva con ícono de calendario hasta que el operador selecciona una fecha inicial (`desde`).
    - La API `GET /api/v1/requisiciones` entrega la bandeja de **Documentos de Requisición** (`RequisicionResumen`), correspondiente al Nivel 1 (Master).
    - Los movimientos y líneas de artículos (`RequisicionDetalleLinea`) se descargan bajo demanda (Nivel 2 - Detail) únicamente cuando el operador interactúa o expande el documento específico (`GET /api/v1/requisiciones/{empresa}/{tipoDocumento}/{numero}`).
+6. **Selección Masiva por Documento con Cifras Sugeridas:**
+   - Tanto en la pestaña de **Aprobación** (`in`) como en la de **Entrega** (`ap`), el operador puede seleccionar un documento completo desde la casilla de verificación (checkbox) de su cabecera en `RequisitionActionCard`.
+   - Al marcar el documento, la aplicación toma automáticamente las cifras sugeridas como válidas para todas sus líneas aplicables:
+     - En **Aprobación (`in`)**: Cantidad pendiente o solicitada de las líneas activas (`linea.pendiente > 0 ? linea.pendiente : linea.solicitada`).
+     - En **Entrega (`ap`)**: Cantidad pendiente por entregar (`linea.pendiente > 0 ? linea.pendiente : (linea.aprobada - linea.entregada)`), omitiendo líneas ya finalizadas (`en`, `ae`, `rg`).
+   - Si el detalle del documento aún no se ha descargado a memoria, la aplicación lo consulta bajo demanda de forma asíncrona (`selectDocumentWithSuggestedQuantities`) con retroalimentación visual antes de marcar las líneas.
+   - Esta acción habilita directamente el botón de acción institucional **"Procesar Selección"** (`FloatingActionButton`), permitiendo al usuario continuar el flujo sin necesidad de digitar manualmente las cantidades de cada artículo.
 
 ---
 

@@ -67,7 +67,9 @@ SigoAPP es una aplicación Flutter de gestión administrativa empresarial.
 - **Endpoints disponibles:** [Listar endpoints o indicar si requiere soporte Mock con simulación de latencia y errores]
 
 ## Reglas Obligatorias y de Red
-[Incluir solo las reglas de .agents/AGENTS.md y Rules_Networking.md que sean relevantes para la tarea]
+- **Mapeo de Red (Rules_Networking.md §4):** Repositorios deben implementar el método auxiliar `_mapDioException` para extraer `message` (o `msg`) y códigos de catálogo del backend, retornando la excepción tipada (`*BusinessException`) con `technicalDetails`. Jamás propagar la traza técnica interna de Dio (`e.message`) a la UI.
+- **Despliegue Visual de Error (Guía Estilos §4.5 / utils_documentation.md):** Todo error de red o autenticación debe presentarse mediante `DialogUtils.showErrorDialog` o `DialogUtils.showInferredErrorDialog` (con mensaje amigable y acordeón técnico) o `AppErrorWidget`. Queda prohibido el uso de `SnackBar` rojos genéricos para errores de API.
+[Incluir otras reglas de .agents/AGENTS.md y Rules_Networking.md relevantes para la tarea]
 
 ## Módulo Afectado y Permisos
 - **Módulo:** **[Nombre del Módulo]** — [Descripción breve]
@@ -88,6 +90,7 @@ SigoAPP es una aplicación Flutter de gestión administrativa empresarial.
 [Descripción clara, concreta y sin ambigüedades de lo que el agente receptor debe hacer]
 
 ## Restricciones
+- Respetar Clean Architecture (Repositorio mapea excepciones a BusinessException; Provider gestiona estado reactivo; Screen presenta UI).
 - Respetar convenciones de nomenclatura (español lowerCamelCase en modelos).
 - No disparar llamadas de red en constructores de Providers (vincular a ciclo de vida de UI).
 - Al finalizar la tarea, verificar si los documentos en `.context/` necesitan actualización y proponer los cambios al usuario.
@@ -115,3 +118,7 @@ Entrega el prompt generado como un **bloque de código markdown** listo para cop
 6. **Siempre incluye la regla de sincronización de documentación**: Debe figurar como restricción final en el prompt generado.
 
 7. **El prompt debe ser autocontenido**: El agente receptor no debería necesitar formular preguntas de clarificación inicial para empezar a trabajar.
+
+8. **Estandarización de Excepciones y Modales**: Como el marcador `<!-- MODULE-ROUTER-CONTEXT -->` exime al agente receptor de leer `Rules_Networking.md` y `utils_documentation.md`, si la tarea involucra red o UI, **debes incluir obligatoriamente** en `## Reglas Obligatorias y de Red` y `## Restricciones`:
+   - El patrón canónico `_mapDioException` en repositorios, abstrayendo `e.message` de Dio en excepciones tipadas (`*BusinessException`).
+   - El uso exclusivo de `DialogUtils.showErrorDialog` / `DialogUtils.showInferredErrorDialog` (para modales) o `AppErrorWidget` (en pantalla), prohibiendo `SnackBar` rojos para errores de API.

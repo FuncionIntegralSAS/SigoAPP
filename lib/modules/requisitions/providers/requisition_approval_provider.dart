@@ -295,19 +295,77 @@ class RequisitionApprovalProvider extends ChangeNotifier {
   /// Retorna la cantidad seleccionada para un movimiento
   int getSelectedItemQuantity(String id) => _selectedItems[id] ?? 0;
 
-  /// Selecciona todas las líneas autorizables de un documento con su cantidad máxima
+  /// Retorna la cantidad sugerida para una línea según la pestaña activa ('in' = aprobación, 'ap' = entrega).
+  int getSuggestedQuantityForLine(RequisicionDetalleLinea linea, String currentTabStatus) {
+    if (currentTabStatus == 'in') {
+      if (linea.pendiente > 0) return linea.pendiente.round();
+      if (linea.solicitada > 0) return linea.solicitada.round();
+      return 0;
+    }
+    if (currentTabStatus == 'ap') {
+      if (linea.pendiente > 0) return linea.pendiente.round();
+      if (linea.aprobada > 0) {
+        final pending = (linea.aprobada - linea.entregada).round();
+        return pending > 0 ? pending : 0;
+      }
+      if (linea.solicitada > 0) return linea.solicitada.round();
+      return 0;
+    }
+    return 0;
+  }
+
+  /// Selecciona todas las líneas autorizables o entregables de un documento con su cantidad sugerida
   void selectAllForDocument(RequisicionDetalle detail, String currentTabStatus) {
     for (final linea in detail.lineas) {
-      final int maxAllowed = currentTabStatus == 'in'
-          ? linea.solicitada.round()
-          : linea.aprobada.round();
-      if (maxAllowed > 0) {
+      final effectiveEstado =
+          linea.estado.isNotEmpty ? linea.estado.toLowerCase() : detail.estado.toLowerCase();
+      // Omitir líneas no aplicables según la etapa
+      if (currentTabStatus == 'in' && effectiveEstado.isNotEmpty && effectiveEstado != 'in') {
+        continue;
+      }
+      if (currentTabStatus == 'ap' &&
+          (effectiveEstado == 'en' || effectiveEstado == 'ae' || effectiveEstado == 'rg')) {
+        continue;
+      }
+
+      final int suggested = getSuggestedQuantityForLine(linea, currentTabStatus);
+      if (suggested > 0) {
         final id =
             '${detail.empresa}_${detail.tipoDocumento}_${detail.numero}_${linea.bodega}_${linea.articulo}_${linea.secuencia}';
-        _selectedItems[id] = maxAllowed;
+        _selectedItems[id] = suggested;
       }
     }
     notifyListeners();
+  }
+
+  /// Selecciona todas las líneas de un documento aplicando las cantidades sugeridas
+  /// para la pestaña actual ('in' = aprobación, 'ap' = entrega).
+  /// Si el detalle aún no se ha cargado en memoria, lo consulta asíncronamente
+  /// garantizando que las líneas queden seleccionadas una vez obtenidas.
+  Future<void> selectDocumentWithSuggestedQuantities(
+    String empresa,
+    String tipoDocumento,
+    dynamic numero,
+    String currentTabStatus,
+  ) async {
+    final key = _docKey(empresa, tipoDocumento, numero);
+    RequisicionDetalle? detail = _documentDetails[key];
+
+    if (detail == null) {
+      if (_loadingDetails[key] == true) {
+        while (_loadingDetails[key] == true) {
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
+        detail = _documentDetails[key];
+      } else {
+        await fetchDocumentDetail(empresa, tipoDocumento, numero);
+        detail = _documentDetails[key];
+      }
+    }
+
+    if (detail != null) {
+      selectAllForDocument(detail, currentTabStatus);
+    }
   }
 
   /// Deselecciona todas las líneas de un documento
@@ -344,6 +402,22 @@ class RequisitionApprovalProvider extends ChangeNotifier {
 
     try {
       final String targetStatus = currentTabStatus == 'in' ? 'ap' : 'en';
+
+      // Aseguramos que todos los documentos que tienen movimientos seleccionados tengan su detalle en memoria
+      final docKeys = <String>{};
+      for (final key in _selectedItems.keys) {
+        final parts = key.split('_');
+        if (parts.length >= 3) {
+          docKeys.add('${parts[0]}_${parts[1]}_${parts[2]}');
+        }
+      }
+      for (final docKey in docKeys) {
+        final parts = docKey.split('_');
+        final ternaKey = _docKey(parts[0], parts[1], parts[2]);
+        if (!_documentDetails.containsKey(ternaKey)) {
+          await fetchDocumentDetail(parts[0], parts[1], parts[2]);
+        }
+      }
 
       // Reconstruimos los modelos detallados a partir de los documentos consultados en memoria
       final allLoadedLines = <RequisitionModel>[];

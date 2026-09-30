@@ -116,47 +116,47 @@ class _RequisitionActionCardState extends State<RequisitionActionCard> {
                 title: Row(
                   children: [
                     // Checkbox a nivel del Documento como indicador / selector masivo
-                    Transform.scale(
-                      scale: 0.9,
-                      child: SizedBox(
+                    if (isLoadingDetail)
+                      const SizedBox(
                         width: 24,
                         height: 24,
-                        child: Checkbox(
-                          value: isDocModified,
-                          activeColor: Theme.of(context).colorScheme.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          onChanged: (bool? checked) async {
-                            if (checked == true) {
-                              if (detail != null) {
-                                provider.selectAllForDocument(detail, widget.currentTabStatus);
+                        child: Padding(
+                          padding: EdgeInsets.all(4.0),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    else
+                      Transform.scale(
+                        scale: 0.9,
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: Checkbox(
+                            value: isDocModified,
+                            activeColor: Theme.of(context).colorScheme.primary,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            onChanged: (bool? checked) async {
+                              if (checked == true) {
+                                await provider.selectDocumentWithSuggestedQuantities(
+                                  doc.empresa,
+                                  doc.tipoDocumento,
+                                  doc.numero,
+                                  widget.currentTabStatus,
+                                );
                               } else {
-                                await provider.fetchDocumentDetail(
+                                provider.deselectDocumentByTerna(
                                   doc.empresa,
                                   doc.tipoDocumento,
                                   doc.numero,
                                 );
-                                final loaded = provider.getDetail(
-                                  doc.empresa,
-                                  doc.tipoDocumento,
-                                  doc.numero,
-                                );
-                                if (loaded != null) {
-                                  provider.selectAllForDocument(loaded, widget.currentTabStatus);
-                                }
                               }
-                            } else {
-                              provider.deselectDocumentByTerna(
-                                doc.empresa,
-                                doc.tipoDocumento,
-                                doc.numero,
-                              );
-                            }
-                          },
+                            },
+                          ),
                         ),
                       ),
-                    ),
                     const SizedBox(width: 6),
                     Icon(
                       Icons.description_outlined,
@@ -497,13 +497,8 @@ class _RequisitionMovementRowState extends State<_RequisitionMovementRow> {
       '${widget.documentEmpresa}_${widget.documentTipoDocumento}_${widget.documentNumero}_${widget.linea.bodega}_${widget.linea.articulo}_${widget.linea.secuencia}';
 
   int get _maxAllowedQuantity {
-    if (widget.currentTabStatus == 'in') {
-      return widget.linea.solicitada.round();
-    }
-    if (widget.currentTabStatus == 'ap') {
-      return widget.linea.aprobada.round();
-    }
-    return 0;
+    final provider = context.read<RequisitionApprovalProvider>();
+    return provider.getSuggestedQuantityForLine(widget.linea, widget.currentTabStatus);
   }
 
   @override

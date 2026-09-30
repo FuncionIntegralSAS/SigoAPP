@@ -491,6 +491,44 @@ class DialogUtils {
     );
   }
 
+  /// Muestra un SnackBar de error estandarizado (Rojo Carmesí institucional).
+  ///
+  /// Indicado para retroalimentación ágil de fallos transitorios (ej. credenciales
+  /// incorrectas o validaciones de formulario) que no requieren bloquear la
+  /// pantalla del usuario con un diálogo modal.
+  static void showErrorSnackBar(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 4),
+    SnackBarAction? action,
+  }) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red.shade800,
+        behavior: SnackBarBehavior.floating,
+        duration: duration,
+        action: action,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
   /// Muestra un diálogo de confirmación estandarizado (r: 12, botones r: 8).
   static Future<bool?> showConfirmationDialog(
     BuildContext context, {

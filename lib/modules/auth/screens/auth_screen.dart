@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:sigo_app/modules/auth/providers/auth_provider.dart';
 import 'package:sigo_app/utils/app_config.dart';
+import 'package:sigo_app/utils/dialog_utils.dart';
 
 import 'package:sigo_app/modules/debug/screens/account_screen.dart';
 
@@ -36,12 +37,30 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final success = await authProvider.login(email, password);
     if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Credenciales inválidas.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      final lastException = authProvider.lastAuthException;
+      final code = lastException?.code;
+      final statusCode = lastException?.statusCode;
+
+      // Bloqueos de cuenta (SIGAPP_407, SIGAPP_406) o errores internos de servidor (500) requieren diálogo modal
+      final requiresModalDialog =
+          code == 'SIGAPP_407' || code == 'SIGAPP_406' || statusCode == 500;
+
+      if (requiresModalDialog) {
+        await DialogUtils.showErrorDialog(
+          context,
+          title: 'Error al Iniciar Sesión',
+          message: authProvider.errorMessage ?? 'No fue posible iniciar sesión.',
+          technicalDetails: lastException?.technicalDetails,
+          statusCode: lastException?.statusCode,
+          endpoint: lastException?.endpoint,
+        );
+      } else {
+        // Para credenciales incorrectas (SIGAPP_401, SIGAPP_405) o errores de red transitorios: SnackBar no intrusivo
+        DialogUtils.showErrorSnackBar(
+          context,
+          authProvider.errorMessage ?? 'Usuario o contraseña incorrectos.',
+        );
+      }
     }
   }
 
@@ -52,11 +71,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final success = await authProvider.mockLogin(email, password);
     if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Credenciales inválidas.'),
-          backgroundColor: Colors.red,
-        ),
+      DialogUtils.showErrorSnackBar(
+        context,
+        authProvider.errorMessage ?? 'Credenciales inválidas.',
       );
     }
   }

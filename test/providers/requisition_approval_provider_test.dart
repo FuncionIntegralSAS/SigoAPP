@@ -207,5 +207,69 @@ void main() {
       expect(provider.selectedCount, 0);
       expect(provider.selectedDocumentsCount, 0);
     });
+
+    test('getSuggestedQuantityForLine calcula correctamente cantidades para in y ap', () {
+      const lineaIn = RequisicionDetalleLinea(
+        secuencia: 1,
+        articulo: 'A1',
+        descripcion: 'Item 1',
+        unidad: 'UND',
+        bodega: 'B1',
+        estado: 'in',
+        solicitada: 10,
+        aprobada: 0,
+        entregada: 0,
+        anulada: 0,
+        recibida: 0,
+        pendiente: 10,
+      );
+
+      expect(provider.getSuggestedQuantityForLine(lineaIn, 'in'), 10);
+
+      const lineaApParcial = RequisicionDetalleLinea(
+        secuencia: 2,
+        articulo: 'A2',
+        descripcion: 'Item 2',
+        unidad: 'UND',
+        bodega: 'B1',
+        estado: 'ap',
+        solicitada: 10,
+        aprobada: 10,
+        entregada: 3,
+        anulada: 0,
+        recibida: 0,
+        pendiente: 7,
+      );
+
+      expect(provider.getSuggestedQuantityForLine(lineaApParcial, 'ap'), 7);
+
+      const lineaApTotalmenteEntregada = RequisicionDetalleLinea(
+        secuencia: 3,
+        articulo: 'A3',
+        descripcion: 'Item 3',
+        unidad: 'UND',
+        bodega: 'B1',
+        estado: 'en',
+        solicitada: 5,
+        aprobada: 5,
+        entregada: 5,
+        anulada: 0,
+        recibida: 0,
+        pendiente: 0,
+      );
+
+      expect(provider.getSuggestedQuantityForLine(lineaApTotalmenteEntregada, 'ap'), 0);
+    });
+
+    test('selectDocumentWithSuggestedQuantities carga detalle y selecciona sugeridos', () async {
+      expect(provider.selectedDocumentsCount, 0);
+
+      await provider.selectDocumentWithSuggestedQuantities('01', 'RS', '1001', 'in');
+
+      expect(provider.selectedDocumentsCount, 1);
+      expect(provider.isDocumentModified('01', 'RS', '1001'), isTrue);
+      expect(provider.getSelectedItemQuantity('01_RS_1001_BOD01_ART-001_1'), 10);
+      expect(provider.getSelectedItemQuantity('01_RS_1001_BOD01_ART-002_2'), 5);
+    });
   });
 }
