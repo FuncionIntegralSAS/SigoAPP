@@ -48,26 +48,77 @@ void main() {
     });
 
     // Test 4: Verificar los operadores de igualdad (== y hashCode)
-    test('Dos instancias con el mismo Code y CostCenter deben ser iguales', () {
+    test('Dos instancias con el mismo Code, Placa y CostCenter deben ser iguales', () {
       final articleA = baseArticle;
       // Una nueva instancia (diferente referencia de memoria) con los mismos datos clave
       final articleB = ArticleModel(
         id: 1,
         codigoActivo: 'PC001',
-        placa: 'OTRA PLACA',
+        placa: 'ABC-123',
         nombre: 'OTRO NOMBRE',
         responsable: 'OTRO RESPONSABLE',
         bodega: 'BOG001',
       );
 
-      // Test de igualdad: deben ser iguales porque 'id', 'codigoActivo' y 'bodega' coinciden.
+      // Test de igualdad: deben ser iguales porque 'id', 'codigoActivo', 'placa' y 'bodega' coinciden.
       expect(articleA, articleB);
-      // Test de desigualdad: si el código es diferente, no deben ser iguales.
+      // Test de desigualdad: si el código o placa es diferente, no deben ser iguales.
       final articleC = articleA.copyWith(codigoActivo: 'PC002');
       expect(articleA, isNot(articleC));
 
+      final articleD = articleA.copyWith(placa: 'OTRA PLACA');
+      expect(articleA, isNot(articleD));
+
       // Test de hashCode: si son iguales, sus hashCodes también deben ser iguales.
       expect(articleA.hashCode, articleB.hashCode);
+    });
+
+    test('fromJson mapea id como PK numérica independiente del código de activo', () {
+      final json = {
+        'id': '100201',
+        'name': 'CONSTRUCC. Y MEJORAS',
+      };
+      final article = ArticleModel.fromJson(json);
+      expect(article.id, 100201);
+      expect(article.codigoActivo, isEmpty); // id y codigoActivo son conceptos completamente distintos
+      expect(article.nombre, 'CONSTRUCC. Y MEJORAS');
+      expect(article.placa, isEmpty);
+    });
+
+    test('fromJson mapea el nuevo contrato oficial de Spring Boot (artiCodi, artiDesc, artiPlac)', () {
+      final jsonItem1 = {
+        'artiCodi': 'ART0001',
+        'artiDesc': 'SILLA ERGONOMICA OFICINA',
+        'artiPlac': 'PL-5892',
+      };
+      final art1 = ArticleModel.fromJson(jsonItem1);
+      expect(art1.id, isNull); // El código de negocio no es la PK id
+      expect(art1.codigoActivo, 'ART0001');
+      expect(art1.nombre, 'SILLA ERGONOMICA OFICINA');
+      expect(art1.placa, 'PL-5892');
+
+      final jsonItem2 = {
+        'artiCodi': 'ART0002',
+        'artiDesc': 'MONITOR 24 PULGADAS DELL',
+        'artiPlac': null,
+      };
+      final art2 = ArticleModel.fromJson(jsonItem2);
+      expect(art2.id, isNull);
+      expect(art2.codigoActivo, 'ART0002');
+      expect(art2.nombre, 'MONITOR 24 PULGADAS DELL');
+      expect(art2.placa, isEmpty);
+    });
+
+    test('fromJson mantiene compatibilidad con acfiPlac si llega del backend', () {
+      final jsonWithAcfiPlac = {
+        'artiCodi': '2001',
+        'artiDesc': 'Bomba Centrífuga',
+        'acfiPlac': 'BOM-1234',
+      };
+      final art = ArticleModel.fromJson(jsonWithAcfiPlac);
+      expect(art.codigoActivo, '2001');
+      expect(art.nombre, 'Bomba Centrífuga');
+      expect(art.placa, 'BOM-1234');
     });
   });
 }

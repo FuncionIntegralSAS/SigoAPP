@@ -13,7 +13,7 @@ Este documento centraliza todas las decisiones, cambios implementados y pendient
 | Variables de entorno | ✅ Implementado | `flutter_dotenv` + `.env` / `.env.production` |
 | Target SDK | ✅ OK | Delegado al Flutter SDK (resuelve API 35+) |
 | Permiso INTERNET (release) | ✅ Implementado | Agregado a `AndroidManifest.xml` principal |
-| Application ID | ✅ Implementado | `com.funcionintegralsas.sigoapp` |
+| Application ID y MainActivity | ✅ Implementado | `com.funcionintegralsas.sigoapp` en `build.gradle.kts` y paquete nativo Kotlin |
 | Nombre de la app | ✅ Implementado | `"SIGAPP"` en todas las plataformas |
 | Logger centralizado | ✅ Implementado | `AppLogger` con `kDebugMode` |
 | Credenciales mock en UI | ✅ Implementado | Eliminadas de la pantalla de login |
@@ -42,12 +42,16 @@ Ambos archivos están declarados como `assets` en `pubspec.yaml`.
 **Archivo**: [`lib/utils/app_config.dart`](../lib/utils/app_config.dart)
 
 Clase estática que:
-- Valida que `API_URL` esté definida. Si está ausente, lanza una `Exception` con mensaje claro (no usa fallback silencioso).
-- Provee el método `AppConfig.createDio()` que retorna una instancia de `Dio` con:
-  - `baseUrl` obtenida de `dotenv`
+- Gestiona la **URL base dinámica obtenida por Código QR**: En tiempo de ejecución, la app no consulta las URLs de dominio a un servicio de directorio remoto del backend. La URL base se decodifica directamente a partir del código QR escaneado en `DomainScannerScreen`, se valida sintácticamente y se persiste en almacenamiento seguro cifrado (`FlutterSecureStorage` bajo la clave `domain_base_url`).
+- Si existe una URL almacenada en storage, tiene prioridad absoluta sobre cualquier valor por defecto o fallback.
+- Provee el método `AppConfig.createDio()` que retorna una instancia única de `Dio` con:
+  - `baseUrl` obtenida de `_storedUrl` (o fallback inicial)
   - `connectTimeout`, `receiveTimeout` y `sendTimeout` de 15 segundos
-  - `JsonInterceptor` precargado
+  - `AuthInterceptor`, `MockHttpInterceptor` y `JsonInterceptor` precargados
+- Expone `AppConfig.updateBaseUrl(newUrl)` para inyectar dinámicamente el nuevo dominio en `Dio.options.baseUrl` y notificar reactivamente a la UI (`domainConfiguredNotifier`).
 - Es la **única fuente de creación de instancias de `Dio`** en el proyecto.
+
+> 🔒 **Nota de Seguridad AppSec (OWASP MASVS)**: El empaquetado de archivos `.env` en los `assets` del APK y el uso de `android:usesCleartextTraffic="true"` en el manifiesto representan vulnerabilidades de descompresión inversa (OWASP M1) y tráfico no cifrado (OWASP M5). Para el despliegue formal a producción, se debe migrar la inyección de variables a `--dart-define-from-file` y forzar `android:usesCleartextTraffic="false"` junto con almacenamiento seguro vía `EncryptedSharedPreferences`.
 
 ```dart
 // Uso correcto en main.dart:
@@ -72,15 +76,33 @@ final authRepository = HttpAuthRepository(backendDio);
 
 ## 3. Configuración Android
 
-### 3.1 Application ID y Namespace
-**Archivo**: [`android/app/build.gradle.kts`](../android/app/build.gradle.kts)
+### 3.1 Application ID, Namespace y MainActivity
+**Archivos**:
+- [`android/app/build.gradle.kts`](../android/app/build.gradle.kts)
+- [`android/app/src/main/kotlin/com/funcionintegralsas/sigoapp/MainActivity.kt`](../android/app/src/main/kotlin/com/funcionintegralsas/sigoapp/MainActivity.kt)
+- [`android/app/src/main/AndroidManifest.xml`](../android/app/src/main/AndroidManifest.xml)
 
 ```kotlin
+// android/app/build.gradle.kts
 namespace = "com.funcionintegralsas.sigoapp"
 applicationId = "com.funcionintegralsas.sigoapp"
 ```
 
-> ⚠️ **Crítico**: Google Play rechaza cualquier app con `com.example.*` en el `applicationId`. Este cambio ya fue aplicado.
+```kotlin
+// android/app/src/main/kotlin/com/funcionintegralsas/sigoapp/MainActivity.kt
+package com.funcionintegralsas.sigoapp
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
+```
+
+> ⚠️ **Crítico — Alineación de Namespace y Activity**:
+> En Android OS, `AndroidManifest.xml` define `android:name=".MainActivity"`. Al empaquetar y ejecutar, el sistema concatena el `namespace` (`com.funcionintegralsas.sigoapp`) para resolver el nombre calificado de la clase (`com.funcionintegralsas.sigoapp.MainActivity`).
+> Si `MainActivity.kt` conserva un paquete o estructura de directorios desalineada (como el legado `com.example.flutter_application_1`), el cargador de clases de Android (Dalvik/ART) lanza una excepción fatal `ClassNotFoundException` al abrir el APK, provocando el cierre instantáneo de la app antes de inicializar el motor de Flutter.
+> Para un análisis técnico exhaustivo de este fallo y su mecánica en bajo nivel, consultar:
+> 📄 **[`docs/DIAGNOSTICO_CRASH_ANDROID_ORIGINAL.md`](../docs/DIAGNOSTICO_CRASH_ANDROID_ORIGINAL.md)**.
+
 
 ### 3.2 Permiso INTERNET
 **Archivo**: [`android/app/src/main/AndroidManifest.xml`](../android/app/src/main/AndroidManifest.xml)

@@ -229,6 +229,127 @@ void main() {
       expect(provider.articles.length, 2);
       expect(provider.articles.map((a) => a.codigoActivo), containsAll(['ASSET99', 'ASSET100']));
     });
+
+    group('loadArticlesByWarehouse', () {
+      test('Carga exitosa de artículos actualizando articles y estado a success', () async {
+        mockRepository.articlesToReturn = [
+          const ArticleModel(
+            id: 1,
+            codigoActivo: 'ART001',
+            nombre: 'Computador Portatil',
+            placa: 'PORT-001',
+            bodega: 'BOD01',
+          ),
+          const ArticleModel(
+            id: 2,
+            codigoActivo: 'ART002',
+            nombre: 'Monitor LED',
+            placa: 'MON-002',
+            bodega: 'BOD01',
+          ),
+        ];
+
+        final future = provider.loadArticlesByWarehouse('BOD01', 'EMP1');
+        expect(provider.state, InventoryState.loading);
+
+        await future;
+
+        expect(provider.state, InventoryState.success);
+        expect(provider.articles.length, 2);
+        expect(provider.articles.first.codigoActivo, 'ART001');
+        expect(mockRepository.getArticlesCallCount, 1);
+        expect(mockRepository.lastIdBodegaPassedToGetArticles, 'BOD01');
+        expect(mockRepository.lastCompanyIdPassedToGetArticles, 'EMP1');
+      });
+
+      test('Manejo de parámetros vacíos o ALL limpia la lista sin llamar al repositorio', () async {
+        mockRepository.articlesToReturn = [
+          const ArticleModel(
+            codigoActivo: 'ART001',
+            nombre: 'Silla Ergonómica',
+            placa: 'SIL-001',
+            bodega: 'BOD01',
+          ),
+        ];
+        await provider.loadArticlesByWarehouse('BOD01', 'EMP1');
+        expect(provider.articles.length, 1);
+
+        // Caso idBodega == 'ALL'
+        await provider.loadArticlesByWarehouse('ALL', 'EMP1');
+        expect(provider.articles, isEmpty);
+
+        // Caso idBodega vacía
+        provider.articles = [
+          const ArticleModel(
+            codigoActivo: 'ART001',
+            nombre: 'Silla Ergonómica',
+            placa: 'SIL-001',
+            bodega: 'BOD01',
+          ),
+        ];
+        await provider.loadArticlesByWarehouse('   ', 'EMP1');
+        expect(provider.articles, isEmpty);
+
+        // Caso companyId vacía
+        provider.articles = [
+          const ArticleModel(
+            codigoActivo: 'ART001',
+            nombre: 'Silla Ergonómica',
+            placa: 'SIL-001',
+            bodega: 'BOD01',
+          ),
+        ];
+        await provider.loadArticlesByWarehouse('BOD01', '   ');
+        expect(provider.articles, isEmpty);
+      });
+
+      test('Manejo de error 401/403 con mensaje de expiración de sesión', () async {
+        mockRepository.errorToThrow = DioException(
+          requestOptions: RequestOptions(path: '/api/v1/articulos/asignados/BOD01/EMP1'),
+          response: Response(
+            requestOptions: RequestOptions(path: '/api/v1/articulos/asignados/BOD01/EMP1'),
+            statusCode: 401,
+          ),
+        );
+
+        await provider.loadArticlesByWarehouse('BOD01', 'EMP1');
+        expect(provider.state, InventoryState.error);
+        expect(provider.articles, isEmpty);
+        expect(
+          provider.errorMessage,
+          'Su sesión ha expirado o no tiene permisos. Por favor, vuelva a iniciar sesión.',
+        );
+
+        // Caso 403
+        mockRepository.errorToThrow = DioException(
+          requestOptions: RequestOptions(path: '/api/v1/articulos/asignados/BOD01/EMP1'),
+          response: Response(
+            requestOptions: RequestOptions(path: '/api/v1/articulos/asignados/BOD01/EMP1'),
+            statusCode: 403,
+          ),
+        );
+
+        await provider.loadArticlesByWarehouse('BOD01', 'EMP1');
+        expect(provider.state, InventoryState.error);
+        expect(provider.articles, isEmpty);
+        expect(
+          provider.errorMessage,
+          'Su sesión ha expirado o no tiene permisos. Por favor, vuelva a iniciar sesión.',
+        );
+      });
+
+      test('Manejo de error general de red asigna mensaje de error específico', () async {
+        mockRepository.errorToThrow = Exception('Error de conexión o timeout');
+
+        await provider.loadArticlesByWarehouse('BOD01', 'EMP1');
+        expect(provider.state, InventoryState.error);
+        expect(provider.articles, isEmpty);
+        expect(
+          provider.errorMessage,
+          'Error al cargar artículos de la bodega.',
+        );
+      });
+    });
   });
 }
 
@@ -238,6 +359,9 @@ class _MockInventoryRepo implements InventoryRepository {
   List<ArticleModel> articlesToReturn = [];
   Exception? errorToThrow;
   int getCompaniesCallCount = 0;
+  int getArticlesCallCount = 0;
+  String? lastIdBodegaPassedToGetArticles;
+  String? lastCompanyIdPassedToGetArticles;
 
   @override
   Future<List<CompanyModel>> getCompanies() async {
@@ -257,6 +381,9 @@ class _MockInventoryRepo implements InventoryRepository {
     String idBodega, [
     String? companyId,
   ]) async {
+    getArticlesCallCount++;
+    lastIdBodegaPassedToGetArticles = idBodega;
+    lastCompanyIdPassedToGetArticles = companyId;
     if (errorToThrow != null) throw errorToThrow!;
     return articlesToReturn;
   }

@@ -17,6 +17,7 @@ Este documento contiene el registro histórico de las evoluciones arquitectónic
    - `lib/shared/`: Modelos y selectores reutilizables entre múltiples módulos (`CompanyModel`, `WarehouseModel`, dropdowns estándar).
 2. **Estandarización de Sentencias Import**: Se migraron 400 sentencias de importación hacia rutas canónicas `package:sigo_app/modules/...` y `package:sigo_app/shared/...`, eliminando ambigüedades de rutas relativas.
 3. **Mantenimiento y Aislamiento de Tests**: Se actualizaron las suites de pruebas unitarias garantizando el 100% de éxito (160/160 tests aprobados) y cero advertencias en `flutter analyze`.
+4. **Corrección de Arranque Nativo en Android (Crash Dalvik/ART)**: Se corrigió la desalineación entre el `namespace` de Gradle (`com.funcionintegralsas.sigoapp`) y la ubicación física de `MainActivity.kt`. Se reubicó el archivo a `android/app/src/main/kotlin/com/funcionintegralsas/sigoapp/MainActivity.kt` con su declaración de paquete respectiva y se eliminó el árbol obsoleto `com/example/`. Esto solucionó la excepción `ClassNotFoundException` al abrir el APK en dispositivos físicos. Documentación completa en `docs/DIAGNOSTICO_CRASH_ANDROID_ORIGINAL.md`.
 
 ## Control de Cambios e Histórico (v1.7 a v1.8)
 

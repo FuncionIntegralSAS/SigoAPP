@@ -198,6 +198,35 @@ class InventoryProvider extends ChangeNotifier {
     }
   }
 
+  /// Consulta directamente los artículos asociados a una [idBodega] y [companyId].
+  /// Utilizado en flujos de consulta directa como la pantalla de Generación de QR.
+  Future<void> loadArticlesByWarehouse(String idBodega, String companyId) async {
+    if (idBodega.trim().isEmpty || idBodega == 'ALL' || companyId.trim().isEmpty) {
+      articles.clear();
+      _allArticles.clear();
+      notifyListeners();
+      return;
+    }
+
+    _setState(InventoryState.loading);
+    try {
+      final fetchedArticles = await _repository.getArticles(idBodega.trim(), companyId.trim());
+      final seen = <ArticleModel>{};
+      articles = fetchedArticles.where((a) => seen.add(a)).toList();
+      _allArticles = List.from(articles);
+      _setState(InventoryState.success);
+    } catch (e) {
+      articles.clear();
+      _allArticles.clear();
+      if (e is DioException &&
+          (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+        _setError('Su sesión ha expirado o no tiene permisos. Por favor, vuelva a iniciar sesión.');
+      } else {
+        _setError('Error al cargar artículos de la bodega.');
+      }
+    }
+  }
+
   void _setState(InventoryState newState) {
     _state = newState;
     if (newState != InventoryState.error) {

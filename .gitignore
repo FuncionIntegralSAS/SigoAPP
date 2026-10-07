@@ -49,4 +49,5 @@ app.*.map.json
 .env.production
 
 # Local specifications & handoff docs
+ESPECIFICACION_SIGOAPP_MOCK.md
 ESPECIFICACION_APP_FEEDBACK_ESTANDARIZADO.md

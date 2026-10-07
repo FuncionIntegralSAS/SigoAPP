@@ -238,6 +238,13 @@ Utilidad para el parseo de cadenas QR leídas por el scanner.
 
 **Justificación de ubicación**: Se mantiene en `utils/` y no en `services/` porque es una operación pura (sin estado, sin I/O, sin dependencias externas) que se limita a transformar una cadena de entrada en datos estructurados.
 
+### 7.2 app_config.dart
+Gestor centralizado de la configuración de red y persistencia del dominio.
+* Provee la instancia única de `Dio` preconfigurada con timeouts e interceptores (`AuthInterceptor`, `MockHttpInterceptor`, `JsonInterceptor`).
+* **Configuración Dinámica de Dominio por QR**: La URL base del backend ya no se solicita a un servicio de directorio remoto ni se resuelve en endpoints previos; se decodifica directamente a partir de la lectura de un código QR institucional en `DomainScannerScreen`, se valida sintácticamente (protocolo HTTP/HTTPS) y se persiste en almacenamiento seguro (`FlutterSecureStorage` bajo la clave `domain_base_url`).
+* La actualización mediante `AppConfig.updateBaseUrl(newUrl)` inyecta en caliente la nueva URL en `Dio.options.baseUrl` y notifica a la interfaz reactiva a través de `AppConfig.domainConfiguredNotifier`.
+* Provee las llaves globales desacopladas `AppConfig.navigatorKey` y `AppConfig.scaffoldMessengerKey` para navegación y notificaciones sin requerir `BuildContext`.
+
 ## 8. Providers (lib/providers/)
 ### 8.1 TransferRequestProvider
 Orquestador de estado para la creación de traslados físicos de activos.
@@ -254,7 +261,17 @@ Orquestador de estado para la aprobación, rechazo y aplicación de traslados.
 Provider para el formulario interactivo de creación de traspasos. Orquesta el flujo dinámico en cascada: Selección de Empresa -> Bodega Origen -> Colaboradores Fuente (`getPersonsByWarehouse`) -> Activos Asignados (`getAssetsByPerson`) con validación de bloqueo por trámite pendiente (`enTramite`) y compatibilidad multi-artículo PL/SQL (`centroInformacion` y `tercero`) -> Bodega Destino -> Colaboradores Destino -> Validación de personas distintas. Mantiene compatibilidad con catálogos legados para no alterar otros componentes.
 
 ### 8.4 AssetVerificationProvider
-Maneja la lógica de interpretación de códigos QR (separación de placa y artículo) y validación contra el servicio.
+Gestor de estado para el submódulo de Verificación y Auditoría de Activos (`AssetVerificationScreen`).
+* **Estado Administrado:**
+  - `verifiedAssetCodes` (`Set<String>`): Conjunto inmutable de códigos y placas de activos escaneados y validados satisfactoriamente contra la lista de activos asignados al custodio.
+  - `conflictAssets` (`List<ArticleModel>`): Lista inmutable de activos leídos mediante QR cuya pertenencia difiere del colaborador auditado.
+  - `selectedWarehouse` / `selectedOwner`: Almacenamiento referencial de selecciones de auditoría.
+* **Métodos Principales:**
+  - `verifyAsset(ArticleModel scannedAsset, List<ArticleModel> expectedAssets)`: Contrasta el activo escaneado contra la lista esperada mediante coincidencia bidireccional por código (`codigoActivo`) o placa (`placa`). Si coincide, lo incorpora a `verifiedAssetCodes`, lo remueve de `conflictAssets` si existía y retorna `true`. Si difiere, lo añade a `conflictAssets` (evitando duplicados) y retorna `false`.
+  - `isVerified(ArticleModel article)`: Helper reactivo que evalúa si un artículo específico se encuentra verificado por código o placa.
+  - `resetVerification()`: Limpia `verifiedAssetCodes` y `conflictAssets` al alternar de custodio responsable en la interfaz.
+  - `reset()`: Restablece completamente los filtros y colecciones de verificación; invocado centralizadamente por `AuthUtils.logout()`.
+  - `hasResponsibleConflict({articleResponsible})`: Verifica si el responsable informado en el activo difiere del seleccionado en sesión.
 
 ### 8.5 RequisitionApprovalProvider
 Gestor de estado centralizado para el flujo de requisiciones administrativas.
@@ -400,7 +417,7 @@ Resumen de los aspectos cubiertos:
 | Área | Estado | Referencia |
 |------|--------|------------|
 | Variables de entorno (`AppConfig`, `flutter_dotenv`) | ✅ | Sección 2 |
-| Application ID (`com.funcionintegralsas.sigoapp`) | ✅ | Sección 3.1 |
+| Application ID y MainActivity (`com.funcionintegralsas.sigoapp`) | ✅ | Sección 3.1 |
 | Permiso INTERNET en release | ✅ | Sección 3.2 |
 | Nombre de la app (`SIGAPP`) en todas las plataformas | ✅ | Sección 5 |
 | Logger centralizado (`AppLogger` + `avoid_print`) | ✅ | Sección 4 |

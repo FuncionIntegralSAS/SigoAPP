@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:sigo_app/modules/inventory/models/article_model.dart';
 import 'package:sigo_app/modules/inventory/models/geolocation_model.dart';
 import 'package:sigo_app/modules/inventory/models/transfer_person_model.dart';
+import 'package:sigo_app/modules/inventory/providers/asset_verification_provider.dart';
 import 'package:sigo_app/modules/inventory/providers/inventory_provider.dart';
 import 'package:sigo_app/modules/inventory/providers/geolocation_provider.dart';
 import 'package:sigo_app/modules/inventory/providers/transfer_form_provider.dart';
@@ -65,6 +66,7 @@ void main() {
     late InventoryProvider inventoryProvider;
     late TransferFormProvider formProvider;
     late TransferRequestProvider requestProvider;
+    late AssetVerificationProvider verificationProvider;
 
     setUp(() {
       inventoryService = MockInventoryService();
@@ -83,6 +85,8 @@ void main() {
         catalogRepository: catalogRepo,
       );
 
+      verificationProvider = AssetVerificationProvider();
+
       final messengerKey = GlobalKey<ScaffoldMessengerState>();
       final notificationService = InAppNotificationService(messengerKey);
       requestProvider = TransferRequestProvider(transferRepo, notificationService);
@@ -94,6 +98,7 @@ void main() {
           ChangeNotifierProvider<InventoryProvider>.value(value: inventoryProvider),
           ChangeNotifierProvider<TransferFormProvider>.value(value: formProvider),
           ChangeNotifierProvider<TransferRequestProvider>.value(value: requestProvider),
+          ChangeNotifierProvider<AssetVerificationProvider>.value(value: verificationProvider),
           ChangeNotifierProvider<GeolocationProvider>(
             create: (_) => GeolocationProvider(geoRepo),
           ),
@@ -241,6 +246,7 @@ void main() {
       // Intentar pulsar el botón de sugerencia de traspaso
       final suggestButton = find.text('Se sugiere realizar un traspaso');
       expect(suggestButton, findsOneWidget);
+      await tester.ensureVisible(suggestButton);
       await tester.tap(suggestButton);
       await tester.pumpAndSettle();
 
@@ -252,6 +258,92 @@ void main() {
         find.text('El activo ya se encuentra en un trámite de traspaso pendiente.'),
         findsOneWidget,
       );
+    });
+
+    testWidgets(
+        'AssetVerificationScreen renderiza lista de activos esperados y actualiza estado visual al verificar',
+        (tester) async {
+      final article1 = ArticleModel(
+        codigoActivo: 'ACT-001',
+        nombre: 'Laptop Dell Latitude',
+        placa: 'PLA-100',
+        bodega: 'B01',
+        responsable: 'Carlos Ruiz',
+      );
+      final article2 = ArticleModel(
+        codigoActivo: 'ACT-002',
+        nombre: 'Monitor LG 27"',
+        placa: '',
+        bodega: 'B01',
+        responsable: 'Carlos Ruiz',
+      );
+
+      inventoryProvider.collaborators = [
+        const TransferPersonModel(cedula: '11111', nombre: 'Carlos', apellido: 'Ruiz'),
+      ];
+      inventoryProvider.selectedCollaborator = inventoryProvider.collaborators.first;
+      inventoryProvider.articles = [article1, article2];
+
+      await tester.pumpWidget(createTestApp(const AssetVerificationScreen()));
+      await tester.pumpAndSettle();
+
+      // Verificar cabecera y conteos
+      expect(find.text('Activos Asignados (2)'), findsOneWidget);
+
+      // Verificar formato estricto: código - placa - nombre
+      expect(find.text('ACT-001 - PLA-100 - Laptop Dell Latitude'), findsOneWidget);
+      expect(find.text('ACT-002 - SIN PLACA - Monitor LG 27"'), findsOneWidget);
+
+      // Ambos inician como 'Pendiente'
+      expect(find.text('Pendiente'), findsNWidgets(2));
+      expect(find.text('Verificado'), findsNothing);
+
+      // Simular verificación del primer artículo
+      verificationProvider.verifyAsset(article1, inventoryProvider.articles);
+      await tester.pumpAndSettle();
+
+      // Ahora 1 Verificado y 1 Pendiente
+      expect(find.text('Verificado'), findsOneWidget);
+      expect(find.text('Pendiente'), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle), findsWidgets);
+    });
+
+    testWidgets(
+        'AssetVerificationScreen despliega sección de conflicto con sugerencia de traspaso',
+        (tester) async {
+      final expectedArticle = ArticleModel(
+        codigoActivo: 'ACT-001',
+        nombre: 'Laptop Dell',
+        placa: 'PLA-100',
+        bodega: 'B01',
+      );
+      final conflictArticle = ArticleModel(
+        codigoActivo: 'ACT-999',
+        nombre: 'Impresora Láser',
+        placa: '',
+        bodega: 'B02',
+        responsable: 'Maria López',
+        enTramite: false,
+      );
+
+      inventoryProvider.collaborators = [
+        const TransferPersonModel(cedula: '11111', nombre: 'Carlos', apellido: 'Ruiz'),
+      ];
+      inventoryProvider.selectedCollaborator = inventoryProvider.collaborators.first;
+      inventoryProvider.articles = [expectedArticle];
+
+      await tester.pumpWidget(createTestApp(const AssetVerificationScreen()));
+      await tester.pumpAndSettle();
+
+      // Simular escaneo de activo en conflicto
+      verificationProvider.verifyAsset(conflictArticle, inventoryProvider.articles);
+      await tester.pumpAndSettle();
+
+      // Sección de conflicto visible
+      expect(find.textContaining('Activos en Conflicto / No Esperados (1)'), findsOneWidget);
+      expect(find.text('ACT-999 - SIN PLACA - Impresora Láser'), findsOneWidget);
+      expect(find.text('Responsable actual: Maria López'), findsOneWidget);
+      expect(find.text('Se sugiere realizar un traspaso'), findsOneWidget);
     });
   });
 }

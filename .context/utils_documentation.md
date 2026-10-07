@@ -32,7 +32,7 @@ Este documento describe las clases y métodos utilitarios de la carpeta `lib/uti
   - `lib/modules/inventory/providers/transfer_delivery_provider.dart`
 
 ## `app_config.dart`
-- **Propósito**: Maneja la configuración centralizada de la aplicación (clase `AppConfig`). Se encarga de proveer una instancia única de `Dio` pre-configurada (URL base, *timeouts*, interceptores como `AuthInterceptor`, `MockHttpInterceptor` y `JsonInterceptor`), gestionar la persistencia dinámica del dominio mediante `flutter_secure_storage`, y proveer las llaves globales desacopladas `AppConfig.navigatorKey` y `AppConfig.scaffoldMessengerKey` para navegación y notificaciones sin requerir `BuildContext`.
+- **Propósito**: Maneja la configuración centralizada de la aplicación (clase `AppConfig`). Se encarga de proveer una instancia única de `Dio` pre-configurada (URL base, *timeouts*, interceptores como `AuthInterceptor`, `MockHttpInterceptor` y `JsonInterceptor`), gestionar la persistencia dinámica del dominio mediante `flutter_secure_storage`, y proveer las llaves globales desacopladas `AppConfig.navigatorKey` y `AppConfig.scaffoldMessengerKey` para navegación y notificaciones sin requerir `BuildContext`. La URL base del dominio no se consulta a un servicio de directorio remoto en el backend; se decodifica y valida directamente a partir del escaneo de un código QR institucional en `DomainScannerScreen`, persistiéndose en `FlutterSecureStorage` e inyectándose inmediatamente en `Dio.options.baseUrl` para todas las peticiones subsiguientes.
 - **Lugares de uso**:
   - `lib/main.dart`
   - `lib/modules/auth/screens/domain_scanner_screen.dart`
@@ -54,10 +54,11 @@ Este documento describe las clases y métodos utilitarios de la carpeta `lib/uti
   - `lib/modules/debug/screens/scanner_screen.dart`
 
 ## `dropdown_template.dart`
-- **Propósito**: Proporciona plantillas de configuración (como el método `DropdownTemplates.searchData`) para la construcción estandarizada de menús desplegables con barra de búsqueda interna, utilizando el paquete `dropdown_button2`. Es la base para los widgets canónicos transversales `CompanyDropdownField` y `WarehouseDropdownField`.
+- **Propósito**: Proporciona plantillas de configuración (como el método `DropdownTemplates.searchData` y `DropdownTemplates.styleData`) para la construcción estandarizada de menús desplegables con barra de búsqueda interna, fondo blanco puro inmutable y elevación uniforme, utilizando el paquete `dropdown_button2`. Es la base para los widgets canónicos transversales `CompanyDropdownField`, `WarehouseDropdownField` y `ArticleDropdownField`.
 - **Lugares de uso**: 
   - `lib/shared/widgets/company_dropdown_field.dart`
   - `lib/shared/widgets/warehouse_dropdown_field.dart`
+  - `lib/shared/widgets/article_dropdown_field.dart`
   - `lib/modules/physical_count/tabs/physical_count_opening_tab.dart`
   - `lib/modules/physical_count/tabs/physical_count_closing_tab.dart`
 

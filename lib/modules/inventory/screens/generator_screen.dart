@@ -5,6 +5,7 @@ import 'package:sigo_app/modules/inventory/models/article_model.dart';
 import 'package:sigo_app/modules/inventory/providers/inventory_provider.dart';
 import 'package:sigo_app/shared/widgets/company_dropdown_field.dart';
 import 'package:sigo_app/shared/widgets/warehouse_dropdown_field.dart';
+import 'package:sigo_app/shared/widgets/article_dropdown_field.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:pdf/pdf.dart';
@@ -13,8 +14,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:sigo_app/modules/debug/providers/printer_provider.dart';
 import 'package:sigo_app/modules/debug/widgets/printer_connection_dialog.dart';
-import 'package:dropdown_button2/dropdown_button2.dart';
-import 'package:sigo_app/utils/dropdown_template.dart';
 import 'package:sigo_app/modules/inventory/providers/geolocation_provider.dart';
 import 'package:sigo_app/utils/dialog_utils.dart';
 
@@ -29,9 +28,6 @@ class GeneratorScreen extends StatefulWidget {
 class _GeneratorScreenState extends State<GeneratorScreen> {
   // --- Estado de la Pantalla ---
   ArticleModel? _selectedArticle; // Artículo seleccionado (Filtro 2)
-
-  final TextEditingController _articleSearchController = TextEditingController();
-  final ValueNotifier<ArticleModel?> _articleNotifier = ValueNotifier(null);
 
   String _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
   bool _isGenerating = false;
@@ -51,19 +47,15 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _articleSearchController.dispose();
-    _articleNotifier.dispose();
-    super.dispose();
-  }
-
   // Sync notifiers with provider
   void _syncNotifiers(InventoryProvider provider) {
     // Reset article if warehouse changed globally
-    if (_selectedArticle != null && provider.articles.every((a) => a.id != _selectedArticle!.id)) {
+    if (_selectedArticle != null &&
+        provider.articles.every((a) =>
+            (a.id != null && _selectedArticle!.id != null)
+                ? a.id != _selectedArticle!.id
+                : a.codigoActivo != _selectedArticle!.codigoActivo)) {
       _selectedArticle = null;
-      _articleNotifier.value = null;
       _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
     }
   }
@@ -215,6 +207,12 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   Future<File> _generatePdfDocument(ArticleModel article, String qrData) async {
     final pdf = pw.Document();
 
+    final code = article.codigoActivo.isNotEmpty
+        ? article.codigoActivo
+        : (article.id != null ? article.id.toString() : '');
+    final placaClean = article.placa.trim();
+    final hasPlaca = placaClean.isNotEmpty && placaClean.toLowerCase() != 'n/a';
+
     pdf.addPage(
       pw.Page(
         pageFormat: const PdfPageFormat(
@@ -234,9 +232,17 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                   textAlign: pw.TextAlign.center,
                   maxLines: 1,
                 ),
+                if (code.isNotEmpty) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    'Cód: $code',
+                    style: const pw.TextStyle(fontSize: 8),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                ],
                 pw.SizedBox(height: 2),
                 pw.Text(
-                  'Placa: ${article.placa}',
+                  'Placa: ${hasPlaca ? placaClean : "N/A"}',
                   style: const pw.TextStyle(fontSize: 8),
                   textAlign: pw.TextAlign.center,
                 ),
@@ -255,7 +261,10 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     );
 
     final output = await getApplicationDocumentsDirectory();
-    final file = File('${output.path}/qr_${article.placa}.pdf');
+    final fileIdentifier = hasPlaca
+        ? placaClean
+        : (code.isNotEmpty ? code : 'art_${article.id ?? DateTime.now().millisecondsSinceEpoch}');
+    final file = File('${output.path}/qr_$fileIdentifier.pdf');
     await file.writeAsBytes(await pdf.save());
     return file;
   }
@@ -341,10 +350,16 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     return CompanyDropdownField(
       value: provider.selectedCompany,
       companies: provider.companies,
-      isLoading: _isGenerating,
+      isLoading: _isGenerating || (provider.state == InventoryState.loading && provider.companies.isEmpty),
       isRequired: true,
       labelText: '1. Seleccione Empresa',
-      onChanged: (c) => provider.selectCompany(c),
+      onChanged: (c) {
+        provider.selectCompany(c);
+        setState(() {
+          _selectedArticle = null;
+          _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
+        });
+      },
     );
   }
 
@@ -353,57 +368,42 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     return WarehouseDropdownField(
       value: provider.selectedWarehouse,
       warehouses: provider.warehouses,
-      isLoading: _isGenerating,
+      isLoading: _isGenerating || (provider.state == InventoryState.loading && provider.warehouses.isEmpty),
       isRequired: true,
       labelText: '2. Seleccione Centro de Costos/Bodega',
-      onChanged: (w) => provider.selectWarehouse(w),
+      onChanged: (w) async {
+        provider.selectWarehouse(w);
+        setState(() {
+          _selectedArticle = null;
+          _dataToEncodeForQR = 'Seleccione un Activo para Generar QR';
+        });
+        if (w != null &&
+            provider.selectedCompany != null &&
+            w.codigoBodega != 'ALL') {
+          await provider.loadArticlesByWarehouse(
+            w.codigoBodega,
+            provider.selectedCompany!.codigo,
+          );
+        }
+      },
     );
   }
 
   // Widget de selección de Artículo
   Widget _buildArticleSelector(InventoryProvider provider) {
-    return DropdownButtonFormField2<ArticleModel>(
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: '3. Seleccione Activo para QR',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        prefixIcon: Icon(Icons.vpn_key, color: primaryColor),
-      ),
-      valueListenable: _articleNotifier,
-      hint: provider.articles.isEmpty
-          ? const Text('No hay activos disponibles')
-          : const Text('Seleccione un activo'),
-      items: provider.articles.map((article) {
-        return DropdownItem(
-          value: article,
-          child: Text(
-            '${article.placa} - ${article.nombre}',
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        );
-      }).toList(),
-      onChanged: _isGenerating || provider.articles.isEmpty
-          ? null
-          : (ArticleModel? newValue) {
-              setState(() {
-                _selectedArticle = newValue;
-                _articleNotifier.value = newValue;
-                _dataToEncodeForQR =
-                    newValue?.qrData ?? 'Seleccione un Activo para Generar QR';
-              });
-            },
-      dropdownSearchData: DropdownTemplates.searchData(
-        controller: _articleSearchController,
-        hintText: 'Buscar activo...',
-        searchMatchFn: (item, searchValue) {
-          final art = item.value!;
-          return art.nombre.toLowerCase().contains(searchValue.toLowerCase()) ||
-              art.placa.toLowerCase().contains(searchValue.toLowerCase());
-        },
-      ),
-      onMenuStateChange: (isOpen) {
-        if (!isOpen) _articleSearchController.clear();
+    return ArticleDropdownField(
+      value: _selectedArticle,
+      articles: provider.articles,
+      isLoading: _isGenerating || (provider.state == InventoryState.loading && provider.articles.isEmpty),
+      isRequired: true,
+      labelText: '3. Seleccione Activo para QR',
+      prefixIcon: Icon(Icons.vpn_key, color: primaryColor),
+      onChanged: (ArticleModel? newValue) {
+        setState(() {
+          _selectedArticle = newValue;
+          _dataToEncodeForQR =
+              newValue?.qrData ?? 'Seleccione un Activo para Generar QR';
+        });
       },
     );
   }

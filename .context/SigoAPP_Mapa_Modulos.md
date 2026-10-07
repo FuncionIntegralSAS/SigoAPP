@@ -54,6 +54,7 @@ Fecha de actualización: Agosto 2026
 > **Identificación de Sesión y Enrutamiento Raíz:**
 > 1. **Cédula del Colaborador (`documento`):** En el login administrativo (`POST /api/v1/auth/login`), el backend devuelve el campo `documento` con la cédula del colaborador en nómina (`PERSONAL.PERSCODI`). `AuthResponse` lo expone como `documento` y `AuthProvider` lo almacena en `_cedula` (`currentCedula`), persistido en `FlutterSecureStorage` (`auth_cedula`). Esto permite que módulos dependientes como Entrega/Recepción de Traspasos y Requisiciones validen la identidad del colaborador directamente por su cédula.
 > 2. **Formalización del Tipo de Sesión (`isContador`):** Para evitar proxies ambiguos como `currentCedula == null`, `AuthProvider` gestiona explícitamente el booleano `_isContador` persistido en secure storage (`auth_is_contador`). `AuthWrapper` en `main.dart` evalúa `authProvider.isAuthenticated && !authProvider.isContador` para redirigir al `DashboardScreen` administrativo, permitiendo que las sesiones de contador permanezcan aisladas en el flujo offline de `AccountScreen`.
+> 3. **Configuración Dinámica de Dominio por QR:** `DomainScannerScreen` no consulta servicios de directorio ni endpoints de resolución remota. La URL base se extrae directamente del código QR escaneado (o ingreso manual), se almacena en `FlutterSecureStorage` y se inyecta en `AppConfig.updateBaseUrl()`, configurando `Dio.options.baseUrl` para todas las peticiones posteriores de la sesión.
 
 ---
 
@@ -117,12 +118,13 @@ Fecha de actualización: Agosto 2026
 - Validación estricta contra duplicados por `(articulo, placa)` y compatibilidad multi-artículo PL/SQL (`PKG_FI_MOVITRAS` exigiendo mismo `centroInformacion` y mismo `tercero`).
 - Bloqueo y descarte de selección para activos con `enTramite == true` (checkbox deshabilitado y badge *"En trámite pendiente"*).
 - Propagación transparente y directa de mensajes limpios de negocio `data['msg']` en `HttpTransferRepository` sin recortes de texto. Conexión con endpoints Spring Boot (`POST /api/v1/traspasos/crear`, `GET /api/v1/traspasos/personas`, `GET /api/v1/traspasos/activos?persona={...}&bodega={...}`).
+- Soporte de consulta directa de artículos por bodega y empresa (`InventoryProvider.loadArticlesByWarehouse`) para la selección y generación de códigos QR en `GeneratorScreen`, desacoplado de la cascada de colaboradores de traspasos.
 
 | Capa | Archivo | Ruta |
 |------|---------|------|
 | **Screen** | `InventoryScreen` | `lib/modules/inventory/screens/inventory_screen.dart` |
 | **Screen** | `GeneratorScreen` (generación QR) | `lib/modules/inventory/screens/generator_screen.dart` |
-| **Provider** | `InventoryProvider` (gestiona inventario y colaboradores vía `TransferRepository`) | `lib/modules/inventory/providers/inventory_provider.dart` |
+| **Provider** | `InventoryProvider` (gestiona inventario por colaborador vía `TransferRepository` y carga directa por bodega vía `loadArticlesByWarehouse` para `GeneratorScreen`) | `lib/modules/inventory/providers/inventory_provider.dart` |
 | **Provider** | `TransferRequestProvider` | `lib/modules/inventory/providers/transfer_request_provider.dart` |
 | **Provider** | `TransferFormProvider` | `lib/modules/inventory/providers/transfer_form_provider.dart` |
 | **Repositorio (contrato inventario)** | `InventoryRepository` | `lib/modules/inventory/repositories/inventory_repository.dart` |
@@ -146,6 +148,7 @@ Fecha de actualización: Agosto 2026
 | **Widget** | `CascadingCatalogsWidget` | `lib/modules/inventory/widgets/cascading_catalogs_widget.dart` |
 | **Widget** | `ArticleEditModal` (Edición, GPS y foto desacoplados) | `lib/modules/inventory/widgets/article_edit_modal.dart` |
 | **Widget** | `InventoryArticleTile` (Tarjeta de activo con modo normal y selección) | `lib/modules/inventory/widgets/inventory_article_tile.dart` |
+| **Widget** | `ArticleDropdownField` (Selector canónico estandarizado de activos) | `lib/shared/widgets/article_dropdown_field.dart` |
 | **Widget** | `AppErrorWidget` (Renderizado estandarizado inline/banner) | `lib/shared/widgets/app_error_widget.dart` |
 | **Servicio** | `MockInventoryService` | `lib/services/mock_inventory_service.dart` |
 | **Servicio** | `NotificationService` / `InAppNotificationService` | `lib/services/notification_service.dart`, `lib/services/in_app_notification_service.dart` |
@@ -380,6 +383,7 @@ Los siguientes servicios y utilidades son compartidos entre múltiples módulos:
 | `AuthProvider` | `lib/modules/auth/providers/auth_provider.dart` | Todos (token JWT, permisos) |
 | `CompanyDropdownField` | `lib/shared/widgets/company_dropdown_field.dart` | Requisiciones, Conteo Físico, Inventario (Selector estándar de Empresas) |
 | `WarehouseDropdownField` | `lib/shared/widgets/warehouse_dropdown_field.dart` | Conteo Físico, Inventario, Traspasos (Selector estándar de Bodegas) |
+| `ArticleDropdownField` | `lib/shared/widgets/article_dropdown_field.dart` | Inventario, Conteo Físico (Selector estándar de Artículos/Activos) |
 | `AppErrorWidget` | `lib/shared/widgets/app_error_widget.dart` | Todos los módulos (Renderizado estandarizado de errores: inline, banner y view) |
 | `WarehouseModel` | `lib/shared/models/warehouse_model.dart` | Inventario, Traspasos, Conteo Físico (Bodega con `tipo` y getter `isPersonal`) |
 | `CompanyModel` | `lib/shared/models/company_model.dart` | Requisiciones, Conteo Físico, Inventario (Empresas) |

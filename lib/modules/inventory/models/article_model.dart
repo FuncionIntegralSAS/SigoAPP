@@ -9,14 +9,14 @@ class ArticleModel extends Equatable {
   final String placa;
   final String bodega; // ID de la bodega/centro de costos
   final String? responsable;
-  final String? estado;    // Estado del activo (Operativo, Dañado, etc.)
-  
+  final String? estado; // Estado del activo (Operativo, Dañado, etc.)
+
   // Ubicación GPS (opcional, se llena al generar el QR o al consultar)
   final double? latitud;
   final double? longitud;
 
   // ATRIBUTOS PARA REGISTRO ADICIONAL
-  final String? comentarios;  // Comentarios o notas adicionales
+  final String? comentarios; // Comentarios o notas adicionales
   final String? rutaFoto; // Ruta local de la fotografía en el dispositivo
 
   // ESTADO DE TRÁMITE Y COMPATIBILIDAD
@@ -43,13 +43,42 @@ class ArticleModel extends Equatable {
 
   factory ArticleModel.fromJson(Map<String, dynamic> json) {
     return ArticleModel(
+      // PK numérica de la base de datos (ACFIIDIN). Exclusiva de json['id'].
       id: json['id'] != null ? int.tryParse(json['id'].toString()) : null,
-      codigoActivo: json['artiCodi']?.toString() ?? json['codigoActivo']?.toString() ?? json['activeCode']?.toString() ?? '',
-      nombre: json['artiDesc']?.toString() ?? json['nombre']?.toString() ?? json['name']?.toString() ?? '',
-      placa: json['artiPlac']?.toString() ?? json['placa']?.toString() ?? json['licensePlate']?.toString() ?? '',
-      bodega: json['bodeCodi']?.toString() ?? json['codigoBodega']?.toString() ?? json['warehouse']?.toString() ?? json['bodega']?.toString() ?? '',
-      responsable: json['responsable']?.toString() ?? json['responsible']?.toString(),
-      enTramite: json['enTramite'] == true ||
+
+      // Código de negocio del activo (ACFIARTI).
+      // Lee prioritariamente el nuevo contrato 'artiCodi' y mantiene fallbacks de otros módulos.
+      codigoActivo:
+          json['artiCodi']?.toString() ??
+          json['codigoActivo']?.toString() ??
+          json['activeCode']?.toString() ??
+          '',
+
+      // Descripción del activo.
+      // Lee prioritariamente 'artiDesc' y mantiene compatibilidad con otros módulos.
+      nombre:
+          json['artiDesc']?.toString() ??
+          json['nombre']?.toString() ??
+          json['name']?.toString() ??
+          '',
+
+      // Placa del activo (ACFIPLAC).
+      // Lee prioritariamente 'artiPlac' y mantiene compatibilidad con otros esquemas.
+      placa:
+          json['artiPlac']?.toString() ??
+          json['acfiPlac']?.toString() ??
+          json['placa']?.toString() ??
+          '',
+      bodega:
+          json['bodeCodi']?.toString() ??
+          json['codigoBodega']?.toString() ??
+          json['warehouse']?.toString() ??
+          json['bodega']?.toString() ??
+          '',
+      responsable:
+          json['responsable']?.toString() ?? json['responsible']?.toString(),
+      enTramite:
+          json['enTramite'] == true ||
           json['enTramite'] == 1 ||
           json['enTramite']?.toString().toLowerCase() == 'true',
       centroInformacion: json['centroInformacion']?.toString().trim(),
@@ -105,5 +134,13 @@ class ArticleModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, codigoActivo, bodega, enTramite, centroInformacion, tercero];
+  List<Object?> get props => [
+    id,
+    codigoActivo,
+    placa,
+    bodega,
+    enTramite,
+    centroInformacion,
+    tercero,
+  ];
 }

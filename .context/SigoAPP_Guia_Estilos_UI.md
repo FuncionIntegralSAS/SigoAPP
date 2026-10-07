@@ -221,34 +221,41 @@ Todo diálogo modal (`showDialog` / `AlertDialog`) debe respetar:
    * Modal formal de finalización exitosa (`r: 12`) con icono circular verde esmeralda (`Icons.check_circle_outline`, fondo `Colors.green.shade50`) y `barrierDismissible: false`.
    * Admite callback opcional `onAccept` que se ejecuta inmediatamente tras el cierre (`pop()`), ideal para disparar navegaciones o limpiezas de formulario sin condiciones de carrera.
 
-### 4.6 Selectores Desplegables de Catálogo (Empresas y Bodegas)
+### 4.6 Selectores Desplegables de Catálogo (Empresas, Bodegas y Activos)
 
-Para garantizar consistencia visual y operativa en toda la aplicación, queda prohibido maquetar selectores de empresas o bodegas con implementaciones ad-hoc dispersas. Se deben utilizar obligatoriamente los widgets estandarizados del proyecto:
+Para garantizar consistencia visual y operativa en toda la aplicación, queda prohibido maquetar selectores de empresas, bodegas o artículos con implementaciones ad-hoc dispersas. Se deben utilizar obligatoriamente los widgets estandarizados del proyecto:
 
-* **Empresas:** [`CompanyDropdownField`](../lib/widgets/company_dropdown_field.dart)
-* **Bodegas:** [`WarehouseDropdownField`](../lib/widgets/warehouse_dropdown_field.dart)
+* **Empresas:** [`CompanyDropdownField`](../lib/shared/widgets/company_dropdown_field.dart)
+* **Bodegas:** [`WarehouseDropdownField`](../lib/shared/widgets/warehouse_dropdown_field.dart)
+* **Artículos / Activos:** [`ArticleDropdownField`](../lib/shared/widgets/article_dropdown_field.dart)
 
 #### Anatomía y Convenciones Obligatorias:
-1. **Tipado de Dominio Estricto:** Operan exclusivamente con los modelos de datos inmutables del dominio (`CompanyModel` y `WarehouseModel`), previniendo desalineaciones por strings crudos o nulos imprevistos.
+1. **Tipado de Dominio Estricto:** Operan exclusivamente con los modelos de datos inmutables del dominio (`CompanyModel`, `WarehouseModel` y `ArticleModel`), previniendo desalineaciones por strings crudos o nulos imprevistos.
 2. **Iconografía Institucional:**
    - Selector de Empresas: `prefixIcon: const Icon(Icons.business_outlined, size: 20)`.
    - Selector de Bodegas: `prefixIcon: const Icon(Icons.storefront_outlined, size: 20)`.
+   - Selector de Artículos/Activos: `prefixIcon: const Icon(Icons.vpn_key_outlined, size: 20)` (configurable mediante el parámetro `prefixIcon`).
 3. **Control de Esquinas y Espaciado:**
-   - Borde rectangular estandarizado: `OutlineInputBorder(borderRadius: BorderRadius.circular(8))`.
+   - Borde rectangular estandarizado: `OutlineInputBorder(borderRadius: BorderRadius.circular(8))` con borde negro neutro de 1.0px y borde enfocado en morado institucional (`Colors.deepPurple, width: 1.5`).
    - Padding interno compacto: `contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12)`.
-4. **Búsqueda Interna Bimodal:**
-   - Integran `DropdownTemplates.searchData` permitiendo al operador buscar en tiempo real tanto por **código** como por **descripción** (ambos normalizados a minúsculas).
+4. **Búsqueda Interna Bimodal / Multicampo:**
+   - Integran `DropdownTemplates.searchData` permitiendo al operador buscar en tiempo real tanto por **código** como por **descripción** (y por **placa** en el caso de activos), normalizados a minúsculas.
 5. **Manejo Reactivo de Estados Asíncronos:**
    - Inhabilitación automática (`onChanged: null`) cuando `isLoading == true` o la lista de catálogos esté vacía.
    - Textos guía (`hintText`) contextuales y dinámicos:
-     - En carga: `"Cargando empresas..."` / `"Cargando bodegas..."`.
-     - Lista vacía: `"No hay empresas disponibles"` / `"No hay bodegas disponibles"`.
-     - Inactivo opcional: `"Todas las empresas"` / `"Todas las bodegas"` (cuando `allowClear: true`).
-     - Formulario obligatorio: `"Seleccione una empresa"` / `"Seleccione una bodega"`.
+     - En carga: `"Cargando empresas..."` / `"Cargando bodegas..."` / `"Cargando activos..."`.
+     - Lista vacía: `"No hay empresas disponibles"` / `"No hay bodegas disponibles"` / `"No hay activos disponibles"`.
+     - Inactivo opcional: `"Todas las empresas"` / `"Todas las bodegas"` / `"Todos los activos"` (cuando `allowClear: true`).
+     - Formulario obligatorio: `"Seleccione una empresa"` / `"Seleccione una bodega"` / `"Seleccione un activo"`.
 6. **Formato de Renderizado del Ítem:**
-   - Etiqueta de una sola línea con elipsis: `'${item.codigo} - ${item.descripcion}'` (`maxLines: 1`, `overflow: TextOverflow.ellipsis`).
+   - Empresas y Bodegas: Etiqueta de una sola línea con elipsis: `'${item.codigo} - ${item.descripcion}'` (`maxLines: 1`, `overflow: TextOverflow.ellipsis`).
+   - Artículos/Activos: Formato estricto `'${codigo} - ${placa} - ${descripcion}'` (`maxLines: 1`, `overflow: TextOverflow.ellipsis`), mostrando `'N/A'` si el código o placa están vacíos.
 7. **Deselección / Limpieza Rápida (`allowClear: true`):**
    - En paneles de filtros o consultas opcionales, al activar `allowClear: true`, el selector despliega automáticamente un botón `IconButton(Icons.clear)` como `suffixIcon` cuando hay un valor seleccionado, permitiendo regresar a estado nulo en un toque.
+8. **Estilo del Menú Desplegable:**
+   - Decorado con `dropdownStyleData: DropdownTemplates.styleData()`, garantizando elevación 3, esquinas redondeadas y fondo blanco puro.
+9. **Desduplicación Preventiva (Activos):**
+   - Filtrado automático de ítems idénticos para prevenir fallos de aserción en `DropdownButton2` cuando existan registros duplicados provenientes del backend.
 
 #### Ejemplo de Instanciación Canónica:
 
@@ -269,6 +276,17 @@ WarehouseDropdownField(
   isLoading: provider.isLoadingWarehouses,
   allowClear: true,
   onChanged: (WarehouseModel? bodega) => provider.selectWarehouse(bodega),
+)
+
+// Selector de Activo / Artículo (en formulario obligatorio o generador)
+ArticleDropdownField(
+  value: selectedArticle,
+  articles: provider.articles,
+  isLoading: isGenerating || provider.isLoadingArticles,
+  isRequired: true,
+  labelText: '3. Seleccione Activo para QR',
+  prefixIcon: const Icon(Icons.vpn_key, color: Colors.deepPurple),
+  onChanged: (ArticleModel? article) => selectArticle(article),
 )
 ```
 
@@ -434,13 +452,23 @@ Esta sección define las particularidades funcionales, de layout, flujos de inte
    * Diálogo modal o modal bottom sheet con esquinas `BorderRadius.circular(12)`.
    * Secciones bien demarcadas con encabezados en gris oscuro: Datos del activo, Ubicación física, Coordenadas GPS y Evidencia fotográfica.
 3. **Verificación de Activos (`AssetVerificationScreen`):**
-   * Visor de cámara en mitad superior y tarjeta de resultados en mitad inferior.
-   * **Selector de Responsable Auditado:** Dropdown con campo de búsqueda interactivo que consume reactivamente los colaboradores reales de la organización provistos por `InventoryProvider` (`inventoryProvider.collaborators`), evitando listas estáticas o hardcodeadas.
-   * **Tarjeta de Resultado y Sugerencia de Traspaso:**
-     * En caso de coincidencia entre custodio actual y esperado: indicador verde de verificación exitosa.
-     * En caso de discrepancia: indicador ámbar/rojo con botón contextual *"Se sugiere realizar un traspaso"* para iniciar el traslado hacia el custodio esperado.
-     * **Banner Preventivo de Activo en Trámite (`enTramite == true`):** Contenedor ámbar destacado (`amber.shade50`, borde `amber.shade300`, texto e icono `amber.shade900`) con icono `Icons.lock_clock` informando que el activo ya cuenta con un trámite de traspaso pendiente, bloqueando preventivamente la apertura del formulario de traspaso con un `DialogUtils.showWarningSnackBar`.
-   * Badge de GPS satelital: Verde fijo cuando la precisión es `< 10m` con coordenadas visibles, ámbar titilante mientras calcula fijación geográfica.
+   * **Cascada Institucional de Selectores (Empresa → Bodega PE → Responsable):**
+     * Selectores estandarizados `CompanyDropdownField` y `WarehouseDropdownField` con esquinas `BorderRadius.circular(8)`.
+     * Selector de responsable auditado mediante `DropdownButtonFormField2<TransferPersonModel>` con buscador interno `DropdownTemplates.searchData`, consumiendo reactivamente los colaboradores provistos por `InventoryProvider` (`inventoryProvider.collaborators`).
+   * **Botones de Acción Principales:** Fila horizontal de botones outlined (`"Escanear Activo"` y `"Generar QR"`) con esquinas `BorderRadius.circular(8)`.
+   * **Barra de Resumen de Auditoría:** Encabezado que consolida el total de activos asignados con badges redondeados tipo chip para activos verificados (fondo verde translúcido) y pendientes (fondo gris neutro).
+   * **Tarjetas de Activos Esperados (Identidad Canónica SigoAPP):**
+     * Contenedor con esquinas `BorderRadius.circular(8)`, `clipBehavior: Clip.antiAlias` y franja lateral izquierda de 5px mediante `Positioned` + `ColoredBox`.
+     * Formato estricto de nomenclatura: `código - placa - nombre` (ej. `ACT-001 - PLA-1234 - Laptop Dell Latitude`).
+     * **Estado Verificado:** Franja verde (`Colors.green.shade600`), fondo sutil verde (`Colors.green.shade50`), icono `Icons.check_circle` verde y etiqueta "Verificado".
+     * **Estado Pendiente:** Franja gris (`Colors.grey.shade400`), fondo neutro, icono `Icons.radio_button_unchecked` y etiqueta "Pendiente".
+     * **Insignia de Trámite:** Chip ámbar (`Colors.amber.shade100`) con icono `Icons.lock_clock` informando si el activo se encuentra en trámite de traspaso.
+   * **Sección de Activos en Conflicto / No Esperados:**
+     * Tarjetas destacadas con franja lateral naranja de 5px (`Colors.orange.shade700`), fondo `Colors.orange.shade50`, borde exterior sutil e icono `Icons.warning_amber_rounded`.
+     * Identificación del custodio titular registrado en el sistema.
+     * **Banner Preventivo de Activo en Trámite (`enTramite == true`):** Contenedor ámbar destacado (`amber.shade50`, borde `amber.shade400`, texto e icono `amber.shade900`) con icono `Icons.lock_clock` informando que el activo ya cuenta con un trámite de traspaso pendiente, bloqueando preventivamente la apertura del formulario de traspaso con un `DialogUtils.showWarningSnackBar`.
+     * **Botón Contextual:** *"Se sugiere realizar un traspaso"* con contorno naranja y esquinas `BorderRadius.circular(8)` para abrir `TransferFormWidget` contextualizado.
+   * **Auditoría Satelital de Ubicación GPS:** Diálogo de confirmación estándar mediante `DialogUtils.showConfirmationDialog` ante desplazamientos mayores a 1 metro o registros nuevos, con sincronización asíncrona tolerante a fallos mediante `GeolocationProvider`.
 
 ---
 

@@ -69,3 +69,12 @@ Future<void> searchPerson({String? nombre, String? apellido, String? cedula}) { 
   **Regla Obligatoria:** Los repositorios jamás deben asumir que `statusCode == 200` implica éxito de la operación. Es obligatorio verificar que `data['code'] == 0`. Si `code != 0`, se debe extraer `data['msg']` y disparar la excepción de negocio tipada (`BusinessException`) con dicho mensaje.
 - **Payloads Limpios sin Metadatos de Filtrado UI:**
   En solicitudes de creación transaccionales (como la creación de traspasos), el payload enviado debe ceñirse con fidelidad al contrato (`TransferRequest`). Campos utilizados por la interfaz de usuario para filtrado o agrupación local (tales como `bodegaOrigen`, `bodegaDestino`, `centroInformacion` o `tercero`) **no deben ser transmitidos en el body** si no forman parte del modelo de entrada del backend, evitando errores 400 por campos desconocidos o discrepancias con validaciones relacionales en base de datos.
+
+## 8. Configuración Dinámica de Dominio y URL Base por Código QR
+- **Cero Consultas de Directorio al Backend:** La aplicación **no solicita ni resuelve URLs de dominio contra ningún endpoint remoto o servicio de directorio**.
+- **Lectura Directa desde Código QR:** En la pantalla `DomainScannerScreen`, la URL base completa (ej. `https://cliente.dominio.com/api/v1`) se lee e interpreta directamente desde el código QR escaneado (o ingreso manual asistido), eliminando la dependencia de servidores de nombres o directorios previos.
+- **Persistencia Segura y Actualización Dinámica de `Dio`:**
+  1. Al capturar y validar la URL, se invoca `AppConfig.updateBaseUrl(url)`.
+  2. La URL se persiste localmente en `FlutterSecureStorage` (clave de dominio).
+  3. La instancia única de `Dio` actualiza inmediatamente su propiedad `options.baseUrl = url`.
+  4. Todas las peticiones HTTP posteriores utilizan esta URL base para enrutar el tráfico al servidor o clúster correspondiente al cliente.
